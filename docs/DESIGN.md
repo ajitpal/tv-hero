@@ -606,17 +606,21 @@ The UI shows this as one step: "Applying… Done".
   - "Made for this TV" in About
   - a one-tap way back to factory for everything tv-hero changed
 
-## 16. Build status (tv-hero 1.2)
+## 16. Build status (tv-hero 2.0, 29 Oct 2026)
+
+"Verified" means checked on the real TV; "Built" means compiled and unit-tested but not yet tried on a device.
 
 | Area | Status |
 |---|---|
-| TV Home, dock, cinematic shelf, App Library, ambient clock | Built (launcher) |
-| Profiles, Who's Watching, PIN, limits, bedtime, pause, sleep timer | Built and tested on the TV |
-| Guest mode, Parent menu on TV (who can control, internet control, debugging) | Built in 1.2 |
-| Pairing with Allow / Don't Allow on the TV + code + password | Built in 1.2 |
-| Encrypted control channel (AES-256-GCM per phone, signed and replay-protected) | Built in 1.2 |
-| Internet control off by default, turned on only on the TV, Tailscale transport | Built in 1.2 |
-| Who can control / sessions / action log with which phone | Built in 1.2 |
-| Phone: Home, Remote (trackpad + buttons), Now Playing, Family (Kids, Apps), Privacy, Settings, Scenes, multi-TV, fingerprint | Built in 1.2 |
-| Debloat from the phone over ADB (job-only) | Built in 1.2 (first use needs "Allow USB debugging" on the TV) |
-| Continue Watching row, focus parallax and light sweep, Picture & Sound from phone, wake from standby, keyboard auto-open | Next |
+| TV Home: dock of up to 6 apps, greeting by profile, App Library, ambient clock, no ads | Verified |
+| Profiles (up to 10), Who's Watching, parent PIN, limits, bedtime, pause, sleep timer, night volume | Verified (1.1) |
+| Guest mode, Parent Menu on the TV (who can control, internet control, debugging off, guest) | Built |
+| Kids' *Ask a Parent* on the blocked screen → **Needs You** on the phone | Built |
+| Pairing: code comparison + Allow / Don't Allow on the TV (focus on Don't Allow) + password over TLS | **Verified** with the Python client; phone UI built |
+| Encrypted channel: mutual TLS, Keystore keys on both sides, pinned certificates | **Verified** (TLS 1.2, ECDHE-ECDSA-AES128-GCM) |
+| Internet control off by default; on needs password + home network + Allow on the TV | **Verified** (refusal path); Tailscale transport not yet installed on the TV |
+| Who can control (last used, home/internet, active now), revoke, action log with the phone's name | Verified with the Python client (one revocation bug found and fixed; re-check pending); phone UI built |
+| Phone: power and volume over the encrypted channel | TV side verified; phone UI built |
+| Phone app lock (fingerprint / screen lock) | Built |
+| Phone: Home tab with status row, Now Playing sheet, trackpad remote, full-screen controller, Privacy & Debloat dashboard, Scenes, multi-TV switcher | **Not built yet**. The current tabs are TV, Family, Apps, Remote, Settings. |
+| Continue Watching row, focus parallax and light sweep, Picture & Sound from the phone, keyboard auto-open | Not built yet |
