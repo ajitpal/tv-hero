@@ -1,0 +1,13 @@
+plugins {
+    id 'java-library'
+}
+
+// Plain Java so the TV app doesn't carry the Kotlin runtime. Java 11 bytecode: fine for D8 on both apps.
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+}

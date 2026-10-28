@@ -10,11 +10,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${TV_HOST:?set TV_HOST to the TV IP address}"
 PKG=com.ajit.tvhero
-APK="${1:-tv/app/build/outputs/apk/release/app-release.apk}"
+APK="${1:-tv-launcher/build/outputs/apk/release/tv-launcher-release.apk}"
 PY=tools/venv/bin/python
 [ -x "$PY" ] || PY=tools/venv/Scripts/python.exe
 [ -x "$PY" ] || { echo "run: python3 -m venv tools/venv && tools/venv/bin/pip install -r tools/requirements.txt" >&2; exit 1; }
-[ -f "$APK" ] || { echo "no APK at $APK: build it with (cd tv && ./gradlew assembleRelease)" >&2; exit 1; }
+[ -f "$APK" ] || { echo "no APK at $APK: build it with ./gradlew :tv-launcher:assembleRelease" >&2; exit 1; }
 tv() { "$PY" -I tools/tv.py "$@"; }
 export MSYS_NO_PATHCONV=1
 

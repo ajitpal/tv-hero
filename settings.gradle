@@ -1,0 +1,18 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = "tv-hero"
+include ':protocol'        // pure Java: commands, pairing, pinning, shared by both apps
+include ':tv-launcher'     // the TV app (home screen, guard, control server)
+include ':companion'       // the phone app

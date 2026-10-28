@@ -1,46 +1,103 @@
 #!/usr/bin/env python3
-"""tv-hero control client for testing the TV's API from a computer (docs/PROTOCOL.md).
+"""tv-hero control client (protocol 2) for using the TV's API from a computer. See docs/PROTOCOL.md.
 
     tvhero_client.py <tv-ip> info
-    tvhero_client.py <tv-ip> pair              # shows a code on the TV; asks for it and the parent password
+    tvhero_client.py <tv-ip> pair               # compare the code with the TV, press Allow there, then the parent password
+    tvhero_client.py <tv-ip> status
+    tvhero_client.py <tv-ip> volume [<level>|+|-|mute|unmute]
+    tvhero_client.py <tv-ip> sleep | wake
     tvhero_client.py <tv-ip> apps
     tvhero_client.py <tv-ip> block <package>
-    tvhero_client.py <tv-ip> unblock <package>   # asks for the parent password
-    tvhero_client.py <tv-ip> home
+    tvhero_client.py <tv-ip> unblock <package>  # asks for the parent password
     tvhero_client.py <tv-ip> launch <package>
-    tvhero_client.py <tv-ip> key home|back
-    tvhero_client.py <tv-ip> get <path>         # any signed GET, e.g. /v1/log
-    tvhero_client.py <tv-ip> post <path> '<json>'  # any signed POST, e.g. /v1/lock '{"locked":true}'
+    tvhero_client.py <tv-ip> key home|back|...
+    tvhero_client.py <tv-ip> devices
+    tvhero_client.py <tv-ip> forget             # removes this computer from the TV (no password needed for yourself)
+    tvhero_client.py <tv-ip> get <path>         # any GET over the encrypted channel, e.g. /v1/log
+    tvhero_client.py <tv-ip> post <path> '<json>'
+    tvhero_client.py --self-test                # checks the pairing maths against the Java test vectors
 
-Pairing state is kept in ~/.tvhero/<tv-ip>.json. Needs the `cryptography` package.
+How it's protected: commands go over mutual TLS to port 8766. This computer has its own EC P-256 key
+(in ~/.tvhero/, readable only by you); the TV's certificate is pinned at pairing and nothing else is
+accepted. Needs the `cryptography` package.
 """
 import base64
+import datetime
 import getpass
 import hashlib
-import hmac
 import json
 import os
+import socket
+import ssl
+import struct
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
 
-PORT = 8765
+PAIRING_PORT = 8765
+SECURE_PORT = 8766
+NONCE_BYTES = 32
 STATE_DIR = os.path.expanduser("~/.tvhero")
 
 
-def pbkdf2(password: str, salt: bytes) -> bytes:
-    return hashlib.pbkdf2_hmac("sha1", password.encode(), salt, 20000, 32)
+# ---------- pairing maths (same as protocol/Pairing.java) ----------
+
+def _h(label, *parts):
+    d = b""
+    for p in (label.encode(),) + parts:
+        d += struct.pack(">I", len(p)) + p
+    return hashlib.sha256(d).digest()
 
 
-def open_box(key: bytes, box: bytes) -> bytes:
-    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-    return AESGCM(key).decrypt(box[:12], box[12:], None)
+def commitment(tv_cert, phone_cert, tv_nonce):
+    return _h("tvhero-commit-v1", tv_cert, phone_cert, tv_nonce)
 
 
-def sign(secret: bytes, method: str, target: str, ts: str, body: bytes) -> str:
-    msg = f"{method}\n{target}\n{ts}\n{hashlib.sha256(body).hexdigest()}"
-    return base64.b64encode(hmac.new(secret, msg.encode(), hashlib.sha256).digest()).decode()
+def code(phone_cert, tv_cert, phone_nonce, tv_nonce):
+    h = _h("tvhero-sas-v1", phone_cert, tv_cert, phone_nonce, tv_nonce)
+    return "%06d" % (int.from_bytes(h[:4], "big") % 1_000_000)
+
+
+def fingerprint(der):
+    return hashlib.sha256(der).hexdigest()
+
+
+def self_test():
+    tv, ph, np_, nt = b"tv-cert", b"phone-cert", bytes([1]) * 32, bytes([2]) * 32
+    assert commitment(tv, ph, nt).hex() == "659fd388420840209fabe277ddbf358a44ad050367704cd77fc78285cbcd99a6"
+    assert code(ph, tv, np_, nt) == "569378"
+    print("pairing vectors match protocol/PairingTest.java")
+
+
+# ---------- this computer's identity ----------
+
+def identity():
+    """EC P-256 key and self-signed certificate, made once and kept in ~/.tvhero/ (mode 600)."""
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.x509.oid import NameOID
+
+    os.makedirs(STATE_DIR, mode=0o700, exist_ok=True)
+    key_path, cert_path = os.path.join(STATE_DIR, "key.pem"), os.path.join(STATE_DIR, "cert.pem")
+    if not os.path.exists(key_path):
+        key = ec.generate_private_key(ec.SECP256R1())
+        name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "tv-hero client " + socket.gethostname())])
+        now = datetime.datetime.now(datetime.timezone.utc)
+        cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
+                .serial_number(x509.random_serial_number())
+                .not_valid_before(now - datetime.timedelta(days=1))
+                .not_valid_after(now + datetime.timedelta(days=3650))
+                .sign(key, hashes.SHA256()))
+        fd = os.open(key_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "wb") as f:
+            f.write(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
+        with open(cert_path, "wb") as f:
+            f.write(cert.public_bytes(serialization.Encoding.PEM))
+    cert = x509.load_pem_x509_certificate(open(cert_path, "rb").read())
+    return key_path, cert_path, cert.public_bytes(serialization.Encoding.DER)
 
 
 class Tv:
@@ -49,73 +106,133 @@ class Tv:
         self.state_file = os.path.join(STATE_DIR, f"{host}.json")
         self.state = json.load(open(self.state_file)) if os.path.exists(self.state_file) else {}
 
-    def call(self, method, path, body=None, signed=True, raw=False):
-        data = b"" if body is None else json.dumps(body).encode()
-        headers = {"Content-Type": "application/json"}
-        if signed:
-            if "device_id" not in self.state:
-                sys.exit("not paired: run `pair` first")
-            ts = str(int(time.time() * 1000))
-            secret = base64.b64decode(self.state["secret"])
-            headers.update({"X-Device-Id": self.state["device_id"], "X-Timestamp": ts,
-                            "X-Signature": sign(secret, method, path, ts, data)})
-        req = urllib.request.Request(f"http://{self.host}:{PORT}{path}", data=data if method == "POST" else None,
-                                     method=method, headers=headers)
-        try:
-            with urllib.request.urlopen(req, timeout=15) as r:
-                payload = r.read()
-                return payload if raw else json.loads(payload)
-        except urllib.error.HTTPError as e:
-            return {"status": e.code, **json.loads(e.read() or b"{}")}
-
-    def pair(self, name="computer"):
-        start = self.call("POST", "/v1/pair/start", {"device_name": name}, signed=False)
-        print("Code is on the TV now." + ("" if start.get("password_set") else " No parent password yet: the one you type becomes it."))
-        code = input("Code on TV: ").strip().replace(" ", "")
-        pw = getpass.getpass("Parent password: ")
-        fin = self.call("POST", "/v1/pair/finish", {"device_name": name, "code": code, "password": pw}, signed=False)
-        if "box" not in fin:
-            sys.exit(f"pairing failed: {fin}")
-        secret = open_box(pbkdf2(f"{code}:{pw}", base64.b64decode(start["salt"])), base64.b64decode(fin["box"]))
-        self.state = {"device_id": fin["device_id"], "secret": base64.b64encode(secret).decode()}
-        os.makedirs(STATE_DIR, exist_ok=True)
+    def save(self):
+        os.makedirs(STATE_DIR, mode=0o700, exist_ok=True)
         with open(self.state_file, "w") as f:
-            json.dump(self.state, f)
-        os.chmod(self.state_file, 0o600)
-        print("paired as", fin["device_id"])
+            json.dump(self.state, f, indent=1)
+
+    # Plain HTTP to the pairing port: info and pairing only.
+    def open_call(self, method, path, body=None):
+        data = None if body is None else json.dumps(body).encode()
+        req = urllib.request.Request(f"http://{self.host}:{PAIRING_PORT}{path}", data=data, method=method,
+                                     headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            sys.exit(f"{e.code}: {e.read().decode(errors='replace')}")
+
+    # Mutual TLS to the secure port, TV certificate pinned by fingerprint.
+    def call(self, method, path, body=None, raw=False):
+        if "tv_fingerprint" not in self.state:
+            sys.exit("not paired: run `pair` first")
+        key_path, cert_path, _ = identity()
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE        # no CAs: the pin below is the check
+        ctx.load_cert_chain(cert_path, key_path)
+        data = b"" if body is None else json.dumps(body).encode()
+        with socket.create_connection((self.host, SECURE_PORT), timeout=10) as raw_sock:
+            with ctx.wrap_socket(raw_sock) as s:
+                if fingerprint(s.getpeercert(binary_form=True)) != self.state["tv_fingerprint"]:
+                    sys.exit("the TV's certificate doesn't match the one paired: refusing to talk to it")
+                head = (f"{method} {path} HTTP/1.1\r\nHost: {self.host}\r\nContent-Type: application/json\r\n"
+                        f"Content-Length: {len(data)}\r\nConnection: close\r\n\r\n").encode()
+                s.sendall(head + data)
+                resp = b""
+                while True:
+                    chunk = s.recv(65536)
+                    if not chunk:
+                        break
+                    resp += chunk
+                tls = s.version()
+        head, _, payload = resp.partition(b"\r\n\r\n")
+        status = int(head.split(b" ")[1])
+        if raw:
+            return status, payload, tls
+        out = json.loads(payload) if payload else {}
+        if status >= 400:
+            sys.exit(f"{status}: {out.get('error', out)}")
+        return out
+
+    def pair(self, name):
+        _, _, my_cert = identity()
+        start = self.open_call("POST", "/v1/pair/start", {"device_name": name, "cert": base64.b64encode(my_cert).decode()})
+        tv_cert = base64.b64decode(start["tv_cert"])
+        my_nonce = os.urandom(NONCE_BYTES)
+        tv_nonce = base64.b64decode(self.open_call("POST", "/v1/pair/reveal",
+                                                   {"pair_id": start["pair_id"], "nonce": base64.b64encode(my_nonce).decode()})["nonce"])
+        if not commitment(tv_cert, my_cert, tv_nonce) == base64.b64decode(start["commitment"]):
+            sys.exit("the TV's answer doesn't match its commitment: someone may be in the middle. Not pairing.")
+        c = code(my_cert, tv_cert, my_nonce, tv_nonce)
+        print(f"\n  Code: {c[:3]} {c[3:]}\n\nCheck the TV shows the same code, then choose Allow on the TV.")
+        while True:
+            time.sleep(1)
+            st = self.open_call("GET", f"/v1/pair/status?pair_id={start['pair_id']}")["state"]
+            if st == "allowed":
+                break
+            if st in ("denied", "expired", "none"):
+                sys.exit(f"pairing {st}")
+        self.state = {"tv_fingerprint": fingerprint(tv_cert)}
+        self.save()
+        if start.get("password_set"):
+            pw = getpass.getpass("Parent password: ")
+        else:
+            pw = getpass.getpass("Choose a parent password (at least 6 characters): ")
+            if getpass.getpass("Again: ") != pw:
+                sys.exit("passwords differ")
+        r = self.call("POST", "/v1/pair/complete", {"password": pw})
+        self.state["device_id"] = r["device_id"]
+        self.save()
+        print(f"Paired as {r['name']} ({r['device_id']}).")
 
 
 def main():
+    if sys.argv[1:] == ["--self-test"]:
+        self_test()
+        return
     if len(sys.argv) < 3:
         sys.exit(__doc__)
     tv, cmd, args = Tv(sys.argv[1]), sys.argv[2], sys.argv[3:]
+    out = None
     if cmd == "info":
-        out = tv.call("GET", "/v1/info", signed=False)
+        out = tv.open_call("GET", "/v1/info")
     elif cmd == "pair":
-        tv.pair(args[0] if args else "computer")
-        return
+        tv.pair(args[0] if args else socket.gethostname()[:40])
+    elif cmd == "status":
+        out = tv.call("GET", "/v1/status")
+    elif cmd == "volume":
+        a = args[0] if args else ""
+        body = ({"step": 1} if a == "+" else {"step": -1} if a == "-" else {"mute": True} if a == "mute"
+                else {"mute": False} if a == "unmute" else {"level": int(a)} if a else None)
+        out = tv.call("POST", "/v1/volume", body) if body else tv.call("GET", "/v1/volume")
+    elif cmd in ("sleep", "wake"):
+        out = tv.call("POST", "/v1/power", {"action": cmd})
     elif cmd == "apps":
-        out = tv.call("GET", "/v1/apps")
-        for a in out.get("apps", []):
+        for a in tv.call("GET", "/v1/apps")["apps"]:
             print(f"{a['state']:8} {a['package']:45} {a['label']}")
-        return
     elif cmd == "block":
         out = tv.call("POST", "/v1/apps/block", {"package": args[0]})
     elif cmd in ("unblock", "approve"):
         out = tv.call("POST", f"/v1/apps/{cmd}", {"package": args[0], "password": getpass.getpass("Parent password: ")})
-    elif cmd == "home":
-        out = tv.call("GET", "/v1/home")
     elif cmd == "launch":
         out = tv.call("POST", "/v1/launch", {"package": args[0]})
     elif cmd == "key":
         out = tv.call("POST", "/v1/key", {"action": args[0]})
+    elif cmd == "devices":
+        out = tv.call("GET", "/v1/devices")
+    elif cmd == "forget":
+        out = tv.call("POST", "/v1/devices/remove", {})
+        os.remove(tv.state_file)
     elif cmd == "get":
         out = tv.call("GET", args[0])
-    elif cmd == "post":            # post <path> '<json>'
+    elif cmd == "post":
         out = tv.call("POST", args[0], json.loads(args[1]) if len(args) > 1 else {})
     else:
         sys.exit(__doc__)
-    print(json.dumps(out, indent=2))
+    if out is not None:
+        print(json.dumps(out, indent=1))
 
 
 if __name__ == "__main__":
