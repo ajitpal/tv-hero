@@ -1,0 +1,17 @@
+# Batch 4: apps Ajit didn't pick (kept: YouTube, Hotstar, Mi TV+, Live TV/inputs, voice, casting, Play Store).
+com.sonyliv
+tv.airtel.xstream.tvapp
+com.jio.media.stb.ondemand
+com.xiaomi.mimusic2
+com.mitv.gallery
+com.mitv.videoplayer
+com.xiaomi.mitv.mediaexplorer   # USB media browser; re-enable if a USB drive is used
+com.google.android.play.games
+com.google.android.videos
+com.spocky.projengmenu          # Projectivy launcher
+com.overdevs.at4k               # AT4K launcher
+com.neilturner.aerialviews      # Aerial Views screensaver
+com.phlox.tvwebbrowser          # TV Bro browser
+nextapp.fx                      # FX file explorer
+com.yablio.sendfilestotv        # Send Files to TV
+com.vectorunit.purple.googleplay

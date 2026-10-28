@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The weather_pill button: a text pill like Inputs, its text and sky icon set by WeatherPill. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/btnWeather"
+    style="@style/TopButton"
+    android:singleLine="true"
+    android:text="@string/weather_pill_label"
+    android:drawableStart="@drawable/ic_weather_cloud"
+    android:nextFocusDown="@+id/grid" />

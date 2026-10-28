@@ -1,0 +1,20 @@
+# Build output
+.gradle/
+build/
+*/app/build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+
+# Secrets: release key and its passwords
+keystore.properties
+*.jks
+*.keystore
+
+# Tools: Python venv, ADB keys, TV backups with device identifiers
+tools/venv/
+tools/adbkey/
+__pycache__/
+baseline/
+shots/

@@ -1,0 +1,9 @@
+# Batch 2: PatchWall, content/sponsored rows, partner auto-installs. Mi TV+ (com.mitv.tvhome.mitvplus) KEPT by choice.
+# Mi TV+ has its own LEANBACK_LAUNCHER entry, so it opens without PatchWall.
+com.mitv.tvhome.atv
+com.xm.webcontent
+com.xiaomi.floatingframe
+com.google.android.tvrecommendations
+com.google.android.leanbacklauncher.recommendations
+android.autoinstalls.config.xioami.dangal   # system partner auto-install config (sic)
+android.autoinstalls.config.xiaomi.amelie   # second partner auto-install config, found on this TV only

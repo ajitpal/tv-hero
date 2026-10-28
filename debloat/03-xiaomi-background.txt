@@ -1,0 +1,4 @@
+# Batch 3: Xiaomi background services. com.xiaomi.mitv.updateservice is added after the firmware check (batch 3b).
+com.xiaomi.mitv.tvmanager      # its Boost/Optimize deletes launcher theme files
+com.xiaomi.mitv.handbook
+com.xiaomo.tv.milegal
