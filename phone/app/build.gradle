@@ -47,6 +47,17 @@ android {
     }
     kotlinOptions { jvmTarget = '17' }
     buildFeatures { compose true }
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+            all {
+                // Screenshots of every screen: ./gradlew testDebugUnitTest -Pscreenshots=record (writes docs/screenshots/phone/)
+                systemProperty 'screenshots', project.findProperty('screenshots') ?: 'off'
+                systemProperty 'roborazzi.test.record', project.findProperty('screenshots') == 'record' ? 'true' : 'false'
+                systemProperty 'screenshotDir', rootProject.file('../docs/screenshots/phone').absolutePath
+            }
+        }
+    }
 }
 
 dependencies {
@@ -58,5 +69,9 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.6'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.json:json:20240303'
+    testImplementation 'org.robolectric:robolectric:4.13'
+    testImplementation 'io.github.takahirom.roborazzi:roborazzi:1.26.0'
+    testImplementation 'io.github.takahirom.roborazzi:roborazzi-compose:1.26.0'
+    testImplementation 'androidx.compose.ui:ui-test-junit4'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest'
 }

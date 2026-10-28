@@ -1,0 +1,256 @@
+package com.ajit.tvhero.remote.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.ajit.tvhero.remote.AppState
+import com.ajit.tvhero.remote.Kid
+import com.ajit.tvhero.remote.ui.hig.AlertField
+import com.ajit.tvhero.remote.ui.hig.Avatar
+import com.ajit.tvhero.remote.ui.hig.AvatarColors
+import com.ajit.tvhero.remote.ui.hig.ButtonRow
+import com.ajit.tvhero.remote.ui.hig.Content
+import com.ajit.tvhero.remote.ui.hig.Hig
+import com.ajit.tvhero.remote.ui.hig.HigAlert
+import com.ajit.tvhero.remote.ui.hig.HigScreen
+import com.ajit.tvhero.remote.ui.hig.HigSheet
+import com.ajit.tvhero.remote.ui.hig.HigType
+import com.ajit.tvhero.remote.ui.hig.Row
+import com.ajit.tvhero.remote.ui.hig.TimeWheels
+import com.ajit.tvhero.remote.ui.hig.ToggleRow
+import com.ajit.tvhero.remote.ui.hig.section
+
+private val LIMITS = listOf(0, 30, 45, 60, 90, 120, 180, 240)
+
+@Composable
+fun FamilyTab(state: AppState, gate: PasswordGate) {
+    var open by remember { mutableStateOf<String?>(null) }
+    var adding by remember { mutableStateOf(false) }
+    var wakeSheet by remember { mutableStateOf(false) }
+    val family = state.family
+    open?.let { id ->
+        val kid = family?.kids?.firstOrNull { it.id == id }
+        if (kid != null) { KidPage(state, gate, kid) { open = null }; return }
+        open = null
+    }
+    val c = Hig.colors
+    HigScreen("Family") {
+        if (family == null) { section("loading") { Row("Loading…") }; return@HigScreen }
+        section("kids", "Kids", if (family.kids.size < family.maxKids)
+            "Each child sees only their own apps on the TV, with their own daily limit and bedtime. Up to ${family.maxKids} profiles."
+        else "That's the maximum of ${family.maxKids} profiles.") {
+            family.kids.forEach { k ->
+                val bits = buildList {
+                    if (family.active == k.id) add("Watching now")
+                    add(if (k.dailyLimit > 0) "${minutesText(k.minutesLeft.coerceAtLeast(0))} left today" else "No daily limit")
+                    if (k.bedtimeOn) add("Bedtime ${clockText(k.bedStart)}")
+                }
+                Row(k.name, bits.joinToString(" · "), leading = { Avatar(k.name, avatarColor(k.color), 40.dp) }, chevron = true) { open = k.id }
+            }
+            if (family.kids.size < family.maxKids) ButtonRow("Add Child") { adding = true }
+        }
+        section("tv", "On the TV") {
+            val wake = when (family.onWake) {
+                "ask" -> "Ask Who's Watching"
+                "parent" -> "Parent"
+                else -> family.kids.firstOrNull { it.id == family.onWake }?.name ?: "Ask"
+            }
+            Row("When the TV Turns On", value = wake, chevron = true) { wakeSheet = true }
+            Row("Parent", subtitle = "No limits. Switching to Parent on the TV needs the parent PIN.",
+                value = minutesText(family.parentUsed), leading = { Avatar("P", Color(0xFF8E8E93), 40.dp) })
+        }
+    }
+
+    if (adding) {
+        var name by remember { mutableStateOf("") }
+        HigAlert("New Child", "Enter a name. You can choose apps, a daily limit and bedtime next.", { adding = false },
+            content = { AlertField(name, { name = it.take(24) }, "Name") },
+            buttons = listOf("Cancel" to { adding = false }, "Add" to {
+                adding = false
+                val starter = state.apps.filter { it.state == "allowed" && it.pkg == "com.google.android.youtube.tvkids" }.map { it.pkg }.toSet()
+                val kid = Kid("", name.trim(), family?.kids?.size ?: 0, starter, 60, true, 21 * 60, 7 * 60)
+                gate.run("Add ${name.trim()}.") { pw ->
+                    val f = state.client!!.saveKid(kid, pw)
+                    state.family = f
+                    open = f.kids.lastOrNull()?.id
+                }
+            }), enabled = { it == 0 || name.isNotBlank() })
+    }
+    if (wakeSheet && family != null) {
+        HigSheet("When the TV Turns On", onCancel = { wakeSheet = false }, done = null) {
+            section("w", footer = "\"Ask\" shows Who's Watching? on the TV each time it wakes. Kids pick themselves; Parent needs the PIN.") {
+                val options = listOf("ask" to "Ask Who's Watching", "parent" to "Parent") + family.kids.map { it.id to it.name }
+                options.forEach { (value, label) ->
+                    Row(label, trailing = { if (family.onWake == value) Icon(Icons.Rounded.Check, null, tint = Hig.colors.tint) }, onClick = {
+                        wakeSheet = false
+                        gate.run("Change what happens when the TV turns on.") { pw -> state.family = state.client!!.setOnWake(value, pw) }
+                    })
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun KidPage(state: AppState, gate: PasswordGate, kid: Kid, onBack: () -> Unit) {
+    val c = Hig.colors
+    val family = state.family!!
+    var sheet by remember { mutableStateOf<String?>(null) }   // limit | start | end | rename | color | delete
+    fun save(updated: Kid, reason: String = "Change ${kid.name}'s settings.") =
+        gate.run(reason) { pw -> state.family = state.client!!.saveKid(updated, pw) }
+    val watching = family.active == kid.id
+
+    HigScreen(kid.name, onBack = onBack, backLabel = "Family") {
+        item("head") {
+            Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.clickable { sheet = "color" }) { Avatar(kid.name, avatarColor(kid.color), 88.dp) }
+                Text(kid.name, style = HigType.title2, modifier = Modifier.padding(top = 10.dp))
+                Text(if (watching) "Watching now" else "Not watching", style = HigType.subhead,
+                    color = if (watching) c.green else c.secondaryLabel)
+            }
+        }
+        section("watch") {
+            if (!watching) ButtonRow("Switch the TV to ${kid.name}") { state.run { state.family = state.client!!.activate(kid.id, null); state.refresh() } }
+            Row("Name", value = kid.name, chevron = true) { sheet = "rename" }
+        }
+        section("time", "Screen Time", "The limit counts all TV time in ${kid.name}'s profile. The TV warns 5 minutes and 1 minute before, then shows a Time's up screen.") {
+            Row("Today", value = minutesText(kid.usedToday))
+            Row("Daily Limit", value = if (kid.dailyLimit == 0) "None" else minutesText(kid.dailyLimit), chevron = true) { sheet = "limit" }
+            if (kid.dailyLimit > 0) {
+                Row("Left Today", value = minutesText(kid.minutesLeft.coerceAtLeast(0)) + if (kid.extraToday != 0) " (incl. ${if (kid.extraToday > 0) "+" else ""}${minutesText(kid.extraToday)})" else "")
+                Content(PaddingValues(horizontal = 16.dp, vertical = 10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        listOf(15, 30, 60).forEach { m ->
+                            Text("+${minutesText(m)}", style = HigType.subhead, color = c.tint, textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1f).clip(CircleShape).background(c.tint.copy(alpha = 0.12f))
+                                    .clickable { gate.run("Give ${kid.name} $m more minutes today.") { pw -> state.family = state.client!!.extraTime(kid.id, m, pw) } }
+                                    .padding(vertical = 8.dp))
+                        }
+                    }
+                }
+            }
+        }
+        section("bed", "Bedtime", "At bedtime the TV shows a good-night screen and goes to standby a minute later. A parent can allow one more hour with the PIN.") {
+            ToggleRow("Bedtime", kid.bedtimeOn) { on -> save(kid.copy(bedtimeOn = on)) }
+            if (kid.bedtimeOn) {
+                Row("Starts", value = clockText(kid.bedStart), chevron = true) { sheet = "start" }
+                Row("Ends", value = clockText(kid.bedEnd), chevron = true) { sheet = "end" }
+            }
+        }
+        val apps = state.apps.filter { !it.protected || it.pkg == "com.android.tv" }
+        section("apps", "Apps for ${kid.name}", "Only these apps show on the TV for ${kid.name}. Settings and the Play Store are never available to kids.") {
+            apps.forEach { a ->
+                val globalBlock = a.state != "allowed"
+                val never = a.pkg in setOf("com.android.vending", "com.android.tv.settings")
+                ToggleRow(a.label, a.pkg in kid.allowed && !globalBlock && !never,
+                    subtitle = when { never -> "Parents only"; a.state == "pending" -> "Waiting for approval"; globalBlock -> "Blocked for everyone"; else -> null },
+                    enabled = !globalBlock && !never, leading = { AppIcon(state, a.pkg, 29) }) { on ->
+                    save(kid.copy(allowed = if (on) kid.allowed + a.pkg else kid.allowed - a.pkg))
+                }
+            }
+        }
+        val mine = state.sessions.filter { it.profile == kid.id }.takeLast(10).reversed()
+        section("activity", "Recent Activity") {
+            if (mine.isEmpty()) Row("Nothing yet", subtitle = "What ${kid.name} watches shows up here, with the title where the app shares it.")
+            mine.forEach { s ->
+                Row(s.title.ifBlank { s.label }, subtitle = (if (s.title.isBlank()) "" else s.label + " · ") +
+                    java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(s.start)) +
+                    " · " + minutesText(((s.end - s.start) / 60000).toInt()), leading = { AppIcon(state, s.pkg, 29) })
+            }
+        }
+        section("delete") { ButtonRow("Delete ${kid.name}'s Profile", destructive = true) { sheet = "delete" } }
+    }
+
+    when (sheet) {
+        "limit" -> HigSheet("Daily Limit", onCancel = { sheet = null }, done = null) {
+            section("l") {
+                LIMITS.forEach { m ->
+                    Row(if (m == 0) "No Limit" else minutesText(m), trailing = { if (kid.dailyLimit == m) Icon(Icons.Rounded.Check, null, tint = c.tint) },
+                        onClick = { sheet = null; save(kid.copy(dailyLimit = m)) })
+                }
+            }
+        }
+        "start", "end" -> {
+            var t by remember { mutableIntStateOf(if (sheet == "start") kid.bedStart else kid.bedEnd) }
+            val isStart = sheet == "start"
+            HigSheet(if (isStart) "Bedtime Starts" else "Bedtime Ends", onCancel = { sheet = null }, onDone = {
+                sheet = null; save(if (isStart) kid.copy(bedStart = t) else kid.copy(bedEnd = t))
+            }) {
+                item("w") { Box(Modifier.padding(top = 24.dp)) { TimeWheels(t) { t = it } } }
+            }
+        }
+        "rename" -> {
+            var name by remember { mutableStateOf(kid.name) }
+            HigAlert("Name", null, { sheet = null }, content = { AlertField(name, { name = it.take(24) }, "Name") },
+                buttons = listOf("Cancel" to { sheet = null }, "Save" to { sheet = null; save(kid.copy(name = name.trim())) }),
+                enabled = { it == 0 || name.isNotBlank() })
+        }
+        "color" -> HigSheet("Colour", onCancel = { sheet = null }, done = null) {
+            item("c") {
+                FlowRow(Modifier.padding(24.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    AvatarColors.forEachIndexed { i, col ->
+                        Box(Modifier.size(56.dp).clip(CircleShape).background(col)
+                            .then(if (i == kid.color) Modifier.border(3.dp, c.label, CircleShape) else Modifier)
+                            .clickable { sheet = null; save(kid.copy(color = i)) })
+                    }
+                }
+            }
+        }
+        "delete" -> HigAlert("Delete ${kid.name}'s Profile?", "Their limits, bedtime and app list are removed from the TV.", { sheet = null },
+            buttons = listOf("Cancel" to { sheet = null }, "Delete" to {
+                sheet = null
+                gate.run("Delete ${kid.name}'s profile.", after = onBack) { pw -> state.family = state.client!!.deleteKid(kid.id, pw) }
+            }), destructiveIndex = 1)
+    }
+}
+
+/** Everything watched in the last 7 days, newest first, grouped by day. */
+@Composable
+fun ActivityPage(state: AppState, onBack: () -> Unit) {
+    val c = Hig.colors
+    val family = state.family
+    val byDay = state.sessions.reversed().groupBy {
+        java.text.DateFormat.getDateInstance(java.text.DateFormat.FULL).format(java.util.Date(it.start))
+    }
+    HigScreen("Activity", onBack = onBack, backLabel = "TV") {
+        if (byDay.isEmpty()) section("none") { Row("Nothing watched in the last 7 days") }
+        byDay.entries.forEachIndexed { i, (day, list) ->
+            section("d$i", day) {
+                list.forEach { s ->
+                    val who = if (s.profile == "parent") "Parent" else family?.kids?.firstOrNull { it.id == s.profile }?.name ?: "Someone"
+                    Row(s.title.ifBlank { s.label }, subtitle = "$who · " + (if (s.title.isBlank()) "" else s.label + " · ") +
+                        timeText(s.start) + " · " + minutesText(((s.end - s.start) / 60000).toInt()), leading = { AppIcon(state, s.pkg, 29) })
+                }
+            }
+        }
+    }
+}

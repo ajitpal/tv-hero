@@ -8,7 +8,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /** Everything the screens show, in one place. Lives as long as the app process. */
@@ -21,22 +24,29 @@ class AppState(context: Context) {
 
     var tv by mutableStateOf<PairedTv?>(store.last())
         private set
-    var client by mutableStateOf(tv?.let { TvClient(it.host, it.deviceId, it.secret) })
+    var client by mutableStateOf(tv?.let { TvClient(it.host, it.deviceId, it.secret, it.remoteHost) })
         private set
 
     var apps by mutableStateOf<List<TvApp>>(emptyList())
     var blockNewInstalls by mutableStateOf(true)
     var home by mutableStateOf<HomeLayout?>(null)
+    var family by mutableStateOf<Family?>(null)
+    var now by mutableStateOf<NowPlaying?>(null)
+    var sessions by mutableStateOf<List<Session>>(emptyList())
+    var remote by mutableStateOf<RemoteAccess?>(null)
+    var connection by mutableStateOf("")     // "home", "internet", or "" when unreachable
     var loading by mutableStateOf(false)
     var message by mutableStateOf<String?>(null)
     val icons = mutableStateMapOf<String, Bitmap?>()
 
-    /** The parent password, kept in memory for 5 minutes after it last worked. */
+    val labels: Map<String, String> get() = apps.associate { it.pkg to it.label }
+
+    // ---------- parent password, remembered 5 minutes ----------
+
     private var cachedPassword: String? = null
     private var cachedUntil = 0L
 
-    fun rememberedPassword(): String? =
-        if (System.currentTimeMillis() < cachedUntil) cachedPassword else null
+    fun rememberedPassword(): String? = if (System.currentTimeMillis() < cachedUntil) cachedPassword else null
 
     fun passwordWorked(pw: String) {
         cachedPassword = pw
@@ -48,13 +58,20 @@ class AppState(context: Context) {
         cachedUntil = 0
     }
 
+    // ---------- TV selection ----------
+
     fun select(t: PairedTv) {
         tv = t
-        client = TvClient(t.host, t.deviceId, t.secret)
-        apps = emptyList()
-        home = null
+        client = TvClient(t.host, t.deviceId, t.secret, t.remoteHost)
+        apps = emptyList(); home = null; family = null; now = null; sessions = emptyList(); remote = null
         icons.clear()
         refresh()
+    }
+
+    /** Screenshot tests only: show [t] without the Keystore or a network. */
+    fun preview(t: PairedTv) {
+        tv = t
+        client = null
     }
 
     fun paired(t: PairedTv) {
@@ -66,21 +83,67 @@ class AppState(context: Context) {
         tv?.let { store.forget(it.id) }
         tv = null
         client = null
-        apps = emptyList()
-        home = null
+        apps = emptyList(); home = null; family = null; now = null
     }
+
+    // ---------- loading ----------
 
     fun refresh() {
         val c = client ?: return
-        run {
-            val (list, blockNew) = c.apps()
-            apps = list.sortedWith(compareBy({ it.state != "pending" }, { it.label.lowercase() }))
-            blockNewInstalls = blockNew
-            home = c.home()
-            list.filter { it.pkg !in icons }.forEach { a ->
-                scope.launch { icons[a.pkg] = c.icon(a.pkg) }
+        scope.launch {
+            try {
+                val (list, blockNew) = c.apps()
+                apps = list.sortedWith(compareBy({ it.state != "pending" }, { it.label.lowercase() }))
+                blockNewInstalls = blockNew
+                connection = c.via
+                list.filter { it.pkg !in icons }.forEach { a -> scope.launch { icons[a.pkg] = c.icon(a.pkg) } }
+                family = c.family()
+                now = c.now()
+                home = c.home()
+                val (s, _) = c.activity(System.currentTimeMillis() - 7L * 24 * 3600_000)
+                sessions = s
+                learnRemoteAddress(c)
+            } catch (e: TvException) {
+                connection = ""
+                message = e.message
+            } catch (e: Exception) {
+                message = e.message
             }
         }
+    }
+
+    /** The TV reports its Tailscale address; keep it so the app can reach the TV away from home. */
+    private suspend fun learnRemoteAddress(c: TvClient) {
+        val r = runCatching { c.remoteAccess() }.getOrNull() ?: return
+        remote = r
+        val t = tv ?: return
+        if (r.tailscaleIp.isNotBlank() && r.tailscaleIp != t.remoteHost) {
+            store.updateRemoteHost(t.id, r.tailscaleIp)
+            val updated = t.copy(remoteHost = r.tailscaleIp)
+            tv = updated
+            client = TvClient(updated.host, updated.deviceId, updated.secret, updated.remoteHost)
+        }
+    }
+
+    private var poller: Job? = null
+
+    /** While the app is on screen: what's playing, every 5 seconds. */
+    fun startPolling() {
+        if (poller?.isActive == true) return
+        poller = scope.launch {
+            while (isActive) {
+                val c = client
+                if (c != null) {
+                    runCatching { now = c.now(); connection = c.via }.onFailure { connection = "" }
+                }
+                delay(5000)
+            }
+        }
+    }
+
+    fun stopPolling() {
+        poller?.cancel()
+        poller = null
     }
 
     /** Runs a TV call, shows its error as a message, and reports success. */
@@ -107,6 +170,6 @@ class AppState(context: Context) {
     companion object {
         @Volatile private var instance: AppState? = null
         fun get(context: Context): AppState =
-            instance ?: synchronized(this) { instance ?: AppState(context).also { instance = it } }
+            instance ?: synchronized(this) { instance ?: AppState(context.applicationContext).also { instance = it } }
     }
 }

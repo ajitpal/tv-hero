@@ -11,7 +11,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-data class PairedTv(val id: String, val name: String, val host: String, val deviceId: String, val secret: ByteArray)
+data class PairedTv(val id: String, val name: String, val host: String, val deviceId: String, val secret: ByteArray, val remoteHost: String = "")
 
 /**
  * Paired TVs. The per-TV secret is encrypted with an AES key that never leaves the phone's
@@ -26,7 +26,7 @@ class Store(context: Context) {
             val o = arr.getJSONObject(i)
             runCatching {
                 PairedTv(o.getString("id"), o.getString("name"), o.getString("host"), o.getString("device_id"),
-                    decrypt(TvProtocol.b64d(o.getString("secret"))))
+                    decrypt(TvProtocol.b64d(o.getString("secret"))), o.optString("remote_host", ""))
             }.getOrNull()
         }
     }
@@ -41,6 +41,10 @@ class Store(context: Context) {
         write(tvs().map { if (it.id == id) it.copy(host = host) else it })
     }
 
+    fun updateRemoteHost(id: String, remote: String) {
+        write(tvs().map { if (it.id == id) it.copy(remoteHost = remote) else it })
+    }
+
     fun forget(id: String) = write(tvs().filter { it.id != id })
 
     fun last(): PairedTv? = tvs().firstOrNull { it.id == prefs.getString("last", null) } ?: tvs().firstOrNull()
@@ -53,7 +57,8 @@ class Store(context: Context) {
         val arr = JSONArray()
         list.forEach {
             arr.put(JSONObject().put("id", it.id).put("name", it.name).put("host", it.host)
-                .put("device_id", it.deviceId).put("secret", TvProtocol.b64e(encrypt(it.secret))))
+                .put("device_id", it.deviceId).put("secret", TvProtocol.b64e(encrypt(it.secret)))
+                .put("remote_host", it.remoteHost))
         }
         prefs.edit().putString("tvs", arr.toString()).apply()
     }

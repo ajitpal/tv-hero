@@ -612,6 +612,17 @@ final class Config {
         java.util.Set<String> restricted = GuardStore.get(ctx).restricted();
         for (String pkg : restricted) if (!hidden.contains(pkg)) hidden.add(pkg);
         dock.removeAll(restricted);
+        // tv-hero profiles: a kid sees only the apps on their list, and their own name in the greeting.
+        Profiles.Kid kid = Profiles.get(ctx).activeKid();
+        if (kid != null) {
+            for (String pkg : GuardStore.get(ctx).launchablePackages()) {
+                if (!kid.allowed.contains(pkg) || Profiles.KID_NEVER.contains(pkg)) {
+                    if (!hidden.contains(pkg)) hidden.add(pkg);
+                }
+            }
+            dock.removeIf(pkg -> !kid.allowed.contains(pkg));
+            greetingName = kid.name;
+        }
         // A theme push or reset invalidates choices made on the TV. On first use, remember the
         // current theme without clearing choices from an older launcher version.
         SharedPreferences choices = ctx.getSharedPreferences(SETTINGS_NAME, Context.MODE_PRIVATE);

@@ -234,6 +234,20 @@ public final class GuardStore {
         return d == null ? null : GuardCrypto.unb64(d.optString("secret"));
     }
 
+    public synchronized String deviceName(String id) {
+        JSONObject d = obj("devices").optJSONObject(id == null ? "" : id);
+        return d == null ? "" : d.optString("name");
+    }
+
+    /** Records that a paired phone just made a request, and how it reached the TV. */
+    public synchronized void touchDevice(String id, String via, String ip) {
+        JSONObject devices = obj("devices");
+        JSONObject d = devices.optJSONObject(id);
+        if (d == null) return;
+        try { d.put("last_seen", System.currentTimeMillis()).put("last_via", via).put("last_ip", ip); } catch (JSONException ignored) { }
+        prefs.edit().putString("devices", devices.toString()).apply();
+    }
+
     public synchronized boolean removeDevice(String id) {
         JSONObject devices = obj("devices");
         if (devices.remove(id) == null) return false;
@@ -249,8 +263,11 @@ public final class GuardStore {
             JSONObject d = devices.optJSONObject(id);
             if (d == null) continue;
             try {
+                long seen = d.optLong("last_seen");
                 out.put(new JSONObject().put("id", id).put("name", d.optString("name"))
-                        .put("paired_at", d.optLong("paired_at")));
+                        .put("paired_at", d.optLong("paired_at")).put("last_seen", seen)
+                        .put("last_via", d.optString("last_via", "home"))
+                        .put("active", System.currentTimeMillis() - seen < 120_000));
             } catch (JSONException ignored) { }
         }
         return out;
@@ -259,10 +276,17 @@ public final class GuardStore {
     // ---------- activity log (blocked attempts, installs) ----------
 
     public synchronized void log(String type, String pkg) {
+        log(type, pkg, "");
+    }
+
+    /** [by] names the phone (or "TV") that made the change, for the action log. */
+    public synchronized void log(String type, String pkg, String by) {
         JSONArray log;
         try { log = new JSONArray(prefs.getString("log", "[]")); } catch (JSONException e) { log = new JSONArray(); }
         try {
-            log.put(new JSONObject().put("t", System.currentTimeMillis()).put("type", type).put("package", pkg));
+            JSONObject e = new JSONObject().put("t", System.currentTimeMillis()).put("type", type).put("package", pkg);
+            if (by != null && !by.isEmpty()) e.put("by", by);
+            log.put(e);
         } catch (JSONException ignored) { }
         while (log.length() > 200) log.remove(0);
         prefs.edit().putString("log", log.toString()).apply();
@@ -270,6 +294,61 @@ public final class GuardStore {
 
     public synchronized JSONArray logJson() {
         try { return new JSONArray(prefs.getString("log", "[]")); } catch (JSONException e) { return new JSONArray(); }
+    }
+
+    // ---------- internet control (off by default) ----------
+
+    public synchronized boolean internetControl() { return prefs.getBoolean("internet_control", false); }
+
+    public synchronized long internetSince() { return prefs.getLong("internet_since", 0); }
+
+    public synchronized String internetBy() { return prefs.getString("internet_by", ""); }
+
+    public synchronized void setInternetControl(boolean on, String by) {
+        prefs.edit().putBoolean("internet_control", on).putLong("internet_since", on ? System.currentTimeMillis() : 0)
+                .putString("internet_by", on ? by : "").apply();
+    }
+
+    // ---------- requests from kids ("Ask a parent") ----------
+
+    public synchronized void addRequest(String profileId, String profileName, String pkg) {
+        JSONArray a;
+        try { a = new JSONArray(prefs.getString("requests", "[]")); } catch (JSONException e) { a = new JSONArray(); }
+        for (int i = 0; i < a.length(); i++) {
+            JSONObject o = a.optJSONObject(i);
+            if (o != null && o.optString("package").equals(pkg) && o.optString("profile").equals(profileId) && "open".equals(o.optString("state"))) return;
+        }
+        try {
+            a.put(new JSONObject().put("id", GuardCrypto.hex(GuardCrypto.random(6))).put("profile", profileId)
+                    .put("profile_name", profileName).put("package", pkg).put("t", System.currentTimeMillis()).put("state", "open"));
+        } catch (JSONException ignored) { }
+        while (a.length() > 50) a.remove(0);
+        prefs.edit().putString("requests", a.toString()).apply();
+    }
+
+    public synchronized JSONArray openRequests() {
+        JSONArray a, out = new JSONArray();
+        try { a = new JSONArray(prefs.getString("requests", "[]")); } catch (JSONException e) { return out; }
+        for (int i = 0; i < a.length(); i++) {
+            JSONObject o = a.optJSONObject(i);
+            if (o != null && "open".equals(o.optString("state"))) out.put(o);
+        }
+        return out;
+    }
+
+    /** Marks a request answered and returns it, or null. */
+    public synchronized JSONObject answerRequest(String id, boolean allow) {
+        JSONArray a;
+        try { a = new JSONArray(prefs.getString("requests", "[]")); } catch (JSONException e) { return null; }
+        for (int i = 0; i < a.length(); i++) {
+            JSONObject o = a.optJSONObject(i);
+            if (o != null && o.optString("id").equals(id)) {
+                try { o.put("state", allow ? "allowed" : "declined"); } catch (JSONException ignored) { }
+                prefs.edit().putString("requests", a.toString()).apply();
+                return o;
+            }
+        }
+        return null;
     }
 
     // ---------- helpers ----------

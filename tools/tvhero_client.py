@@ -10,6 +10,7 @@
     tvhero_client.py <tv-ip> launch <package>
     tvhero_client.py <tv-ip> key home|back
     tvhero_client.py <tv-ip> get <path>         # any signed GET, e.g. /v1/log
+    tvhero_client.py <tv-ip> post <path> '<json>'  # any signed POST, e.g. /v1/lock '{"locked":true}'
 
 Pairing state is kept in ~/.tvhero/<tv-ip>.json. Needs the `cryptography` package.
 """
@@ -110,6 +111,8 @@ def main():
         out = tv.call("POST", "/v1/key", {"action": args[0]})
     elif cmd == "get":
         out = tv.call("GET", args[0])
+    elif cmd == "post":            # post <path> '<json>'
+        out = tv.call("POST", args[0], json.loads(args[1]) if len(args) > 1 else {})
     else:
         sys.exit(__doc__)
     print(json.dumps(out, indent=2))

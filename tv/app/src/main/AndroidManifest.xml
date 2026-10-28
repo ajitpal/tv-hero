@@ -157,14 +157,16 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/guard_service" />
         </service>
-        <activity
-            android:name=".BlockedActivity"
-            android:exported="false"
-            android:excludeFromRecents="true"
-            android:launchMode="singleTask"
-            android:taskAffinity="com.ajit.tvhero.blocked"
-            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen"
-            android:screenOrientation="landscape" />
+        <!-- Only lets the guard read media sessions (what's playing); notifications are ignored. -->
+        <service
+            android:name=".MediaListener"
+            android:exported="true"
+            android:label="@string/guard_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
         <activity
             android:name=".PairingActivity"
             android:exported="false"

@@ -63,6 +63,8 @@ esac
 # turns a service off when its app is reinstalled, so clear and rewrite the list to bind it again.
 SVC=$PKG/.GuardService
 tv "s=\$(settings get secure enabled_accessibility_services); case \"\$s\" in null|'') n=$SVC ;; *$SVC*) n=\$s; settings put secure enabled_accessibility_services ''; sleep 1 ;; *) n=\$s:$SVC ;; esac; settings put secure enabled_accessibility_services \$n; settings put secure accessibility_enabled 1; echo guard-enabled"
+# Media titles ("what's playing") come from media sessions, which need notification access.
+tv "cmd notification allow_listener $PKG/$PKG.MediaListener && echo media-titles-enabled" || true
 sleep 3
 if tv "dumpsys accessibility | grep -c 'tv-hero guard'" | grep -q '[1-9]'; then
   echo "guard bound"
