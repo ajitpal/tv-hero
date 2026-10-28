@@ -33,7 +33,7 @@ class Discovery(context: Context) {
             }
         }
         listener = l
-        runCatching { nsd.discoverServices(TvProtocol.SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, l) }
+        runCatching { nsd.discoverServices(com.ajit.tvhero.protocol.Protocol.NSD_TYPE.removeSuffix("."), NsdManager.PROTOCOL_DNS_SD, l) }
             .onFailure { Log.w("Discovery", "discovery failed: ${it.message}"); listener = null }
     }
 

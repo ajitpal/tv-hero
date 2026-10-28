@@ -18,6 +18,12 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SettingsRemote
 import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.LinkOff
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.text.style.TextAlign
+import com.ajit.tvhero.remote.ui.hig.HigButton
 import androidx.compose.material.icons.rounded.FamilyRestroom
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SettingsRemote
@@ -69,6 +75,8 @@ class PasswordGate(private val state: AppState) {
 @Composable
 fun Root(state: AppState, activity: Activity) {
     val gate = remember { PasswordGate(state) }
+    if (state.locked) { LockScreen { (activity as? com.ajit.tvhero.remote.MainActivity)?.unlock() }; return }
+    if (state.revoked && state.tv != null) { RevokedScreen(state); return }
     if (state.tv == null) {
         ConnectScreen(state)
         return
@@ -105,6 +113,34 @@ fun Root(state: AppState, activity: Activity) {
             buttons = listOf("Cancel" to { gate.request = null }, "OK" to { gate.request = null; action(pw) }),
             enabled = { it == 0 || pw.isNotEmpty() },
         )
+    }
+}
+
+/** Shown until the fingerprint check passes. Nothing about the TV is visible behind it. */
+@Composable
+private fun LockScreen(onUnlock: () -> Unit) {
+    val c = Hig.colors
+    Column(Modifier.fillMaxSize().background(c.groupedBackground).padding(32.dp), verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        androidx.compose.material3.Icon(Icons.Rounded.Lock, contentDescription = null, tint = c.tint, modifier = Modifier.size(56.dp))
+        Text("tv-hero is locked", style = HigType.title2, color = c.label, modifier = Modifier.padding(top = 16.dp))
+        Text("Use your fingerprint or screen lock to open it.", style = HigType.subhead, color = c.secondaryLabel,
+            textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+        HigButton("Unlock", Modifier.padding(top = 28.dp).fillMaxWidth(), onClick = onUnlock)
+    }
+}
+
+/** The TV refused this phone: someone removed it, or it was paired with an older version. */
+@Composable
+private fun RevokedScreen(state: AppState) {
+    val c = Hig.colors
+    Column(Modifier.fillMaxSize().background(c.groupedBackground).padding(32.dp), verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        androidx.compose.material3.Icon(Icons.Rounded.LinkOff, contentDescription = null, tint = c.destructive, modifier = Modifier.size(56.dp))
+        Text("This phone can't control the TV", style = HigType.title2, color = c.label, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 16.dp))
+        Text("It was removed on the TV or from another phone, or it was paired with an older version of tv-hero. Pair again at the TV: someone there needs to press Allow.",
+            style = HigType.subhead, color = c.secondaryLabel, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+        HigButton("Pair Again", Modifier.padding(top = 28.dp).fillMaxWidth()) { state.forgetTv() }
     }
 }
 

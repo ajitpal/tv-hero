@@ -21,8 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.sp
+import com.ajit.tvhero.protocol.Pairing
 import com.ajit.tvhero.remote.AppState
 import com.ajit.tvhero.remote.PairedTv
+import com.ajit.tvhero.remote.PairingSession
 import com.ajit.tvhero.remote.TvClient
 import com.ajit.tvhero.remote.TvException
 import com.ajit.tvhero.remote.ui.hig.ButtonRow
@@ -34,6 +40,7 @@ import com.ajit.tvhero.remote.ui.hig.HigType
 import com.ajit.tvhero.remote.ui.hig.IconTile
 import com.ajit.tvhero.remote.ui.hig.Row
 import com.ajit.tvhero.remote.ui.hig.section
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** First run (or after forgetting a TV): find the TV on the Wi-Fi and pair with the code it shows. */
@@ -65,72 +72,121 @@ fun ConnectScreen(state: AppState) {
     }
 }
 
+/**
+ * Pairing by code comparison (docs/SECURITY.md):
+ *  1. name → the phone and TV swap certificates; both show the same 6-digit code
+ *  2. the person checks the codes match and presses Allow on the TV (the phone waits)
+ *  3. the parent password goes to the TV over the now-encrypted, pinned channel
+ */
 @Composable
 private fun PairScreen(state: AppState, host: String, tvName: String, onCancel: () -> Unit) {
     val scope = rememberCoroutineScope()
     val c = Hig.colors
-    var step by remember { mutableStateOf("starting") }   // starting | code | working | error
-    var salt by remember { mutableStateOf("") }
-    var passwordSet by remember { mutableStateOf(true) }
+    var step by remember { mutableStateOf("name") }   // name | starting | compare | password | working | error
+    var session by remember { mutableStateOf<PairingSession?>(null) }
     var code by remember { mutableStateOf("") }
     var pw by remember { mutableStateOf("") }
     var pw2 by remember { mutableStateOf("") }
     var name by remember { mutableStateOf(state.store.deviceName) }
     var error by remember { mutableStateOf<String?>(null) }
-    val client = remember { TvClient(host) }
+    val open = remember { TvClient(host) }
+
+    fun fail(msg: String?) { error = msg; step = "error" }
 
     fun start() {
         step = "starting"; error = null
         scope.launch {
             try {
-                val r = client.pairStart(name)
-                salt = r.getString("salt"); passwordSet = r.optBoolean("password_set", true); step = "code"
-            } catch (e: TvException) { error = e.message; step = "error" }
+                val p = open.pairStart(name.ifBlank { "Phone" })
+                code = open.pairReveal(p)
+                session = p
+                step = "compare"
+                while (step == "compare") {
+                    delay(1000)
+                    when (open.pairStatus(p)) {
+                        "allowed" -> step = "password"
+                        "denied" -> fail("Someone chose Don't Allow on the TV.")
+                        "expired", "none" -> fail("The code expired. Start again.")
+                    }
+                }
+            } catch (e: TvException) { fail(e.message) }
         }
     }
-    LaunchedEffect(Unit) { start() }
-    val valid = code.length == 6 && pw.length >= 4 && (passwordSet || pw == pw2)
+
+    val p = session
+    val valid = if (p?.passwordSet != false) pw.isNotEmpty() else pw.length >= 6 && pw == pw2
 
     HigScreen("Pair", onBack = onCancel, backLabel = "TVs", largeTitle = true) {
         when (step) {
+            "name" -> {
+                item("hint") {
+                    Text("The TV will show a code and ask whether to allow this phone. You'll need the TV remote nearby.",
+                        style = HigType.body, color = c.secondaryLabel, modifier = Modifier.padding(horizontal = 16.dp))
+                }
+                section("name", "This Phone", "This name appears on the TV and in the list of phones that can control it.") {
+                    FieldRow("Name", name, { name = it.take(40) }, "e.g. Ajit's phone")
+                }
+                item("go") {
+                    HigButton("Show Code on TV", Modifier.fillMaxWidth().padding(16.dp), enabled = name.isNotBlank()) { start() }
+                }
+            }
             "starting" -> item("s") {
                 Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator()
-                    Text("Asking the TV for a code…", style = HigType.subhead, color = c.secondaryLabel, modifier = Modifier.padding(top = 12.dp))
+                    Text("Contacting $tvName…", style = HigType.subhead, color = c.secondaryLabel, modifier = Modifier.padding(top = 12.dp))
                 }
             }
-            "error" -> section("e", footer = error) { ButtonRow("Try Again") { start() } }
-            else -> {
-                item("hint") {
-                    Text("A 6-digit code is showing on $tvName now.", style = HigType.body, color = c.secondaryLabel,
-                        modifier = Modifier.padding(horizontal = 16.dp))
+            "compare" -> item("compare") {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Does the TV show this code?", style = HigType.headline, color = c.label, textAlign = TextAlign.Center)
+                    Text(Pairing.display(code), style = HigType.largeTitle.copy(fontSize = 56.sp, lineHeight = 64.sp, letterSpacing = 4.sp),
+                        color = c.label, modifier = Modifier.padding(vertical = 24.dp).semantics { contentDescription = "Code " + code.toList().joinToString(" ") })
+                    Text("If it matches, press Allow on the TV with the remote.\nIf it doesn't match, choose Don't Allow on the TV.",
+                        style = HigType.subhead, color = c.secondaryLabel, textAlign = TextAlign.Center)
+                    androidx.compose.foundation.layout.Row(Modifier.padding(top = 24.dp), verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                        Text("Waiting for the TV…", style = HigType.subhead, color = c.secondaryLabel, modifier = Modifier.padding(start = 10.dp))
+                    }
                 }
-                section("code", "Code on TV") { FieldRow("Code", code, { code = it.filter(Char::isDigit).take(6) }, "123456", keyboard = KeyboardType.NumberPassword) }
-                section("pw", "Parent Password", if (passwordSet) "The password the first parent created." else
-                    "Create the parent password. It's needed to allow apps and change rules, from every parent's phone. At least 4 characters.") {
-                    FieldRow("Password", pw, { pw = it }, if (passwordSet) "Required" else "New password", secure = true)
-                    if (!passwordSet) FieldRow("Repeat", pw2, { pw2 = it }, "Same password", secure = true)
+            }
+            "error" -> {
+                item("err") {
+                    Text(error ?: "Pairing stopped.", style = HigType.body, color = c.label, textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(24.dp))
                 }
-                section("name", "This Phone") { FieldRow("Name", name, { name = it.take(40) }, "e.g. Ajit's phone") }
+                section("again") { ButtonRow("Try Again") { start() } }
+            }
+            else -> {   // password | working
+                item("ok") {
+                    Text("Allowed on the TV. The connection is now encrypted and tied to this TV.",
+                        style = HigType.body, color = c.secondaryLabel, modifier = Modifier.padding(horizontal = 16.dp))
+                }
+                section("pw", "Parent Password", if (p?.passwordSet != false) "The password the first parent created." else
+                    "Create the parent password. It's needed to allow apps, change rules and add phones, from every parent's phone. At least 6 characters.") {
+                    FieldRow("Password", pw, { pw = it }, if (p?.passwordSet != false) "Required" else "New password", secure = true)
+                    if (p?.passwordSet == false) FieldRow("Repeat", pw2, { pw2 = it }, "Same password", secure = true)
+                }
                 item("go") {
                     Column(Modifier.padding(16.dp)) {
                         if (error != null) Text(error!!, style = HigType.subhead, color = c.destructive, textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp))
-                        if (!passwordSet && pw2.isNotEmpty() && pw != pw2) Text("The passwords don't match.", style = HigType.subhead,
+                        if (p?.passwordSet == false && pw2.isNotEmpty() && pw != pw2) Text("The passwords don't match.", style = HigType.subhead,
                             color = c.destructive, modifier = Modifier.padding(bottom = 12.dp))
-                        HigButton(if (step == "working") "Pairing…" else "Pair", Modifier.fillMaxWidth(), enabled = valid && step != "working") {
+                        HigButton(if (step == "working") "Pairing…" else "Finish", Modifier.fillMaxWidth(), enabled = valid && step != "working" && p != null) {
+                            val s = p ?: return@HigButton
                             step = "working"; error = null
                             scope.launch {
                                 try {
-                                    val (deviceId, secret) = client.pairFinish(name, code, pw, salt)
-                                    val info = client.info()
+                                    val secure = TvClient(host, s.tvFingerprint)
+                                    val deviceId = secure.pairComplete(pw)
+                                    val info = secure.info()
                                     state.store.deviceName = name
                                     state.passwordWorked(pw)
-                                    state.paired(PairedTv(info.optString("model", tvName) + "@" + host, "tv-hero · " + info.optString("model", tvName),
-                                        host, deviceId, secret, info.optString("tailscale_ip", "")))
+                                    val model = info.optString("model", tvName)
+                                    state.paired(PairedTv(s.tvFingerprint.take(16), "tv-hero · $model", host, deviceId, s.tvFingerprint,
+                                        info.optString("tailscale_ip", "")))
                                 } catch (e: TvException) {
-                                    error = e.message; step = "code"
-                                    if (e.status == 409) start()
+                                    error = e.message; step = "password"
                                 }
                             }
                         }

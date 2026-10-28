@@ -29,6 +29,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.rounded.PowerSettingsNew
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.ChevronLeft
@@ -139,12 +142,23 @@ fun RemoteTab(state: AppState, activity: Activity) {
                     Spacer(Modifier.height(16.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(22.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.clip(RoundedCornerShape(32.dp)).background(if (c.dark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA))) {
-                            HoldButton(icon = Icons.Rounded.Add, contentDescription = "Volume up", color = Color.Transparent, onDown = { if (connected) hid.tapConsumer(K.CC_VOL_UP) })
-                            HoldButton(icon = Icons.Rounded.Remove, contentDescription = "Volume down", color = Color.Transparent, onDown = { if (connected) hid.tapConsumer(K.CC_VOL_DOWN) })
+                            HoldButton(icon = Icons.Rounded.Add, contentDescription = "Volume up", color = Color.Transparent,
+                                onDown = { if (connected) hid.tapConsumer(K.CC_VOL_UP) else state.run { state.volume = state.client!!.stepVolume(2) } })
+                            HoldButton(icon = Icons.Rounded.Remove, contentDescription = "Volume down", color = Color.Transparent,
+                                onDown = { if (connected) hid.tapConsumer(K.CC_VOL_DOWN) else state.run { state.volume = state.client!!.stepVolume(-2) } })
                         }
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            HoldButton(icon = Icons.AutoMirrored.Rounded.VolumeOff, contentDescription = "Mute", onDown = { if (connected) hid.tapConsumer(K.CC_MUTE) })
+                            HoldButton(icon = Icons.AutoMirrored.Rounded.VolumeOff, contentDescription = "Mute",
+                                onDown = { if (connected) hid.tapConsumer(K.CC_MUTE) else state.run { state.volume = state.client!!.mute(state.volume?.muted != true) } })
                             HoldButton(icon = Icons.Rounded.Keyboard, contentDescription = "Type on TV", onDown = { if (connected) typing = true })
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            HoldButton(icon = Icons.Rounded.PowerSettingsNew, contentDescription = "Turn the TV off", color = Color(0xFFFF3B30),
+                                onDown = { state.run { state.client!!.power("sleep"); state.message = "TV going to standby" } })
+                            val v = state.volume
+                            Text(when { v == null -> ""; v.muted -> "Muted"; else -> "Vol ${v.level}" },
+                                style = HigType.footnote, color = c.secondaryLabel,
+                                modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
                         }
                     }
                 }

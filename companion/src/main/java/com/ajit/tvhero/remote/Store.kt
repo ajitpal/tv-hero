@@ -1,24 +1,31 @@
 package com.ajit.tvhero.remote
 
 import android.content.Context
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
 import org.json.JSONArray
 import org.json.JSONObject
-import java.security.KeyStore
-import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
-import javax.crypto.spec.GCMParameterSpec
-
-data class PairedTv(val id: String, val name: String, val host: String, val deviceId: String, val secret: ByteArray, val remoteHost: String = "")
 
 /**
- * Paired TVs. The per-TV secret is encrypted with an AES key that never leaves the phone's
- * Android Keystore; only ciphertext is written to app storage.
+ * A paired TV. Nothing here is secret: the phone's private key stays in the Android Keystore
+ * (see [Identity]), and [tvFingerprint] is the TV certificate pinned at pairing.
  */
+data class PairedTv(
+    val id: String,
+    val name: String,
+    val host: String,
+    val deviceId: String,
+    val tvFingerprint: String,
+    val remoteHost: String = "",
+)
+
 class Store(context: Context) {
     private val prefs = context.getSharedPreferences("tvs", Context.MODE_PRIVATE)
+
+    init {
+        // Pairings from protocol 1 (shared secret, no pinned certificate) can't be used any more.
+        if (prefs.getInt("protocol", 1) < 2) {
+            prefs.edit().remove("tvs").remove("last").putInt("protocol", 2).apply()
+        }
+    }
 
     fun tvs(): List<PairedTv> {
         val arr = JSONArray(prefs.getString("tvs", "[]"))
@@ -26,24 +33,19 @@ class Store(context: Context) {
             val o = arr.getJSONObject(i)
             runCatching {
                 PairedTv(o.getString("id"), o.getString("name"), o.getString("host"), o.getString("device_id"),
-                    decrypt(TvProtocol.b64d(o.getString("secret"))), o.optString("remote_host", ""))
+                    o.getString("tv_fp"), o.optString("remote_host", ""))
             }.getOrNull()
         }
     }
 
     fun save(tv: PairedTv) {
-        val keep = tvs().filter { it.id != tv.id }
-        write(keep + tv)
+        write(tvs().filter { it.id != tv.id } + tv)
         prefs.edit().putString("last", tv.id).apply()
     }
 
-    fun updateHost(id: String, host: String) {
-        write(tvs().map { if (it.id == id) it.copy(host = host) else it })
-    }
+    fun updateHost(id: String, host: String) = write(tvs().map { if (it.id == id) it.copy(host = host) else it })
 
-    fun updateRemoteHost(id: String, remote: String) {
-        write(tvs().map { if (it.id == id) it.copy(remoteHost = remote) else it })
-    }
+    fun updateRemoteHost(id: String, remote: String) = write(tvs().map { if (it.id == id) it.copy(remoteHost = remote) else it })
 
     fun forget(id: String) = write(tvs().filter { it.id != id })
 
@@ -53,40 +55,17 @@ class Store(context: Context) {
         get() = prefs.getString("device_name", android.os.Build.MODEL) ?: "Phone"
         set(v) = prefs.edit().putString("device_name", v).apply()
 
+    /** App lock: ask for fingerprint / screen lock when the app opens. On by default. */
+    var appLock: Boolean
+        get() = prefs.getBoolean("app_lock", true)
+        set(v) = prefs.edit().putBoolean("app_lock", v).apply()
+
     private fun write(list: List<PairedTv>) {
         val arr = JSONArray()
         list.forEach {
             arr.put(JSONObject().put("id", it.id).put("name", it.name).put("host", it.host)
-                .put("device_id", it.deviceId).put("secret", TvProtocol.b64e(encrypt(it.secret)))
-                .put("remote_host", it.remoteHost))
+                .put("device_id", it.deviceId).put("tv_fp", it.tvFingerprint).put("remote_host", it.remoteHost))
         }
         prefs.edit().putString("tvs", arr.toString()).apply()
-    }
-
-    private fun key(): SecretKey {
-        val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-        (ks.getKey(ALIAS, null) as? SecretKey)?.let { return it }
-        val gen = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
-        gen.init(KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
-            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-            .setKeySize(256).build())
-        return gen.generateKey()
-    }
-
-    private fun encrypt(plain: ByteArray): ByteArray {
-        val c = Cipher.getInstance("AES/GCM/NoPadding")
-        c.init(Cipher.ENCRYPT_MODE, key())
-        return c.iv + c.doFinal(plain)
-    }
-
-    private fun decrypt(box: ByteArray): ByteArray {
-        val c = Cipher.getInstance("AES/GCM/NoPadding")
-        c.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, box, 0, 12))
-        return c.doFinal(box, 12, box.size - 12)
-    }
-
-    companion object {
-        private const val ALIAS = "tvhero-secrets"
     }
 }

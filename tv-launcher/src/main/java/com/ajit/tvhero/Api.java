@@ -535,7 +535,7 @@ final class Api implements ControlServer.Handler {
         ControlServer.Response denied = needPassword(b);
         if (denied != null) return denied;
         String np = b.optString("new_password", "");
-        if (np.length() < 4) return error(400, "password must have at least 4 characters");
+        if (np.length() < 6) return error(400, "the password must have at least 6 characters");
         store.setPassword(np);
         return ok(new JSONObject().put("changed", true));
     }

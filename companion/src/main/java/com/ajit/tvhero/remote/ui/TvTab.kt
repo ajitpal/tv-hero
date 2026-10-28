@@ -76,6 +76,22 @@ fun TvTab(state: AppState, gate: PasswordGate, openTab: (Int) -> Unit) {
                 ActionTile("More Time", Icons.Rounded.MoreTime, c.green, Modifier.weight(1f), enabled = activeKid != null) { sheet = "extra" }
             }
         }
+        if (state.requests.isNotEmpty()) section("asks", "Needs You", "Allowing adds the app to that child's list. It needs the parent password.") {
+            state.requests.forEach { r ->
+                Row(r.label, "${r.profileName} asked to watch", leading = { AppIcon(state, r.pkg, 32) }) {
+                    androidx.compose.foundation.layout.Row {
+                        Text("Decline", style = HigType.body, color = c.secondaryLabel, modifier = Modifier.clickable {
+                            state.run { state.requests = state.client!!.answerRequest(r.id, false, null) }
+                        }.padding(8.dp))
+                        Text("Allow", style = HigType.headline, color = c.tint, modifier = Modifier.clickable {
+                            gate.run("Allow ${r.label} for ${r.profileName}.", after = { state.refresh() }) { pw ->
+                                state.requests = state.client!!.answerRequest(r.id, true, pw)
+                            }
+                        }.padding(8.dp))
+                    }
+                }
+            }
+        }
         val pending = state.apps.filter { it.state == "pending" }
         if (pending.isNotEmpty()) section("pending", "Waiting for Approval", "New apps stay blocked on the TV until you approve them.") {
             pending.forEach { a ->

@@ -24,7 +24,7 @@ class AppState(context: Context) {
 
     var tv by mutableStateOf<PairedTv?>(store.last())
         private set
-    var client by mutableStateOf(tv?.let { TvClient(it.host, it.deviceId, it.secret, it.remoteHost) })
+    var client by mutableStateOf(tv?.let { TvClient(it.host, it.tvFingerprint, it.remoteHost) })
         private set
 
     var apps by mutableStateOf<List<TvApp>>(emptyList())
@@ -34,6 +34,15 @@ class AppState(context: Context) {
     var now by mutableStateOf<NowPlaying?>(null)
     var sessions by mutableStateOf<List<Session>>(emptyList())
     var remote by mutableStateOf<RemoteAccess?>(null)
+    var volume by mutableStateOf<Volume?>(null)
+    var phones by mutableStateOf<List<PairedPhone>>(emptyList())
+    var internet by mutableStateOf<InternetControl?>(null)
+    var requests by mutableStateOf<List<KidRequest>>(emptyList())
+    /** Set when the TV refused this phone (it was removed): the app offers to pair again. */
+    var revoked by mutableStateOf(false)
+    /** App lock (see AppLock): true until the fingerprint / screen lock check passes. */
+    var locked by mutableStateOf(false)
+    var backgroundAt = 0L
     var connection by mutableStateOf("")     // "home", "internet", or "" when unreachable
     var loading by mutableStateOf(false)
     var message by mutableStateOf<String?>(null)
@@ -62,8 +71,9 @@ class AppState(context: Context) {
 
     fun select(t: PairedTv) {
         tv = t
-        client = TvClient(t.host, t.deviceId, t.secret, t.remoteHost)
+        client = TvClient(t.host, t.tvFingerprint, t.remoteHost)
         apps = emptyList(); home = null; family = null; now = null; sessions = emptyList(); remote = null
+        volume = null; phones = emptyList(); internet = null; requests = emptyList(); revoked = false
         icons.clear()
         refresh()
     }
@@ -102,9 +112,14 @@ class AppState(context: Context) {
                 home = c.home()
                 val (s, _) = c.activity(System.currentTimeMillis() - 7L * 24 * 3600_000)
                 sessions = s
+                volume = c.volume()
+                requests = c.requests()
+                phones = c.phones()
+                internet = c.internet()
                 learnRemoteAddress(c)
             } catch (e: TvException) {
                 connection = ""
+                if (e.status == 401 || e.message?.startsWith("This TV no longer") == true) revoked = true
                 message = e.message
             } catch (e: Exception) {
                 message = e.message
@@ -121,7 +136,7 @@ class AppState(context: Context) {
             store.updateRemoteHost(t.id, r.tailscaleIp)
             val updated = t.copy(remoteHost = r.tailscaleIp)
             tv = updated
-            client = TvClient(updated.host, updated.deviceId, updated.secret, updated.remoteHost)
+            client = TvClient(updated.host, updated.tvFingerprint, updated.remoteHost)
         }
     }
 
@@ -134,7 +149,16 @@ class AppState(context: Context) {
             while (isActive) {
                 val c = client
                 if (c != null) {
-                    runCatching { now = c.now(); connection = c.via }.onFailure { connection = "" }
+                    runCatching {
+                        val st = c.status()
+                        volume = st.volume
+                        now = c.now()
+                        connection = c.via
+                        if (internet?.enabled != st.internetControl) internet = c.internet()
+                    }.onFailure { e ->
+                        connection = ""
+                        if (e is TvException && (e.status == 401 || e.message?.startsWith("This TV no longer") == true)) revoked = true
+                    }
                 }
                 delay(5000)
             }

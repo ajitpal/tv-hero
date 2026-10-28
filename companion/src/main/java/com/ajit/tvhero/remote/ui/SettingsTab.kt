@@ -39,6 +39,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.ajit.tvhero.remote.AppState
 import com.ajit.tvhero.remote.HomeLayout
+import com.ajit.tvhero.remote.PairedPhone
+import kotlinx.coroutines.launch
 import com.ajit.tvhero.remote.ui.hig.AlertField
 import com.ajit.tvhero.remote.ui.hig.ButtonRow
 import com.ajit.tvhero.remote.ui.hig.Content
@@ -84,19 +86,28 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
             Row("Night Volume", subtitle = "Cap the volume at night", chevron = true,
                 leading = { IconTile(Icons.Rounded.VolumeDown, Color(0xFF5856D6)) }) { page = "quiet" }
         }
-        section("access", "Access") {
-            Row("Remote Access", subtitle = if (state.tv?.remoteHost.isNullOrBlank()) "Control the TV from anywhere" else "Ready over the internet",
-                chevron = true, leading = { IconTile(Icons.Rounded.Public, Color(0xFF34C759)) }) { page = "remote" }
+        section("access", "Security", "Every phone that can control this TV, and how it connects, is listed here. Removing one takes effect at once.") {
+            val phones = state.phones.size
+            Row("Who Can Control This TV", value = if (phones == 0) "" else "$phones", chevron = true,
+                leading = { IconTile(Icons.Rounded.Smartphone, Color(0xFF007AFF)) }) { page = "phones" }
+            Row("Internet Control", value = when {
+                    state.internet?.enabled == true -> "On"
+                    else -> "Off"
+                }, subtitle = if (state.internet?.enabled == true) "Paired phones can control the TV from anywhere" else "Only on the home Wi-Fi",
+                chevron = true, leading = { IconTile(Icons.Rounded.Public, if (state.internet?.enabled == true) Color(0xFFFF9500) else Color(0xFF34C759)) }) { page = "remote" }
             Row("Parent Password", subtitle = "Needed to allow apps and change rules", chevron = true,
                 leading = { IconTile(Icons.Rounded.Lock, Color(0xFF8E8E93)) }) { alert = "password" }
             Row("Parent PIN on TV", value = if (family?.pinSet == true) "On" else "Not Set", chevron = true,
                 leading = { IconTile(Icons.Rounded.Key, Color(0xFFFF9500)) }) { alert = "pin" }
-            Row("Paired Phones", chevron = true, leading = { IconTile(Icons.Rounded.Smartphone, Color(0xFF007AFF)) }) { page = "phones" }
             Row("TV Event Log", chevron = true, leading = { IconTile(Icons.Rounded.History, Color(0xFF8E8E93)) }) { page = "log" }
         }
-        section("phone", "This Phone", "Forgetting the TV removes it from this phone only; the TV keeps its rules.") {
+        section("phone", "This Phone", "Unpairing removes this phone from the TV too. The TV keeps all its rules.") {
             Row("Name", value = state.store.deviceName, chevron = true) { alert = "name" }
-            ButtonRow("Forget This TV", destructive = true) { alert = "forget" }
+            var lock by remember { mutableStateOf(state.store.appLock) }
+            ToggleRow("Require Fingerprint", lock, subtitle = "Unlock this app with your fingerprint or screen lock") { on ->
+                state.store.appLock = on; lock = on
+            }
+            ButtonRow("Unpair This Phone", destructive = true) { alert = "forget" }
         }
     }
 
@@ -104,7 +115,7 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
         "password" -> {
             var old by remember { mutableStateOf("") }
             var new by remember { mutableStateOf("") }
-            HigAlert("Change Parent Password", "At least 4 characters. Every parent's phone uses the same password.", { alert = null },
+            HigAlert("Change Parent Password", "At least 6 characters. Every parent's phone uses the same password.", { alert = null },
                 content = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     AlertField(old, { old = it }, "Current password", secure = true)
                     AlertField(new, { new = it }, "New password", secure = true)
@@ -112,7 +123,7 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
                 buttons = listOf("Cancel" to { alert = null }, "Change" to {
                     alert = null
                     state.run(onDone = { if (it) { state.passwordWorked(new); state.message = "Password changed" } }) { state.client!!.changePassword(old, new) }
-                }), enabled = { it == 0 || (old.isNotEmpty() && new.length >= 4) })
+                }), enabled = { it == 0 || (old.isNotEmpty() && new.length >= 6) })
         }
         "pin" -> {
             var pin by remember { mutableStateOf("") }
@@ -130,8 +141,11 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
                 buttons = listOf("Cancel" to { alert = null }, "Save" to { state.store.deviceName = name.trim(); alert = null }),
                 enabled = { it == 0 || name.isNotBlank() })
         }
-        "forget" -> HigAlert("Forget This TV?", "You'll need the code on the TV and the parent password to pair again.", { alert = null },
-            buttons = listOf("Cancel" to { alert = null }, "Forget" to { alert = null; state.forgetTv() }), destructiveIndex = 1)
+        "forget" -> HigAlert("Unpair This Phone?", "The TV stops accepting this phone at once. To pair again you'll need to press Allow on the TV and the parent password.", { alert = null },
+            buttons = listOf("Cancel" to { alert = null }, "Unpair" to {
+                alert = null
+                state.run(onDone = { state.forgetTv() }) { runCatching { state.client?.removePhone(null, null) } }
+            }), destructiveIndex = 1)
     }
 }
 
@@ -243,9 +257,42 @@ private fun RemoteAccessPage(state: AppState, gate: PasswordGate, onBack: () -> 
     val c = Hig.colors
     val ctx = LocalContext.current
     val r = state.remote
-    LaunchedEffect(Unit) { state.run { state.remote = state.client!!.remoteAccess() } }
-    HigScreen("Remote Access", onBack = onBack, backLabel = "Settings") {
-        section("how", "From Anywhere", "Tailscale links this phone and the TV privately and encrypted, wherever you are. Nothing is opened on your router. Use the same Tailscale account on both.") {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var waiting by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { state.run { state.remote = state.client!!.remoteAccess(); state.internet = state.client!!.internet() } }
+    val net = state.internet
+    HigScreen("Internet Control", onBack = onBack, backLabel = "Settings") {
+        section("net", "Internet Control", when {
+            waiting -> "Now press Allow on the TV with the remote. It can only be turned on from the room the TV is in."
+            net?.enabled == true -> "On since " + DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(net.since)) +
+                (if (net.by.isNotBlank()) ", by ${net.by}" else "") + ". Paired phones can control the TV from anywhere through Tailscale. The TV shows a note whenever that happens."
+            else -> "Off: phones can control the TV only on the home Wi-Fi. Turning it on needs the parent password and Allow on the TV."
+        }) {
+            ToggleRow(if (waiting) "Waiting for the TV…" else "Allow Control From Anywhere", net?.enabled == true, enabled = !waiting && net != null) { on ->
+                if (!on) {
+                    state.run { state.internet = state.client!!.setInternet(false, null); state.message = "Internet control is off" }
+                } else {
+                    gate.run("Turn on control over the internet. The TV will ask you to confirm.") { pw ->
+                        state.internet = state.client!!.setInternet(true, pw)
+                        waiting = true
+                        scope.launch {
+                            repeat(60) {
+                                kotlinx.coroutines.delay(1500)
+                                val n = runCatching { state.client!!.internet() }.getOrNull() ?: return@repeat
+                                state.internet = n
+                                if (!n.pending) {
+                                    waiting = false
+                                    state.message = if (n.enabled) "Internet control is on" else "Not allowed on the TV"
+                                    return@launch
+                                }
+                            }
+                            waiting = false
+                        }
+                    }
+                }
+            }
+        }
+        section("how", "How It Connects", "Tailscale links this phone and the TV privately and encrypted, wherever you are. Nothing is opened on your router. Use the same Tailscale account on both.") {
             Row("Tailscale on the TV", value = when {
                 r == null -> "…"
                 !r.tailscaleInstalled -> "Not installed"
@@ -271,24 +318,38 @@ private fun RemoteAccessPage(state: AppState, gate: PasswordGate, onBack: () -> 
     }
 }
 
-// ---------- Paired Phones ----------
+// ---------- Who can control this TV ----------
 
 @Composable
 private fun PhonesPage(state: AppState, gate: PasswordGate, onBack: () -> Unit) {
-    var devices by remember { mutableStateOf(JSONArray()) }
-    fun load() = state.run { devices = state.client!!.devices() }
+    val c = Hig.colors
+    var confirm by remember { mutableStateOf<PairedPhone?>(null) }
+    fun load() = state.run { state.phones = state.client!!.phones() }
     LaunchedEffect(Unit) { load() }
-    HigScreen("Paired Phones", onBack = onBack, backLabel = "Settings") {
-        section("list", footer = "To add another parent, install tv-hero on their phone and pair with the code on the TV and the parent password.") {
-            for (i in 0 until devices.length()) {
-                val d = devices.getJSONObject(i)
-                Row(d.optString("name"), subtitle = "Paired " + DateFormat.getDateInstance().format(Date(d.optLong("paired_at")))) {
-                    Text("Remove", style = HigType.body, color = Hig.colors.destructive, modifier = Modifier.clickableNoRipple {
-                        gate.run("Remove ${d.optString("name")} from the TV.", after = { load() }) { pw -> state.client!!.removeDevice(d.getString("id"), pw) }
-                    }.padding(6.dp))
+    HigScreen("Who Can Control This TV", onBack = onBack, backLabel = "Settings") {
+        section("list", footer = "Each phone proved who it is with its own key when it connected. Lost a phone? Remove it here; it's refused from that moment. " +
+                "To add another parent, pair their phone at the TV: the TV asks someone to press Allow.") {
+            if (state.phones.isEmpty()) Row("Loading…")
+            state.phones.forEach { ph ->
+                val seen = if (ph.lastSeen == 0L) "Not used yet" else (if (ph.active) "Active now" else "Last used " +
+                    android.text.format.DateUtils.getRelativeTimeSpanString(ph.lastSeen)) + if (ph.lastVia == "internet") " · over the internet" else " · at home"
+                Row(ph.name + if (ph.isThisPhone) " (this phone)" else "", subtitle = seen,
+                    leading = { IconTile(Icons.Rounded.Smartphone, if (ph.lastVia == "internet") Color(0xFFFF9500) else Color(0xFF007AFF)) }) {
+                    Text("Remove", style = HigType.body, color = c.destructive, modifier = Modifier.clickableNoRipple { confirm = ph }.padding(6.dp))
                 }
             }
         }
+    }
+    confirm?.let { ph ->
+        HigAlert("Remove ${ph.name}?", if (ph.isThisPhone) "This phone will stop controlling the TV at once."
+            else "That phone will be refused from now on. It needs the parent password.", { confirm = null },
+            buttons = listOf("Cancel" to { confirm = null }, "Remove" to {
+                confirm = null
+                if (ph.isThisPhone) state.run(onDone = { state.forgetTv() }) { state.client!!.removePhone(null, null) }
+                else gate.run("Remove ${ph.name} from the TV.", after = { load(); state.message = "${ph.name} removed" }) { pw ->
+                    state.client!!.removePhone(ph.id, pw)
+                }
+            }), destructiveIndex = 1)
     }
 }
 
@@ -316,6 +377,16 @@ private fun LogPage(state: AppState, onBack: () -> Unit) {
                     "blocked" -> "$name was blocked"
                     "allowed" -> "$name was allowed"
                     "paired" -> "$p paired with the TV"
+                    "pair_allowed" -> "$p was allowed on the TV"
+                    "pair_denied" -> "Pairing $p was refused on the TV"
+                    "device_removed" -> "$p can no longer control the TV"
+                    "internet_on" -> "Internet control turned on"
+                    "internet_off" -> "Internet control turned off"
+                    "internet_denied" -> "Internet control was refused on the TV"
+                    "request" -> "${e.optString("by")} asked for $name"
+                    "request_allowed" -> "$name was allowed for a kid"
+                    "request_declined" -> "A request for $name was declined"
+                    "power_sleep" -> "TV sent to standby"
                     "profile" -> "$p started watching"
                     "profile_saved" -> "$p's profile was changed"
                     "times_up" -> "Time's up for $p"
@@ -328,7 +399,9 @@ private fun LogPage(state: AppState, onBack: () -> Unit) {
                     "adb_off" -> "Debugging turned off"
                     else -> e.optString("type") + " " + p
                 }
-                Row(what, subtitle = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(e.optLong("t"))))
+                val by = e.optString("by")
+                Row(what, subtitle = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(e.optLong("t"))) +
+                    if (by.isNotBlank() && e.optString("type") != "request") " · $by" else "")
             }
         }
     }

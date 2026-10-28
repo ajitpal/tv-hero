@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
@@ -49,7 +52,7 @@ class ScreenshotTest {
         dir.mkdirs()
         state = AppState.get(compose.activity)
         val now = System.currentTimeMillis()
-        state.preview(PairedTv("t", "tv-hero · MiTV-AXSO0", "192.168.1.50", "d", ByteArray(32), "100.101.12.7"))
+        state.preview(PairedTv("t", "tv-hero · MiTV-AXSO0", "192.168.1.50", "d", "fp", "100.101.12.7"))
         state.connection = "home"
         state.apps = listOf(
             TvApp("com.google.android.youtube.tv", "YouTube", "allowed", true, false),
@@ -98,11 +101,11 @@ class ScreenshotTest {
                 Column(Modifier.fillMaxSize()) {
                     Box(Modifier.weight(1f)) { content() }
                     TabBar(listOf(
-                        TabItem("TV", androidx.compose.material.icons.Icons.Outlined.Tv, androidx.compose.material.icons.Icons.Rounded.Tv),
-                        TabItem("Family", androidx.compose.material.icons.Icons.Outlined.FamilyRestroom, androidx.compose.material.icons.Icons.Rounded.FamilyRestroom),
-                        TabItem("Apps", androidx.compose.material.icons.Icons.Outlined.Apps, androidx.compose.material.icons.Icons.Rounded.Apps, badge = 1),
-                        TabItem("Remote", androidx.compose.material.icons.Icons.Outlined.SettingsRemote, androidx.compose.material.icons.Icons.Rounded.SettingsRemote),
-                        TabItem("Settings", androidx.compose.material.icons.Icons.Outlined.Settings, androidx.compose.material.icons.Icons.Rounded.Settings),
+                        TabItem("TV", Icons.Outlined.Tv, Icons.Rounded.Tv),
+                        TabItem("Family", Icons.Outlined.FamilyRestroom, Icons.Rounded.FamilyRestroom),
+                        TabItem("Apps", Icons.Outlined.Apps, Icons.Rounded.Apps, badge = 1),
+                        TabItem("Remote", Icons.Outlined.SettingsRemote, Icons.Rounded.SettingsRemote),
+                        TabItem("Settings", Icons.Outlined.Settings, Icons.Rounded.Settings),
                     ), tab) {}
                 }
             }

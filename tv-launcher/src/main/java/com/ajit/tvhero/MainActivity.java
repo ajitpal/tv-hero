@@ -834,6 +834,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(guardReceiver, guardFilter, Context.RECEIVER_NOT_EXPORTED);
         } else {
+            // Before Android 13 there is no flag. The only effect of an outside broadcast is a redraw of Home.
+            //noinspection UnspecifiedRegisterReceiverFlag
             registerReceiver(guardReceiver, guardFilter);
         }
         packageFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
