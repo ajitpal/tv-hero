@@ -77,6 +77,7 @@ The script starts tv-hero first, then makes it Home, switches the stock launcher
   - Parent PIN
   - who can control the TV
   - internet control, debugging, Guest mode, **Guest Time** (a daily allowance shared by all guests)
+- **What counts as screen time:** only time with an app open (YouTube, Hotstar, Live TV, the browser…). Home, the clock screensaver and Settings don't count.
 - **Time's up, Bedtime and Paused lock the TV.** Whatever was playing is paused, the app is sent away and nothing else opens behind the screen. All a child can do there is switch profile (the PIN is needed to move to a profile with no daily limit), **Ask for Time** (it shows on the parents' phones under Needs You) or enter the Parent PIN.
 - **Profile switches:** a kid or Guest can change profile on the TV once a day (Family → Profile Switches on the phone, or Profile Switches in the Parent Menu). After that, and always for a profile with no daily limit, the TV offers **Ask a Parent** (Needs You on the phone) or the Parent PIN.
 - **Earn Time** (Time's up only): questions in Maths, English words, General knowledge, Hindi and Puzzles, at Easy, Medium or Hard. Each right answer adds 5 minutes, up to 15 minutes a day (both set per profile). A wrong answer costs nothing, but three wrong in a row means a 10-minute break, so guessing doesn't pay. The questions are built into the TV app: no internet, no tracking; the TV keeps only today's count.

@@ -201,6 +201,7 @@ public class GuardService extends AccessibilityService {
         if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || event.getPackageName() == null) return;
         String pkg = event.getPackageName().toString();
         if (pkg.equals(getPackageName()) && ui.showing()) return;   // our own overlay
+        if (ClockDream.dreaming) return;   // the screensaver's window: the app behind is still the one in front
         if (playbackLock() && !pkg.equals(getPackageName()) && !Profiles.KID_ALWAYS.contains(pkg) && launchable(pkg)) {
             // The TV is locked: an app started behind the screen (a shortcut key on the remote) goes away at once.
             stopPlayback();
@@ -301,6 +302,23 @@ public class GuardService extends AccessibilityService {
     }
 
     // ---------- profiles, time, bedtime ----------
+
+    /** Screens that never count as watching: TV settings and the sound settings Xiaomi puts in their own apps. */
+    private static final java.util.Set<String> SETTINGS = java.util.Set.of(
+            "com.android.tv.settings", "com.droidlogic.tv.settings", "com.android.settings",
+            "com.droidlogic.tv.soundeffectsettings", "com.xiaomi.android.TV.audio");
+
+    /**
+     * Screen time counts only while an app is open: not Home, not the clock screensaver (ours or the
+     * TV's), not Settings, not system screens or the keyboard.
+     */
+    private boolean watching() {
+        if (ClockDream.dreaming) return false;
+        String p = fgPkg;
+        if (p.isEmpty() || p.equals(getPackageName())) return false;
+        if (Profiles.KID_ALWAYS.contains(p) || SETTINGS.contains(p)) return false;
+        return launchable(p);
+    }
 
     private boolean isScreenLock() {
         Overlays.Kind k = ui.kind();
@@ -798,7 +816,7 @@ public class GuardService extends AccessibilityService {
         if (playbackLock()) stopPlayback(); else releaseFocus();
         String active = profiles.activeId();
         Profiles.Kid kid = profiles.activeKid();
-        if (!isScreenLock()) profiles.addUsage(active, (int) (elapsed / 1000));
+        if (!isScreenLock() && watching()) profiles.addUsage(active, (int) (elapsed / 1000));
         updateTitle();
         capVolume();
 

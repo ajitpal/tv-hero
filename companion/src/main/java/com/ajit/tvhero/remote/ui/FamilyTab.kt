@@ -174,7 +174,7 @@ internal fun KidPage(state: AppState, gate: PasswordGate, kid: Kid, onBack: () -
             if (!watching) ButtonRow("Switch the TV to ${kid.name}") { state.run { state.family = state.client!!.activate(kid.id, null); state.refresh() } }
             Row("Name", value = kid.name, chevron = true) { sheet = "rename" }
         }
-        section("time", "Screen Time", "The limit counts all TV time in ${kid.name}'s profile. The TV warns 5 minutes and 1 minute before, then shows a Time's up screen.") {
+        section("time", "Screen Time", "The limit counts time with an app open in ${kid.name}'s profile (not Home, the screensaver or Settings). The TV warns 5 minutes and 1 minute before, then shows a Time's up screen.") {
             Row("Today", value = minutesText(kid.usedToday))
             Row("Daily Limit", value = if (kid.dailyLimit == 0) "None" else minutesText(kid.dailyLimit), chevron = true) { sheet = "limit" }
             TimeToday(state, gate, kid) { sheet = "end" }

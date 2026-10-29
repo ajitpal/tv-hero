@@ -9,6 +9,8 @@ import android.service.dreams.DreamService;
 public class ClockDream extends DreamService {
 
     private ClockScene scene;
+    /** True while the screensaver shows, so the guard doesn't count it as screen time. */
+    static volatile boolean dreaming;
 
     @Override
     public void onAttachedToWindow() {
@@ -24,17 +26,20 @@ public class ClockDream extends DreamService {
     @Override
     public void onDreamingStarted() {
         super.onDreamingStarted();
+        dreaming = true;
         scene.start();
     }
 
     @Override
     public void onDreamingStopped() {
+        dreaming = false;
         scene.stop();
         super.onDreamingStopped();
     }
 
     @Override
     public void onDetachedFromWindow() {
+        dreaming = false;
         if (scene != null) scene.stop();
         super.onDetachedFromWindow();
     }
