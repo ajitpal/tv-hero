@@ -178,6 +178,12 @@ public class GuardService extends AccessibilityService {
         if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || event.getPackageName() == null) return;
         String pkg = event.getPackageName().toString();
         if (pkg.equals(getPackageName()) && ui.showing()) return;   // our own overlay
+        if (playbackLock() && !pkg.equals(getPackageName()) && !Profiles.KID_ALWAYS.contains(pkg) && launchable(pkg)) {
+            // The TV is locked: an app started behind the screen (a shortcut key on the remote) goes away at once.
+            stopPlayback();
+            sendAway(pkg);
+            return;
+        }
         if (!pkg.equals(fgPkg)) {
             closeSession();
             fgPkg = pkg;
@@ -270,7 +276,7 @@ public class GuardService extends AccessibilityService {
         Overlays.Kind k = ui.kind();
         return k == Overlays.Kind.TIMES_UP || k == Overlays.Kind.BEDTIME || k == Overlays.Kind.LOCKED
                 || k == Overlays.Kind.PICKER || k == Overlays.Kind.PIN || k == Overlays.Kind.PAIRING
-                || k == Overlays.Kind.CONFIRM || k == Overlays.Kind.MENU;
+                || k == Overlays.Kind.CONFIRM || k == Overlays.Kind.MENU || k == Overlays.Kind.QUIZ;
     }
 
     private boolean screenOn() {
@@ -298,17 +304,25 @@ public class GuardService extends AccessibilityService {
         List<Profiles.Kid> kids = profiles.kids();
         if (kids.isEmpty() && !fromHome) { pickerDone = true; return; }
         ui.picker(kids, k -> {
-            profiles.setActive(k.id);
-            pickerDone = true;
-            ui.hide();
-            store.log("profile", k.name, "TV");
-            refreshNow();
+            Runnable go = () -> {
+                profiles.setActive(k.id);
+                pickerDone = true;
+                ui.hide();
+                store.log("profile", k.name, "TV");
+                refreshNow();
+            };
+            if (escapesLimits(k)) askPin("Parent PIN for " + k.name, go, () -> showPicker(fromHome));
+            else go.run();
         }, () -> {
-            profiles.setActive(Profiles.GUEST);
-            pickerDone = true;
-            ui.hide();
-            store.log("profile", "Guest", "TV");
-            refreshNow();
+            Runnable go = () -> {
+                profiles.setActive(Profiles.GUEST);
+                pickerDone = true;
+                ui.hide();
+                store.log("profile", "Guest", "TV");
+                refreshNow();
+            };
+            if (escapesLimits(profiles.guest())) askPin("Parent PIN for Guest", go, () -> showPicker(fromHome));
+            else go.run();
         }, () -> askPin("Parent PIN", () -> {
             profiles.setActive(Profiles.PARENT);
             pickerDone = true;
@@ -365,6 +379,12 @@ public class GuardService extends AccessibilityService {
             ui.hide();
             pickerDone = true;
             refreshNow();
+        }));
+        int gl = profiles.guestLimit(), guestRow = items.size() + (switchRow ? 0 : 1);
+        items.add(new Overlays.Item("Guest Time", gl == 0 ? "No limit" : minutes(gl) + " a day", () -> {
+            profiles.setGuestLimit(nextOf(LIMITS, profiles.guestLimit()));
+            store.log("guest_limit", String.valueOf(profiles.guestLimit()), "TV");
+            parentMenu(guestRow);
         }));
         items.add(new Overlays.Item("Done", null, () -> { ui.hide(); pickerDone = true; refreshNow(); }));
         ui.menu(Overlays.Kind.MENU, "Parent Menu", profiles.pinSet() ? "Everything here can also be done from the tv-hero app on your phone."
@@ -474,14 +494,15 @@ public class GuardService extends AccessibilityService {
             saveKid(k);
             profileMenu(id, 2);
         }));
+        items.add(new Overlays.Item("Earn Time", k.quizOn ? "Up to " + k.quizCap + " min a day" : "Off", () -> quizMenu(id, 0)));
         items.add(new Overlays.Item("Rename", k.name, () -> ui.textInput("Rename profile", "Name", k.name, false, name -> {
             k.name = name;
             saveKid(k);
-            profileMenu(id, 3);
-        }, () -> profileMenu(id, 3))));
+            profileMenu(id, 4);
+        }, () -> profileMenu(id, 4))));
         items.add(new Overlays.Item("Remove Profile", null, () -> ui.message(Overlays.Kind.CONFIRM, "\uD83D\uDDD1", "Remove " + k.name + "?",
-                "Their apps, limits and history are deleted. Apps themselves stay on the TV.", () -> profileMenu(id, 4),
-                new Overlays.Action("Cancel", () -> profileMenu(id, 4)),
+                "Their apps, limits and history are deleted. Apps themselves stay on the TV.", () -> profileMenu(id, 5),
+                new Overlays.Action("Cancel", () -> profileMenu(id, 5)),
                 new Overlays.Action("Remove", () -> {
                     profiles.delete(id);
                     if (id.equals(profiles.onWake())) profiles.setOnWake("ask");
@@ -491,6 +512,49 @@ public class GuardService extends AccessibilityService {
         items.add(new Overlays.Item("Back", null, () -> profilesMenu(0)));
         ui.menu(Overlays.Kind.MENU, k.name, "Press OK on Daily Limit or Bedtime to step through the choices. Bedtime ends at " + clock(k.bedEnd) + ".",
                 items, () -> profilesMenu(0), focus);
+    }
+
+    private static final int[] QUIZ_MINUTES = {2, 5, 10};
+    private static final int[] QUIZ_CAPS = {10, 15, 20, 30};
+
+    private static int nextOf(int[] list, int now) {
+        for (int i = 0; i < list.length; i++) if (list[i] == now) return list[(i + 1) % list.length];
+        return list[0];
+    }
+
+    /** Earn Time for one profile: on/off, minutes per right answer, most per day, level, topics. */
+    private void quizMenu(String id, int focus) {
+        Profiles.Kid k = profiles.kid(id);
+        if (k == null) { profilesMenu(0); return; }
+        java.util.List<Overlays.Item> items = new java.util.ArrayList<>();
+        items.add(new Overlays.Item("Earn Time", k.quizOn ? "On" : "Off", () -> {
+            k.quizOn = !k.quizOn; saveKid(k); quizMenu(id, 0);
+        }));
+        items.add(new Overlays.Item("Each Right Answer", minutes(k.quizMinutes), () -> {
+            k.quizMinutes = nextOf(QUIZ_MINUTES, k.quizMinutes); saveKid(k); quizMenu(id, 1);
+        }));
+        items.add(new Overlays.Item("Most per Day", minutes(k.quizCap), () -> {
+            k.quizCap = nextOf(QUIZ_CAPS, k.quizCap); saveKid(k); quizMenu(id, 2);
+        }));
+        items.add(new Overlays.Item("Level", Quiz.levelLabel(k.quizLevel), () -> {
+            k.quizLevel = k.quizLevel % 3 + 1; saveKid(k); quizMenu(id, 3);
+        }));
+        int row = 4;
+        for (String t : Quiz.TOPICS) {
+            int at = row++;
+            boolean on = k.quizTopics.contains(t);
+            items.add(new Overlays.Item(Quiz.topicLabel(t), on ? "On" : "Off", () -> {
+                if (on && k.quizTopics.size() == 1) { ui.toast("Keep at least one topic"); return; }
+                if (on) k.quizTopics.remove(t); else k.quizTopics.add(t);
+                saveKid(k);
+                quizMenu(id, at);
+            }));
+        }
+        items.add(new Overlays.Item("Back", null, () -> profileMenu(id, 3)));
+        ui.menu(Overlays.Kind.MENU, "Earn Time \u00b7 " + k.name,
+                "When time's up, " + k.name + " can answer questions: each right answer adds minutes, up to the most per day. "
+                        + "Three wrong in a row means a " + Quiz.BREAK_MINUTES + "-minute break. Questions are built in; nothing leaves the TV.",
+                items, () -> profileMenu(id, 3), focus);
     }
 
     private void saveKid(Profiles.Kid k) {
@@ -648,6 +712,7 @@ public class GuardService extends AccessibilityService {
         long elapsed = Math.min(nowEl - lastTick, 2 * TICK_MS);
         lastTick = nowEl;
         if (!screenOn()) return;
+        if (playbackLock()) stopPlayback(); else releaseFocus();
         String active = profiles.activeId();
         Profiles.Kid kid = profiles.activeKid();
         if (!isScreenLock()) profiles.addUsage(active, (int) (elapsed / 1000));
@@ -692,7 +757,8 @@ public class GuardService extends AccessibilityService {
         }
         bedtimeSleepAt = 0;
         if (left == 0) {
-            if (ui.kind() != Overlays.Kind.TIMES_UP && ui.kind() != Overlays.Kind.PIN) showTimesUp(kid);
+            Overlays.Kind on = ui.kind();
+            if (on != Overlays.Kind.TIMES_UP && on != Overlays.Kind.PIN && on != Overlays.Kind.QUIZ) showTimesUp(kid);
             return;
         }
         if (ui.kind() == Overlays.Kind.TIMES_UP || ui.kind() == Overlays.Kind.BEDTIME || ui.kind() == Overlays.Kind.LOCKED) ui.hide();
@@ -707,6 +773,7 @@ public class GuardService extends AccessibilityService {
     }
 
     private void showLocked() {
+        stopPlayback();
         if (!fgPkg.isEmpty() && !fgPkg.equals(getPackageName())) sendAway(fgPkg);
         ui.message(Overlays.Kind.LOCKED, "⏸", "The TV is paused", "A parent paused the TV from their phone.", null,
                 new Overlays.Action("Parent PIN", () -> askPin("Parent PIN to unlock", () -> {
@@ -717,29 +784,188 @@ public class GuardService extends AccessibilityService {
     }
 
     private void showTimesUp(Profiles.Kid kid) {
+        stopPlayback();
         if (!fgPkg.isEmpty() && !fgPkg.equals(getPackageName())) sendAway(fgPkg);
-        store.log("times_up", kid.name);
-        ui.message(Overlays.Kind.TIMES_UP, "⏰", "That's all the TV for today, " + kid.name,
-                "Your " + kid.dailyLimit + " minutes are used up. A parent can add more time from their phone.", null,
-                new Overlays.Action("Switch Profile", this::showPicker),
-                new Overlays.Action("Parent PIN", () -> askPin("Parent PIN: 30 more minutes", () -> {
-                    profiles.addExtra(kid.id, 30);
-                    store.log("extra_time", kid.name);
-                    refreshNow();
-                }, () -> showTimesUp(kid))));
+        if (ui.kind() != Overlays.Kind.TIMES_UP && warned.add(Profiles.today() + kid.id + "T" + profiles.extraMinutes(kid.id))) {
+            store.log("times_up", kid.name);
+        }
+        int earned = profiles.quizEarned(kid.id);
+        boolean canEarn = kid.quizOn && earned < kid.quizCap;
+        String body = "Your " + kid.dailyLimit + " minutes are used up.";
+        if (canEarn) body += " Answer questions to earn up to " + (kid.quizCap - earned) + " more minutes, or ask a parent.";
+        else if (kid.quizOn && kid.quizCap > 0) body += " You earned all " + kid.quizCap + " bonus minutes today. Well done!";
+        else body += " A parent can add more time from their phone.";
+        java.util.List<Overlays.Action> actions = new java.util.ArrayList<>();
+        if (canEarn) actions.add(new Overlays.Action("\u2B50 Earn Time", () -> startQuiz(kid.id)));
+        actions.add(new Overlays.Action("Switch Profile", this::showPicker));
+        actions.add(new Overlays.Action("Ask for Time", () -> askForTime(kid, "time:30")));
+        actions.add(new Overlays.Action("Parent PIN", () -> askPin("Parent PIN: 30 more minutes", () -> {
+            profiles.addExtra(kid.id, 30);
+            store.log("extra_time", kid.name);
+            refreshNow();
+        }, () -> showTimesUp(kid))));
+        ui.message(Overlays.Kind.TIMES_UP, "⏰", "That's all the TV for today, " + kid.name, body, null, actions.toArray(new Overlays.Action[0]));
     }
 
     private void showBedtime(Profiles.Kid kid) {
+        stopPlayback();
         if (!fgPkg.isEmpty() && !fgPkg.equals(getPackageName())) sendAway(fgPkg);
         store.log("bedtime", kid.name);
         ui.message(Overlays.Kind.BEDTIME, "🌙", "It's bedtime, " + kid.name,
                 "The TV turns off in a minute. Good night!", null,
                 new Overlays.Action("Switch Profile", this::showPicker),
+                new Overlays.Action("Ask for Time", () -> askForTime(kid, "bedtime:60")),
                 new Overlays.Action("Parent PIN", () -> askPin("Parent PIN: 1 more hour tonight", () -> {
                     profiles.snoozeBedtime(60);
                     bedtimeSleepAt = 0;
                     refreshNow();
                 }, () -> showBedtime(kid))));
+    }
+
+    // ---------- Earn Time: questions on the Time's up screen ----------
+
+    private final Quiz quiz = new Quiz();
+    private static final String[] CHEERS = {"Correct!", "Well done!", "Brilliant!", "Super!", "You got it!"};
+
+    private static String topicIcon(String t) {
+        switch (t) {
+            case Quiz.MATHS: return "\uD83D\uDD22";
+            case Quiz.ENGLISH: return "\uD83D\uDD24";
+            case Quiz.HINDI: return "\u0905";
+            case Quiz.PUZZLES: return "\uD83E\uDDE9";
+            default: return "\uD83C\uDF0D";
+        }
+    }
+
+    private String quizProgress(Profiles.Kid kid) {
+        return "\u2B50 " + profiles.quizEarned(kid.id) + " of " + kid.quizCap + " bonus minutes earned today";
+    }
+
+    /** Back from the questions: Time's up again unless the minutes earned let the TV go on. */
+    private void endQuiz() {
+        ui.hide();
+        refreshNow();
+    }
+
+    private void startQuiz(String kidId) {
+        Profiles.Kid kid = profiles.kid(kidId);
+        if (kid == null || !kid.quizOn) { endQuiz(); return; }
+        stopPlayback();
+        long pause = profiles.quizBreakUntil(kid.id);
+        if (pause > 0) {
+            int mins = (int) Math.max(1, (pause - System.currentTimeMillis() + 59_999) / 60_000);
+            ui.message(Overlays.Kind.QUIZ, "\u2615", "Time for a short break",
+                    "Three answers in a row weren't right. The questions come back in " + mins + (mins == 1 ? " minute." : " minutes."),
+                    this::endQuiz, new Overlays.Action("OK", this::endQuiz));
+            return;
+        }
+        if (profiles.quizEarned(kid.id) >= kid.quizCap) { endQuiz(); return; }
+        Quiz.Question q = quiz.next(kid.quizTopics, kid.quizLevel);
+        ui.quiz(topicIcon(q.topic) + "  " + Quiz.topicLabel(q.topic) + " \u00b7 " + Quiz.levelLabel(kid.quizLevel),
+                q.text, q.options, quizProgress(kid), pick -> quizAnswer(kid, q, pick), this::endQuiz);
+    }
+
+    private void quizAnswer(Profiles.Kid kid, Quiz.Question q, int pick) {
+        boolean right = pick == q.answer;
+        int got = profiles.quizAnswer(kid, right);
+        int earned = profiles.quizEarned(kid.id);
+        if (right) {
+            if (got > 0) store.log("quiz_earned", "+" + got + " min (" + Quiz.topicLabel(q.topic) + ")", kid.name);
+            boolean more = earned < kid.quizCap;
+            String body = (got > 0 ? "+" + got + (got == 1 ? " minute" : " minutes") + " of TV. " : "")
+                    + (more ? quizProgress(kid) : "That's all " + kid.quizCap + " bonus minutes for today.");
+            Overlays.Action watch = new Overlays.Action("Watch TV", this::endQuiz);
+            if (more) {
+                ui.message(Overlays.Kind.QUIZ, "\uD83C\uDF89", CHEERS[earned % CHEERS.length], body, this::endQuiz,
+                        new Overlays.Action("Next Question", () -> startQuiz(kid.id)), watch);
+            } else {
+                ui.message(Overlays.Kind.QUIZ, "\uD83C\uDFC6", CHEERS[earned % CHEERS.length], body, this::endQuiz, watch);
+            }
+        } else if (profiles.quizBreakUntil(kid.id) > 0) {
+            store.log("quiz_break", Quiz.BREAK_MINUTES + " min", kid.name);
+            ui.message(Overlays.Kind.QUIZ, "\u2615", "Not quite: it's " + q.correct(),
+                    "That's three in a row. Take a " + Quiz.BREAK_MINUTES + "-minute break, then try again.",
+                    this::endQuiz, new Overlays.Action("OK", this::endQuiz));
+        } else {
+            ui.message(Overlays.Kind.QUIZ, "\uD83E\uDD14", "Not quite: it's " + q.correct(),
+                    "No minutes lost. Have another go!", this::endQuiz,
+                    new Overlays.Action("Next Question", () -> startQuiz(kid.id)),
+                    new Overlays.Action("Back", this::endQuiz));
+        }
+    }
+
+    /** A limited profile (daily limit or bedtime) switching to one with no daily limit would skip it: PIN. */
+    private boolean escapesLimits(Profiles.Kid target) {
+        Profiles.Kid now = profiles.activeKid();
+        boolean limitedNow = playbackLock() || (now != null && (now.dailyLimit > 0 || now.bedtimeOn));
+        boolean limitedThen = target != null && target.dailyLimit > 0;
+        return limitedNow && !limitedThen;
+    }
+
+    /** "Ask for More Time": a request on the parents' phones (Needs You). The screen stays up. */
+    private void askForTime(Profiles.Kid kid, String what) {
+        store.addRequest(kid.id, kid.name, what);
+        store.log("request", what, kid.name);
+        ui.toast("Asked. A parent will see it on their phone.");
+    }
+
+    // ---------- stopping playback behind Time's up / Bedtime / Paused ----------
+
+    private android.media.AudioFocusRequest focus;
+
+    private boolean playbackLock() {
+        Overlays.Kind k = ui.kind();
+        return k == Overlays.Kind.TIMES_UP || k == Overlays.Kind.BEDTIME || k == Overlays.Kind.LOCKED
+                || k == Overlays.Kind.QUIZ;
+    }
+
+    /**
+     * The overlay only covers the picture. A video app playing media runs a foreground service, so
+     * killBackgroundProcesses leaves it alone and the sound goes on. So: pause every media session that
+     * plays (we can see them through the notification listener), send a pause key as a backstop, and
+     * hold the audio focus while the screen is up so well-behaved apps stay quiet. Called again on
+     * every tick, so pressing Play behind the screen doesn't help.
+     */
+    void stopPlayback() {
+        try {
+            MediaSessionManager msm = getSystemService(MediaSessionManager.class);
+            for (MediaController c : msm.getActiveSessions(new ComponentName(this, MediaListener.class))) {
+                if (c.getPackageName().equals(getPackageName())) continue;
+                android.media.session.PlaybackState st = c.getPlaybackState();
+                int state = st == null ? -1 : st.getState();
+                if (state == android.media.session.PlaybackState.STATE_PLAYING
+                        || state == android.media.session.PlaybackState.STATE_BUFFERING
+                        || state == android.media.session.PlaybackState.STATE_FAST_FORWARDING
+                        || state == android.media.session.PlaybackState.STATE_REWINDING) {
+                    c.getTransportControls().pause();
+                    Log.i(TAG, "paused " + c.getPackageName());
+                }
+            }
+        } catch (RuntimeException e) {   // SecurityException without the listener permission
+            Log.w(TAG, "can't reach media sessions: " + e.getMessage());
+        }
+        android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
+        if (am == null) return;
+        if (am.isMusicActive()) {
+            am.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE));
+            am.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE));
+        }
+        if (focus == null) {
+            focus = new android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(new android.media.AudioAttributes.Builder()
+                            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MOVIE).build())
+                    .setOnAudioFocusChangeListener(change -> { })
+                    .build();
+            am.requestAudioFocus(focus);
+        }
+    }
+
+    private void releaseFocus() {
+        if (focus == null) return;
+        android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
+        if (am != null) am.abandonAudioFocusRequest(focus);
+        focus = null;
     }
 
     /** Standby: the accessibility lock-screen action sends Android 9 TVs to sleep. */

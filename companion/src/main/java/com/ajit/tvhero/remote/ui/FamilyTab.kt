@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ajit.tvhero.remote.AppState
 import com.ajit.tvhero.remote.Kid
+import com.ajit.tvhero.remote.QuizSettings
 import com.ajit.tvhero.remote.ui.hig.AlertField
 import com.ajit.tvhero.remote.ui.hig.Avatar
 import com.ajit.tvhero.remote.ui.hig.AvatarColors
@@ -59,6 +60,7 @@ fun FamilyTab(state: AppState, gate: PasswordGate) {
     var everyone by remember { mutableStateOf(false) }
     val family = state.family
     if (everyone && family != null) { CommonAppsPage(state, gate) { everyone = false }; return }
+    if (open == "guest" && family != null) { GuestPage(state, gate) { open = null }; return }
     open?.let { id ->
         val kid = family?.kids?.firstOrNull { it.id == id }
         if (kid != null) { KidPage(state, gate, kid) { open = null }; return }
@@ -78,6 +80,10 @@ fun FamilyTab(state: AppState, gate: PasswordGate) {
                 }
                 Row(k.name, bits.joinToString(" · "), leading = { Avatar(k.name, avatarColor(k.color), 40.dp) }, chevron = true) { open = k.id }
             }
+            val g = family.guest
+            Row("Guest", (if (family.active == "guest") "Watching now · " else "") +
+                if (g.dailyLimit > 0) "${minutesText(g.minutesLeft.coerceAtLeast(0))} left today" else "No daily limit",
+                leading = { Avatar("G", Color(0xFF5A5F6B), 40.dp) }, chevron = true) { open = "guest" }
             if (family.kids.size < family.maxKids) ButtonRow("Add Profile") { adding = true }
         }
         section("everyone", footer = "On in every profile, on top of each profile's own apps.") {
@@ -173,6 +179,30 @@ internal fun KidPage(state: AppState, gate: PasswordGate, kid: Kid, onBack: () -
                 Row("Ends", value = clockText(kid.bedEnd), chevron = true) { sheet = "end" }
             }
         }
+        val q = kid.quiz
+        section("quiz", "Earn Time", "When time's up, ${kid.name} can answer questions on the TV: each right answer adds minutes, up to the most per day. " +
+            "Three wrong in a row means a 10-minute break. The questions are built into the TV and nothing is sent anywhere.") {
+            ToggleRow("Earn Time with Questions", q.enabled) { on -> save(kid.copy(quiz = q.copy(enabled = on))) }
+            if (q.enabled) {
+                if (kid.dailyLimit == 0) Row("Needs a daily limit", subtitle = "Questions appear on the Time's up screen, so set a Daily Limit first.")
+                Row("Earned Today", value = "${minutesText(kid.quizEarnedToday)} · ${kid.quizRightToday} right")
+                Row("Each Right Answer", value = minutesText(q.minutes), chevron = true) { sheet = "qmin" }
+                Row("Most per Day", value = minutesText(q.dailyMax), chevron = true) { sheet = "qmax" }
+                Content(PaddingValues(horizontal = 16.dp, vertical = 10.dp)) {
+                    com.ajit.tvhero.remote.ui.hig.Segmented(QuizSettings.LEVELS, q.level - 1, Modifier.fillMaxWidth()) { i ->
+                        if (i + 1 != q.level) save(kid.copy(quiz = q.copy(level = i + 1)))
+                    }
+                }
+            }
+        }
+        if (q.enabled) section("topics", "Topics", "Level: Easy suits about 5 to 7 years, Medium 8 to 10, Hard 11 and up. Keep at least one topic on.") {
+            QuizSettings.TOPICS.forEach { (id, label) ->
+                val on = id in q.topics
+                ToggleRow(label, on, enabled = !(on && q.topics.size == 1)) { v ->
+                    save(kid.copy(quiz = q.copy(topics = if (v) q.topics + id else q.topics - id)))
+                }
+            }
+        }
         val apps = state.apps.filter { !it.protected || it.pkg == "com.android.tv" }
         section("apps", "Apps for ${kid.name}", "Only these apps show on the TV for ${kid.name}. Apps for Everyone are on in every profile; Settings and the Play Store are for Parent only.") {
             apps.forEach { a ->
@@ -204,6 +234,19 @@ internal fun KidPage(state: AppState, gate: PasswordGate, kid: Kid, onBack: () -
                 LIMITS.forEach { m ->
                     Row(if (m == 0) "No Limit" else minutesText(m), trailing = { if (kid.dailyLimit == m) Icon(Icons.Rounded.Check, null, tint = c.tint) },
                         onClick = { sheet = null; save(kid.copy(dailyLimit = m)) })
+                }
+            }
+        }
+        "qmin", "qmax" -> {
+            val isMin = sheet == "qmin"
+            val choices = if (isMin) listOf(2, 5, 10) else listOf(10, 15, 20, 30)
+            val now = if (isMin) kid.quiz.minutes else kid.quiz.dailyMax
+            HigSheet(if (isMin) "Each Right Answer" else "Most per Day", onCancel = { sheet = null }, done = null) {
+                section("q") {
+                    choices.forEach { m ->
+                        Row(minutesText(m), trailing = { if (now == m) Icon(Icons.Rounded.Check, null, tint = c.tint) },
+                            onClick = { sheet = null; save(kid.copy(quiz = if (isMin) kid.quiz.copy(minutes = m) else kid.quiz.copy(dailyMax = m))) })
+                    }
                 }
             }
         }
@@ -277,6 +320,42 @@ fun ActivityPage(state: AppState, onBack: () -> Unit) {
                     Row(s.title.ifBlank { s.label }, subtitle = "$who · " + (if (s.title.isBlank()) "" else s.label + " · ") +
                         timeText(s.start) + " · " + minutesText(((s.end - s.start) / 60000).toInt()), leading = { AppIcon(state, s.pkg, 29) })
                 }
+            }
+        }
+    }
+}
+
+/** Guest: every app except the parents-only ones, no history; here only its daily time. */
+@Composable
+internal fun GuestPage(state: AppState, gate: PasswordGate, onBack: () -> Unit) {
+    val c = Hig.colors
+    val g = state.family?.guest ?: return
+    var sheet by remember { mutableStateOf(false) }
+    HigScreen("Guest", onBack = onBack, backLabel = "Family") {
+        section("time", "Screen Time", "One allowance a day, shared by every guest that day. When it's used up the TV shows Time's up; " +
+            "guests can ask for more time and it appears under Needs You.") {
+            Row("Today", value = minutesText(g.usedToday))
+            Row("Daily Limit", value = if (g.dailyLimit == 0) "None" else minutesText(g.dailyLimit), chevron = true) { sheet = true }
+            if (g.dailyLimit > 0) {
+                Row("Left Today", value = minutesText(g.minutesLeft.coerceAtLeast(0)) + if (g.extraToday != 0) " (incl. +${minutesText(g.extraToday)})" else "")
+                Content(PaddingValues(horizontal = 16.dp, vertical = 10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        listOf(15, 30, 60).forEach { m ->
+                            Text("+${minutesText(m)}", style = HigType.subhead, color = c.tint, textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1f).clip(CircleShape).background(c.tint.copy(alpha = 0.12f))
+                                    .clickable { gate.run("Give guests $m more minutes today.") { pw -> state.family = state.client!!.extraTime("guest", m, pw) } }
+                                    .padding(vertical = 8.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (sheet) HigSheet("Guest Daily Limit", onCancel = { sheet = false }, done = null) {
+        section("l") {
+            LIMITS.forEach { m ->
+                Row(if (m == 0) "No Limit" else minutesText(m), trailing = { if (g.dailyLimit == m) Icon(Icons.Rounded.Check, null, tint = c.tint) },
+                    onClick = { sheet = false; gate.run("Change Guest's daily limit.") { pw -> state.family = state.client!!.setGuestLimit(m, pw) } })
             }
         }
     }

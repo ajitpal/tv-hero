@@ -73,8 +73,10 @@ Changes that loosen protection also need `"password"` in the body.
 | `GET/POST /v1/settings` | `{block_new_installs}` | ✔ to turn off | |
 | `GET/POST /v1/home` | dock_apps, hidden_apps, columns, greeting_name, show_greeting | | |
 | `GET /v1/profiles`, `POST /v1/profiles/save`, `/delete`, `/activate`, `/extra`, `/on_wake` | | ✔ except activating a kid or `guest` | profiles (up to 10 kids), see `Profiles.java` |
+| (profile fields) | `quiz: {enabled, minutes, daily_max, level 1-3, topics: [maths, english, gk, hindi, puzzles]}`; read-only `quiz_earned_today`, `quiz_right_today` | | Earn Time. A save without `quiz` keeps what the TV has. |
+| (guest) | `GET /v1/profiles` → `guest: {daily_limit, used_today, extra_today, minutes_left}`. Set with `profiles/save {profile: {id: "guest", daily_limit}}`; `/extra` and requests accept `id: "guest"` | ✔ | Guest's daily allowance, shared by all guests that day |
 | `POST /v1/profiles/common` | `{apps: [package…]}` | ✔ | Apps for Everyone: on in every profile on top of its own (`common_apps` in `GET /v1/profiles`) |
-| `GET /v1/requests`, `POST /v1/requests/answer` | `{id, allow}` | ✔ to allow | kids' "Ask a parent" requests |
+| `GET /v1/requests`, `POST /v1/requests/answer` | `{id, allow}` | ✔ to allow | kids' requests, each with `kind`: `app` (allow the app), `time` ("time:30": more minutes today), `bedtime` ("bedtime:60": stay up later) |
 | `POST /v1/pin` | `{pin}` (empty clears) | ✔ | parent PIN typed on the TV |
 | `POST /v1/lock` | `{locked}` | ✔ to unlock | pause the TV |
 | `POST /v1/sleep`, `GET/POST /v1/quiet` | | | sleep timer, night volume cap |

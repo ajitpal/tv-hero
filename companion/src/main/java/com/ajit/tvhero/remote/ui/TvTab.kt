@@ -76,9 +76,14 @@ fun TvTab(state: AppState, gate: PasswordGate, openTab: (Int) -> Unit) {
                 ActionTile("More Time", Icons.Rounded.MoreTime, c.green, Modifier.weight(1f), enabled = activeKid != null) { sheet = "extra" }
             }
         }
-        if (state.requests.isNotEmpty()) section("asks", "Needs You", "Allowing adds the app to that child's list. It needs the parent password.") {
+        if (state.requests.isNotEmpty()) section("asks", "Needs You", "Allowing needs the parent password: an app goes on that profile's list, extra time counts for today only.") {
             state.requests.forEach { r ->
-                Row(r.label, "${r.profileName} asked to watch", leading = { AppIcon(state, r.pkg, 32) }, trailing = {
+                val asked = when (r.kind) { "time" -> "${r.profileName} asked for more time"; "bedtime" -> "${r.profileName} asked to stay up"; else -> "${r.profileName} asked to watch" }
+                Row(r.label, asked, leading = {
+                    if (r.kind == "app") AppIcon(state, r.pkg, 32)
+                    else com.ajit.tvhero.remote.ui.hig.IconTile(if (r.kind == "time") Icons.Rounded.MoreTime else Icons.Rounded.Bedtime,
+                        if (r.kind == "time") c.green else Color(0xFF5856D6), 32.dp)
+                }, trailing = {
                     androidx.compose.foundation.layout.Row {
                         Text("Decline", style = HigType.body, color = c.secondaryLabel, modifier = Modifier.clickable {
                             state.run { state.requests = state.client!!.answerRequest(r.id, false, null) }

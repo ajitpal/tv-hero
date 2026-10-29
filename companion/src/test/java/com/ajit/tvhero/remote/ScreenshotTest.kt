@@ -20,6 +20,7 @@ import com.ajit.tvhero.remote.ui.AppsTab
 import com.ajit.tvhero.remote.ui.CommonAppsPage
 import com.ajit.tvhero.remote.ui.HomeScreenPage
 import com.ajit.tvhero.remote.ui.KidPage
+import com.ajit.tvhero.remote.ui.GuestPage
 import com.ajit.tvhero.remote.ui.PairScreen
 import com.ajit.tvhero.remote.ui.PhonesPage
 import com.ajit.tvhero.remote.ui.QuietPage
@@ -81,9 +82,11 @@ class ScreenshotTest {
             kids = listOf(
                 Kid("k7", "Family", 2, setOf("com.google.android.youtube.tv", "in.startv.hotstar", "com.mitv.tvhome.mitvplus", "com.android.tv"),
                     0, false, 21 * 60, 7 * 60, 72, 0, -1),
-                Kid("k1", "Aarav", 0, setOf("com.google.android.youtube.tvkids"), 90, true, 21 * 60, 7 * 60, 65, 0, 25),
+                Kid("k1", "Aarav", 0, setOf("com.google.android.youtube.tvkids"), 90, true, 21 * 60, 7 * 60, 65, 10, 35,
+                    quizEarnedToday = 10, quizRightToday = 2),
             ),
             active = "k7", onWake = "k7", pinSet = false, locked = false, parentUsed = 48, sleepAt = 0, maxKids = 10, commonApps = common,
+            guest = GuestTime(60, 20, 0, 40),
         )
         state.now = NowPlaying(true, "k7", "Family", "in.startv.hotstar", "JioHotstar",
             "India vs Australia, 2nd ODI", now - 23 * 60_000, "none", -1, false, 0)
@@ -101,7 +104,8 @@ class ScreenshotTest {
             PairedPhone("p1", "Ajit's phone", now - 86400_000, now - 30_000, "home", true, true),
             PairedPhone("p2", "Setup computer", now - 3 * 3600_000, now - 2 * 3600_000, "home", false, false),
         )
-        state.requests = listOf(KidRequest("r1", "k1", "Aarav", "com.whatsapp", "WhatsApp", now - 600_000))
+        state.requests = listOf(KidRequest("r1", "k1", "Aarav", "com.whatsapp", "WhatsApp", now - 600_000),
+            KidRequest("r2", "k1", "Aarav", "time:30", "30 more minutes today", now - 120_000, kind = "time"))
     }
 
     private fun icon(color: Int, letter: String): Bitmap {
@@ -137,6 +141,7 @@ class ScreenshotTest {
     @Test fun family() = shot("02-family", 1) { FamilyTab(state, gate) }
     @Test fun familyProfile() = shot("03-family-profile", 1) { KidPage(state, gate, state.family!!.kids[0]) {} }
     @Test fun kidProfile() = shot("04-kid-profile", 1) { KidPage(state, gate, state.family!!.kids[1]) {} }
+    @Test fun guest() = shot("16-guest", 1) { GuestPage(state, gate) {} }
     @Test fun everyone() = shot("05-apps-for-everyone", 1) { CommonAppsPage(state, gate) {} }
     @Test fun apps() = shot("06-apps", 2) { AppsTab(state, gate) }
     @Test fun remote() = shot("07-remote", 3) { RemoteTab(state, compose.activity) }

@@ -402,7 +402,10 @@ final class Api implements ControlServer.Handler {
         Map<String, String> labels = GuardStore.labels(ctx, pkgs);
         for (int i = 0; i < open.length(); i++) {
             JSONObject o = open.getJSONObject(i);
-            o.put("label", labels.get(o.optString("package")));
+            String what = o.optString("package");
+            if (what.startsWith("time:")) o.put("kind", "time").put("label", what.substring(5) + " more minutes today");
+            else if (what.startsWith("bedtime:")) o.put("kind", "bedtime").put("label", "Stay up " + what.substring(8) + " minutes later");
+            else o.put("kind", "app").put("label", labels.get(what));
         }
         return ok(new JSONObject().put("requests", open));
     }
@@ -418,8 +421,13 @@ final class Api implements ControlServer.Handler {
         if (r == null) return error(404, "no such request");
         if (allow) {
             Profiles.Kid k = profiles.kid(r.optString("profile"));
-            if (k != null) {
-                k.allowed.add(r.optString("package"));
+            String what = r.optString("package");
+            if (k != null && what.startsWith("time:")) {
+                profiles.addExtra(k.id, Math.max(5, Math.min(240, parseMinutes(what.substring(5)))));
+            } else if (k != null && what.startsWith("bedtime:")) {
+                profiles.snoozeBedtime(Math.max(5, Math.min(180, parseMinutes(what.substring(8)))));
+            } else if (k != null) {
+                k.allowed.add(what);
                 profiles.save(k.json());
             }
         }
@@ -825,6 +833,10 @@ final class Api implements ControlServer.Handler {
     }
 
     // ---------- helpers ----------
+
+    private static int parseMinutes(String s) {
+        try { return Integer.parseInt(s.trim()); } catch (NumberFormatException e) { return 30; }
+    }
 
     private static JSONObject body(ControlServer.Request req) throws JSONException {
         String s = req.bodyText().trim();

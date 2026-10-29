@@ -50,10 +50,14 @@ data class Kid(
     val usedToday: Int = 0,
     val extraToday: Int = 0,
     val minutesLeft: Int = -1,  // -1 = no limit
+    val quiz: QuizSettings = QuizSettings(),
+    val quizEarnedToday: Int = 0,
+    val quizRightToday: Int = 0,
 ) {
     fun json(): JSONObject = JSONObject().put("id", id).put("name", name).put("color", color)
         .put("allowed", JSONArray(allowed.toList())).put("daily_limit", dailyLimit)
         .put("bedtime_on", bedtimeOn).put("bedtime_start", bedStart).put("bedtime_end", bedEnd)
+        .put("quiz", quiz.json())
 
     companion object {
         fun from(o: JSONObject) = Kid(
@@ -61,9 +65,39 @@ data class Kid(
             o.optJSONArray("allowed")?.let { a -> (0 until a.length()).map { a.getString(it) }.toSet() } ?: emptySet(),
             o.optInt("daily_limit"), o.optBoolean("bedtime_on"), o.optInt("bedtime_start", 21 * 60),
             o.optInt("bedtime_end", 7 * 60), o.optInt("used_today"), o.optInt("extra_today"), o.optInt("minutes_left", -1),
+            o.optJSONObject("quiz")?.let { QuizSettings.from(it) } ?: QuizSettings(),
+            o.optInt("quiz_earned_today"), o.optInt("quiz_right_today"),
         )
     }
 }
+
+/** Earn Time: questions on the TV's Time's up screen; each right answer adds [minutes], up to [dailyMax]. */
+data class QuizSettings(
+    val enabled: Boolean = true,
+    val minutes: Int = 5,
+    val dailyMax: Int = 15,
+    val level: Int = 2,                 // 1 Easy, 2 Medium, 3 Hard
+    val topics: Set<String> = TOPICS.keys,
+) {
+    fun json(): JSONObject = JSONObject().put("enabled", enabled).put("minutes", minutes).put("daily_max", dailyMax)
+        .put("level", level).put("topics", JSONArray(topics.toList()))
+
+    companion object {
+        /** Same ids as the TV's Quiz.java. */
+        val TOPICS = linkedMapOf("maths" to "Maths", "english" to "English Words", "gk" to "General Knowledge",
+            "hindi" to "Hindi", "puzzles" to "Puzzles")
+        val LEVELS = listOf("Easy", "Medium", "Hard")
+
+        fun from(o: JSONObject) = QuizSettings(
+            o.optBoolean("enabled", true), o.optInt("minutes", 5), o.optInt("daily_max", 15), o.optInt("level", 2).coerceIn(1, 3),
+            o.optJSONArray("topics")?.let { a -> (0 until a.length()).map { a.getString(it) }.filter { it in TOPICS }.toSet() }
+                ?.ifEmpty { null } ?: TOPICS.keys,
+        )
+    }
+}
+
+/** Guest's screen time: one daily allowance shared by every guest that day; 0 = no limit. */
+data class GuestTime(val dailyLimit: Int = 0, val usedToday: Int = 0, val extraToday: Int = 0, val minutesLeft: Int = -1)
 
 data class Family(
     val kids: List<Kid>,
@@ -76,6 +110,7 @@ data class Family(
     val maxKids: Int,
     /** Apps for everyone: on in every profile on top of its own apps. */
     val commonApps: Set<String> = emptySet(),
+    val guest: GuestTime = GuestTime(),
 )
 
 data class NowPlaying(
@@ -110,7 +145,8 @@ data class PairedPhone(
 
 data class InternetControl(val enabled: Boolean, val since: Long, val by: String, val pending: Boolean, val tailscaleIp: String)
 
-data class KidRequest(val id: String, val profile: String, val profileName: String, val pkg: String, val label: String, val time: Long)
+data class KidRequest(val id: String, val profile: String, val profileName: String, val pkg: String, val label: String, val time: Long,
+                      /** app | time | bedtime */ val kind: String = "app")
 
 data class RemoteAccess(
     val adbEnabled: Boolean,
@@ -273,6 +309,11 @@ class TvClient(
         parseFamily(request("POST", "/v1/profiles/save", JSONObject().put("profile", k.json()).put("password", password))
             .getJSONObject("profiles"))
 
+    /** Guest's daily limit (0 = none). Saved through profiles/save with id "guest". */
+    suspend fun setGuestLimit(minutes: Int, password: String): Family =
+        parseFamily(request("POST", "/v1/profiles/save", JSONObject().put("profile",
+            JSONObject().put("id", "guest").put("daily_limit", minutes)).put("password", password)).getJSONObject("profiles"))
+
     suspend fun setCommonApps(apps: Set<String>, password: String): Family =
         parseFamily(request("POST", "/v1/profiles/common", JSONObject().put("apps", JSONArray(apps.toList())).put("password", password)))
 
@@ -355,7 +396,8 @@ class TvClient(
         return Family((0 until a.length()).map { Kid.from(a.getJSONObject(it)) }, o.optString("active", "parent"),
             o.optString("on_wake", "ask"), o.optBoolean("pin_set"), o.optBoolean("locked"),
             o.optInt("parent_used_today"), o.optLong("sleep_at"), o.optInt("max_kids", 10),
-            o.optJSONArray("common_apps")?.strings()?.toSet() ?: emptySet())
+            o.optJSONArray("common_apps")?.strings()?.toSet() ?: emptySet(),
+            o.optJSONObject("guest")?.let { g -> GuestTime(g.optInt("daily_limit"), g.optInt("used_today"), g.optInt("extra_today"), g.optInt("minutes_left", -1)) } ?: GuestTime())
     }
 
     private fun parseRemote(o: JSONObject) = RemoteAccess(o.optBoolean("adb_enabled"), o.optString("adb_port"),
@@ -371,7 +413,7 @@ class TvClient(
         return (0 until a.length()).map { i ->
             val r = a.getJSONObject(i)
             KidRequest(r.optString("id"), r.optString("profile"), r.optString("profile_name"), r.optString("package"),
-                r.optString("label", r.optString("package")), r.optLong("t"))
+                r.optString("label", r.optString("package")), r.optLong("t"), r.optString("kind", "app"))
         }
     }
 

@@ -64,11 +64,35 @@ public final class Profiles {
         int dailyLimit;          // minutes, 0 = no limit
         boolean bedtimeOn;
         int bedStart = 21 * 60, bedEnd = 7 * 60;   // minutes after midnight; may wrap past midnight
+        /** Earn Time: questions on the Time's up screen, each right answer adds a few minutes. */
+        boolean quizOn = true;
+        int quizMinutes = 5, quizCap = 15, quizLevel = 2;
+        Set<String> quizTopics = new HashSet<>(Quiz.TOPICS);
 
         JSONObject json() throws JSONException {
             return new JSONObject().put("id", id).put("name", name).put("color", color)
                     .put("allowed", new JSONArray(allowed)).put("daily_limit", dailyLimit)
-                    .put("bedtime_on", bedtimeOn).put("bedtime_start", bedStart).put("bedtime_end", bedEnd);
+                    .put("bedtime_on", bedtimeOn).put("bedtime_start", bedStart).put("bedtime_end", bedEnd)
+                    .put("quiz", quizJson());
+        }
+
+        JSONObject quizJson() throws JSONException {
+            return new JSONObject().put("enabled", quizOn).put("minutes", quizMinutes).put("daily_max", quizCap)
+                    .put("level", quizLevel).put("topics", new JSONArray(quizTopics));
+        }
+
+        void readQuiz(JSONObject q) {
+            if (q == null) return;
+            quizOn = q.optBoolean("enabled", quizOn);
+            quizMinutes = Math.max(1, Math.min(30, q.optInt("minutes", quizMinutes)));
+            quizCap = Math.max(0, Math.min(120, q.optInt("daily_max", quizCap)));
+            quizLevel = Math.max(1, Math.min(3, q.optInt("level", quizLevel)));
+            JSONArray t = q.optJSONArray("topics");
+            if (t != null) {
+                Set<String> picked = new HashSet<>();
+                for (int i = 0; i < t.length(); i++) if (Quiz.TOPICS.contains(t.optString(i))) picked.add(t.optString(i));
+                if (!picked.isEmpty()) quizTopics = picked;
+            }
         }
 
         static Kid from(JSONObject o) {
@@ -82,6 +106,7 @@ public final class Profiles {
             k.bedtimeOn = o.optBoolean("bedtime_on", false);
             k.bedStart = clampMinute(o.optInt("bedtime_start", 21 * 60));
             k.bedEnd = clampMinute(o.optInt("bedtime_end", 7 * 60));
+            k.readQuiz(o.optJSONObject("quiz"));
             return k;
         }
 
@@ -142,19 +167,33 @@ public final class Profiles {
         prefs.edit().putString("common_apps", new JSONArray(clean).toString()).apply();
     }
 
+    /** A kid profile by id; "guest" gives Guest (its daily limit is the only thing it keeps). */
     public synchronized Kid kid(String id) {
+        if (GUEST.equals(id)) return guest();
         for (Kid k : kids()) if (k.id.equals(id)) return k;
         return null;
     }
 
     /** Creates or updates; returns null when the 10-kid limit is reached. */
     public synchronized Kid save(JSONObject in) {
+        if (GUEST.equals(in.optString("id"))) {
+            setGuestLimit(in.optInt("daily_limit", guestLimit()));
+            return guest();
+        }
         Kid k = Kid.from(in);
         k.name = k.name.trim().isEmpty() ? "Kid" : (k.name.length() > 24 ? k.name.substring(0, 24) : k.name.trim());
         List<Kid> list = kids();
         boolean found = false;
         for (int i = 0; i < list.size(); i++) {
-            if (list.get(i).id.equals(k.id)) { list.set(i, k); found = true; }
+            if (list.get(i).id.equals(k.id)) {
+                if (!in.has("quiz")) {   // an older phone app doesn't know Earn Time: keep what's set
+                    Kid old = list.get(i);
+                    k.quizOn = old.quizOn; k.quizMinutes = old.quizMinutes; k.quizCap = old.quizCap;
+                    k.quizLevel = old.quizLevel; k.quizTopics = old.quizTopics;
+                }
+                list.set(i, k);
+                found = true;
+            }
         }
         if (!found) {
             if (list.size() >= MAX_KIDS) return null;
@@ -196,16 +235,25 @@ public final class Profiles {
         return PARENT.equals(id) ? null : kid(id);
     }
 
-    /** Guest: every app allowed on this TV except the parents-only ones; no limit, no bedtime. */
+    /** Guest: every app allowed on this TV except the parents-only ones; a daily limit if set, no bedtime. */
     Kid guest() {
         Kid g = new Kid();
         g.id = GUEST;
         g.name = "Guest";
         g.color = -1;
+        g.dailyLimit = guestLimit();
+        g.quizOn = false;
         g.allowed = new HashSet<>(GuardStore.get(app).launchablePackages());
         g.allowed.removeAll(KID_NEVER);
         g.all = g.allowed;
         return g;
+    }
+
+    /** Minutes a day for Guest, shared by every guest that day; 0 = no limit. */
+    public synchronized int guestLimit() { return prefs.getInt("guest_limit", 0); }
+
+    public synchronized void setGuestLimit(int minutes) {
+        prefs.edit().putInt("guest_limit", Math.max(0, Math.min(24 * 60, minutes))).apply();
     }
 
     public synchronized boolean isGuest() { return GUEST.equals(activeId()); }
@@ -273,7 +321,6 @@ public final class Profiles {
 
     /** Adds seconds of screen time for a profile today. */
     public synchronized void addUsage(String profile, int seconds) {
-        if (GUEST.equals(profile)) return;
         JSONObject u = usageToday();
         try { u.put(profile, u.optInt(profile, 0) + seconds); } catch (JSONException ignored) { }
         prefs.edit().putString("usage", u.toString()).putString("usage_day", today()).apply();
@@ -316,6 +363,62 @@ public final class Profiles {
     public synchronized int minutesLeft(Kid k) {
         if (k == null || k.dailyLimit <= 0) return -1;
         return Math.max(0, k.dailyLimit + extraMinutes(k.id) - usedMinutes(k.id));
+    }
+
+    // ---------- earn time (quiz) ----------
+
+    private JSONObject quizToday(String profile) {
+        JSONObject all;
+        if (!today().equals(prefs.getString("quiz_day", ""))) all = new JSONObject();
+        else try { all = new JSONObject(prefs.getString("quiz", "{}")); } catch (JSONException e) { all = new JSONObject(); }
+        JSONObject o = all.optJSONObject(profile);
+        return o == null ? new JSONObject() : o;
+    }
+
+    private void putQuiz(String profile, JSONObject o) {
+        JSONObject all;
+        if (!today().equals(prefs.getString("quiz_day", ""))) all = new JSONObject();
+        else try { all = new JSONObject(prefs.getString("quiz", "{}")); } catch (JSONException e) { all = new JSONObject(); }
+        try { all.put(profile, o); } catch (JSONException ignored) { }
+        prefs.edit().putString("quiz", all.toString()).putString("quiz_day", today()).apply();
+    }
+
+    /** Minutes this profile earned with questions today. */
+    public synchronized int quizEarned(String profile) { return quizToday(profile).optInt("earned", 0); }
+
+    public synchronized int quizRight(String profile) { return quizToday(profile).optInt("right", 0); }
+
+    /** While a break is on after too many wrong answers: when it ends (ms); 0 when there's none. */
+    public synchronized long quizBreakUntil(String profile) {
+        long t = quizToday(profile).optLong("break_until", 0);
+        return t > System.currentTimeMillis() ? t : 0;
+    }
+
+    /**
+     * Records an answer; returns the minutes it earned (added to today's extra time). A right answer
+     * earns the profile's minutes up to its daily maximum. [Quiz.WRONG_IN_A_ROW] wrong answers in a
+     * row start a [Quiz.BREAK_MINUTES]-minute break, so guessing doesn't pay.
+     */
+    public synchronized int quizAnswer(Kid k, boolean right) {
+        JSONObject o = quizToday(k.id);
+        int got = 0;
+        try {
+            if (right) {
+                got = Quiz.award(o.optInt("earned", 0), k.quizMinutes, k.quizCap);
+                o.put("earned", o.optInt("earned", 0) + got).put("right", o.optInt("right", 0) + 1).put("wrong_row", 0);
+            } else {
+                int row = o.optInt("wrong_row", 0) + 1;
+                o.put("wrong", o.optInt("wrong", 0) + 1);
+                if (row >= Quiz.WRONG_IN_A_ROW) {
+                    o.put("wrong_row", 0).put("break_until", System.currentTimeMillis() + Quiz.BREAK_MINUTES * 60_000L);
+                } else {
+                    o.put("wrong_row", row);
+                }
+            }
+        } catch (JSONException ignored) { }
+        putQuiz(k.id, o);
+        if (got > 0) addExtra(k.id, got);
+        return got;
     }
 
     // ---------- parent lock and sleep timer ----------
@@ -405,9 +508,13 @@ public final class Profiles {
         JSONArray kids = new JSONArray();
         for (Kid k : kids()) {
             kids.put(k.json().put("used_today", usedMinutes(k.id)).put("extra_today", extraMinutes(k.id))
+                    .put("quiz_earned_today", quizEarned(k.id)).put("quiz_right_today", quizRight(k.id))
                     .put("minutes_left", minutesLeft(k)));
         }
-        return new JSONObject().put("kids", kids).put("active", activeId()).put("on_wake", onWake())
+        Kid g = guest();
+        JSONObject guest = new JSONObject().put("daily_limit", g.dailyLimit).put("used_today", usedMinutes(GUEST))
+                .put("extra_today", extraMinutes(GUEST)).put("minutes_left", minutesLeft(g));
+        return new JSONObject().put("kids", kids).put("guest", guest).put("active", activeId()).put("on_wake", onWake())
                 .put("common_apps", new JSONArray(commonApps()))
                 .put("pin_set", pinSet()).put("locked", locked()).put("max_kids", MAX_KIDS)
                 .put("parent_used_today", usedMinutes(PARENT)).put("sleep_at", sleepAt());

@@ -28,7 +28,7 @@ import java.util.List;
  */
 final class Overlays {
     /** What a full-screen overlay is for; the guard hides it when the reason goes away. */
-    enum Kind { NONE, BLOCKED, TIMES_UP, BEDTIME, LOCKED, PICKER, PIN, PAIRING, CONFIRM, MENU }
+    enum Kind { NONE, BLOCKED, TIMES_UP, BEDTIME, LOCKED, PICKER, PIN, PAIRING, CONFIRM, MENU, QUIZ }
 
     static final int[] AVATAR = {0xFF3D7BFF, 0xFFE5484D, 0xFF30A46C, 0xFFE8B931, 0xFF8E4EC6,
             0xFFF76B15, 0xFF12A594, 0xFFD6409F, 0xFF6E56CF, 0xFF0090FF};
@@ -157,6 +157,37 @@ final class Overlays {
         box.addView(grid, gap(20));
         showFull(Kind.PIN, box, onCancel);
         first.requestFocus();
+    }
+
+    /**
+     * One Earn Time question: the topic above, the question large, four answers in a 2 × 2 grid
+     * (arrows move between them, OK answers) and today's progress below. Back runs [onBack].
+     */
+    void quiz(String topic, String question, List<String> options, String progress,
+              java.util.function.IntConsumer onPick, Runnable onBack) {
+        LinearLayout box = column();
+        box.addView(text(topic, 18, Color.argb(170, 255, 255, 255), true));
+        TextView q = text(question, question.length() > 60 ? 28 : 36, Color.WHITE, true);
+        q.setMaxWidth(dp(900));
+        box.addView(q, gap(14));
+        GridLayout grid = new GridLayout(ctx);
+        grid.setColumnCount(2);
+        View first = null;
+        for (int i = 0; i < options.size(); i++) {
+            int pick = i;
+            TextView b = button(options.get(i), () -> onPick.accept(pick));
+            b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+            b.setMinWidth(dp(340));
+            b.setPadding(dp(28), dp(16), dp(28), dp(16));
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+            lp.setMargins(dp(10), dp(10), dp(10), dp(10));
+            grid.addView(b, lp);
+            if (first == null) first = b;
+        }
+        box.addView(grid, gap(32));
+        if (progress != null) box.addView(text(progress, 18, Color.argb(190, 255, 214, 102), false), gap(26));
+        showFull(Kind.QUIZ, box, onBack);
+        if (first != null) first.requestFocus();
     }
 
     static final class Item {
