@@ -441,8 +441,12 @@ public final class GuardStore {
 
     static Map<String, String> labels(Context ctx, List<String> pkgs) {
         PackageManager pm = ctx.getPackageManager();
+        // The names Home shows (config app_labels, e.g. "YouTube · Brave", "Browser"), so the phone, the
+        // guard's messages and the log all use the same name as the tile.
+        Map<String, String> home = Config.packageMap(java.util.Arrays.asList(ctx.getResources().getStringArray(R.array.app_labels)));
         Map<String, String> out = new LinkedHashMap<>();
         for (String p : pkgs) {
+            if (home.containsKey(p)) { out.put(p, home.get(p)); continue; }
             try { out.put(p, pm.getApplicationLabel(pm.getApplicationInfo(p, 0)).toString()); }
             catch (PackageManager.NameNotFoundException e) { out.put(p, p); }
         }

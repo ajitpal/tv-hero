@@ -138,9 +138,10 @@ private fun RevokedScreen(state: AppState) {
         horizontalAlignment = Alignment.CenterHorizontally) {
         androidx.compose.material3.Icon(Icons.Rounded.LinkOff, contentDescription = null, tint = c.destructive, modifier = Modifier.size(56.dp))
         Text("This phone can't control the TV", style = HigType.title2, color = c.label, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 16.dp))
-        Text("It was removed on the TV or from another phone, or it was paired with an older version of tv-hero. Pair again at the TV: someone there needs to press Allow.",
+        Text("The TV is on but refuses this phone's key: it was removed on the TV or from another phone, or it was paired with an older version of tv-hero. Pair again at the TV: someone there needs to press Allow.",
             style = HigType.subhead, color = c.secondaryLabel, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
         HigButton("Pair Again", Modifier.padding(top = 28.dp).fillMaxWidth()) { state.forgetTv() }
+        HigButton("Try Again", Modifier.padding(top = 12.dp).fillMaxWidth(), prominent = false) { state.retryConnection() }
     }
 }
 

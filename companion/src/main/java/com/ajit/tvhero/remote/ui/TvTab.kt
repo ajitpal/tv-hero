@@ -78,7 +78,7 @@ fun TvTab(state: AppState, gate: PasswordGate, openTab: (Int) -> Unit) {
         }
         if (state.requests.isNotEmpty()) section("asks", "Needs You", "Allowing adds the app to that child's list. It needs the parent password.") {
             state.requests.forEach { r ->
-                Row(r.label, "${r.profileName} asked to watch", leading = { AppIcon(state, r.pkg, 32) }) {
+                Row(r.label, "${r.profileName} asked to watch", leading = { AppIcon(state, r.pkg, 32) }, trailing = {
                     androidx.compose.foundation.layout.Row {
                         Text("Decline", style = HigType.body, color = c.secondaryLabel, modifier = Modifier.clickable {
                             state.run { state.requests = state.client!!.answerRequest(r.id, false, null) }
@@ -89,17 +89,17 @@ fun TvTab(state: AppState, gate: PasswordGate, openTab: (Int) -> Unit) {
                             }
                         }.padding(8.dp))
                     }
-                }
+                })
             }
         }
         val pending = state.apps.filter { it.state == "pending" }
         if (pending.isNotEmpty()) section("pending", "Waiting for Approval", "New apps stay blocked on the TV until you approve them.") {
             pending.forEach { a ->
-                Row(a.label, "Installed on the TV", leading = { AppIcon(state, a.pkg, 32) }, onClick = { openTab(2) }) {
+                Row(a.label, "Installed on the TV", leading = { AppIcon(state, a.pkg, 32) }, onClick = { openTab(2) }, trailing = {
                     Text("Approve", style = HigType.headline, color = c.tint, modifier = Modifier.clickable {
                         gate.run("Approve ${a.label} on the TV.", after = { state.refresh() }) { pw -> state.client!!.allow(a.pkg, pw, true) }
                     }.padding(8.dp))
-                }
+                })
             }
         }
         if (family != null && family.kids.isNotEmpty()) section("time", "Screen Time Today") {

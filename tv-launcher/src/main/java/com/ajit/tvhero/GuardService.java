@@ -814,12 +814,7 @@ public class GuardService extends AccessibilityService {
     // ---------- helpers ----------
 
     String label(String pkg) {
-        try {
-            PackageManager pm = getPackageManager();
-            return pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
-        } catch (PackageManager.NameNotFoundException e) {
-            return pkg;
-        }
+        return GuardStore.labels(this, java.util.Collections.singletonList(pkg)).get(pkg);
     }
 
     boolean globalAction(String action) {

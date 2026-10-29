@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -55,7 +56,9 @@ fun FamilyTab(state: AppState, gate: PasswordGate) {
     var open by remember { mutableStateOf<String?>(null) }
     var adding by remember { mutableStateOf(false) }
     var wakeSheet by remember { mutableStateOf(false) }
+    var everyone by remember { mutableStateOf(false) }
     val family = state.family
+    if (everyone && family != null) { CommonAppsPage(state, gate) { everyone = false }; return }
     open?.let { id ->
         val kid = family?.kids?.firstOrNull { it.id == id }
         if (kid != null) { KidPage(state, gate, kid) { open = null }; return }
@@ -64,8 +67,8 @@ fun FamilyTab(state: AppState, gate: PasswordGate) {
     val c = Hig.colors
     HigScreen("Family") {
         if (family == null) { section("loading") { Row("Loading…") }; return@HigScreen }
-        section("kids", "Kids", if (family.kids.size < family.maxKids)
-            "Each child sees only their own apps on the TV, with their own daily limit and bedtime. Up to ${family.maxKids} profiles."
+        section("kids", "Profiles", if (family.kids.size < family.maxKids)
+            "Each profile sees only its own apps plus the Apps for Everyone, with its own daily limit and bedtime. Up to ${family.maxKids} profiles."
         else "That's the maximum of ${family.maxKids} profiles.") {
             family.kids.forEach { k ->
                 val bits = buildList {
@@ -75,7 +78,11 @@ fun FamilyTab(state: AppState, gate: PasswordGate) {
                 }
                 Row(k.name, bits.joinToString(" · "), leading = { Avatar(k.name, avatarColor(k.color), 40.dp) }, chevron = true) { open = k.id }
             }
-            if (family.kids.size < family.maxKids) ButtonRow("Add Child") { adding = true }
+            if (family.kids.size < family.maxKids) ButtonRow("Add Profile") { adding = true }
+        }
+        section("everyone", footer = "On in every profile, on top of each profile's own apps.") {
+            Row("Apps for Everyone", value = "${family.commonApps.size}", chevron = true,
+                leading = { com.ajit.tvhero.remote.ui.hig.IconTile(Icons.Rounded.Apps, Color(0xFF34C759)) }) { everyone = true }
         }
         section("tv", "On the TV") {
             val wake = when (family.onWake) {
@@ -83,15 +90,15 @@ fun FamilyTab(state: AppState, gate: PasswordGate) {
                 "parent" -> "Parent"
                 else -> family.kids.firstOrNull { it.id == family.onWake }?.name ?: "Ask"
             }
-            Row("When the TV Turns On", value = wake, chevron = true) { wakeSheet = true }
-            Row("Parent", subtitle = "No limits. Switching to Parent on the TV needs the parent PIN.",
+            Row("Start-up Profile", value = wake, chevron = true) { wakeSheet = true }
+            Row("Parent", subtitle = "Every app. On the TV, switching to Parent needs the PIN (or the parent password).",
                 value = minutesText(family.parentUsed), leading = { Avatar("P", Color(0xFF8E8E93), 40.dp) })
         }
     }
 
     if (adding) {
         var name by remember { mutableStateOf("") }
-        HigAlert("New Child", "Enter a name. You can choose apps, a daily limit and bedtime next.", { adding = false },
+        HigAlert("New Profile", "Enter a name. You can choose apps, a daily limit and bedtime next.", { adding = false },
             content = { AlertField(name, { name = it.take(24) }, "Name") },
             buttons = listOf("Cancel" to { adding = false }, "Add" to {
                 adding = false
@@ -105,9 +112,9 @@ fun FamilyTab(state: AppState, gate: PasswordGate) {
             }), enabled = { it == 0 || name.isNotBlank() })
     }
     if (wakeSheet && family != null) {
-        HigSheet("When the TV Turns On", onCancel = { wakeSheet = false }, done = null) {
-            section("w", footer = "\"Ask\" shows Who's Watching? on the TV each time it wakes. Kids pick themselves; Parent needs the PIN.") {
-                val options = listOf("ask" to "Ask Who's Watching", "parent" to "Parent") + family.kids.map { it.id to it.name }
+        HigSheet("Start-up Profile", onCancel = { wakeSheet = false }, done = null) {
+            section("w", footer = "The TV opens in this profile when it's switched on. \"Ask\" shows Who's Watching? each time; Parent always needs the PIN on the TV.") {
+                val options = family.kids.map { it.id to it.name } + listOf("parent" to "Parent", "ask" to "Ask Who's Watching")
                 options.forEach { (value, label) ->
                     Row(label, trailing = { if (family.onWake == value) Icon(Icons.Rounded.Check, null, tint = Hig.colors.tint) }, onClick = {
                         wakeSheet = false
@@ -121,7 +128,7 @@ fun FamilyTab(state: AppState, gate: PasswordGate) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun KidPage(state: AppState, gate: PasswordGate, kid: Kid, onBack: () -> Unit) {
+internal fun KidPage(state: AppState, gate: PasswordGate, kid: Kid, onBack: () -> Unit) {
     val c = Hig.colors
     val family = state.family!!
     var sheet by remember { mutableStateOf<String?>(null) }   // limit | start | end | rename | color | delete
@@ -167,13 +174,14 @@ private fun KidPage(state: AppState, gate: PasswordGate, kid: Kid, onBack: () ->
             }
         }
         val apps = state.apps.filter { !it.protected || it.pkg == "com.android.tv" }
-        section("apps", "Apps for ${kid.name}", "Only these apps show on the TV for ${kid.name}. Settings and the Play Store are never available to kids.") {
+        section("apps", "Apps for ${kid.name}", "Only these apps show on the TV for ${kid.name}. Apps for Everyone are on in every profile; Settings and the Play Store are for Parent only.") {
             apps.forEach { a ->
                 val globalBlock = a.state != "allowed"
                 val never = a.pkg in setOf("com.android.vending", "com.android.tv.settings")
-                ToggleRow(a.label, a.pkg in kid.allowed && !globalBlock && !never,
-                    subtitle = when { never -> "Parents only"; a.state == "pending" -> "Waiting for approval"; globalBlock -> "Blocked for everyone"; else -> null },
-                    enabled = !globalBlock && !never, leading = { AppIcon(state, a.pkg, 29) }) { on ->
+                val forAll = a.pkg in family.commonApps
+                ToggleRow(a.label, (a.pkg in kid.allowed || forAll) && !globalBlock && !never,
+                    subtitle = when { never -> "Parents only"; a.state == "pending" -> "Waiting for approval"; globalBlock -> "Blocked for everyone"; forAll -> "Apps for Everyone"; else -> null },
+                    enabled = !globalBlock && !never && !forAll, leading = { AppIcon(state, a.pkg, 29) }) { on ->
                     save(kid.copy(allowed = if (on) kid.allowed + a.pkg else kid.allowed - a.pkg))
                 }
             }
@@ -230,6 +238,25 @@ private fun KidPage(state: AppState, gate: PasswordGate, kid: Kid, onBack: () ->
                 sheet = null
                 gate.run("Delete ${kid.name}'s profile.", after = onBack) { pw -> state.family = state.client!!.deleteKid(kid.id, pw) }
             }), destructiveIndex = 1)
+    }
+}
+
+/** Apps on in every profile (the TV's "Apps for Everyone"). Turning one on needs the password. */
+@Composable
+internal fun CommonAppsPage(state: AppState, gate: PasswordGate, onBack: () -> Unit) {
+    val family = state.family ?: return
+    val apps = state.apps.filter { it.state == "allowed" && it.pkg !in setOf("com.android.vending", "com.android.tv.settings") && (!it.protected || it.pkg == "com.android.tv") }
+    HigScreen("Apps for Everyone", onBack = onBack, backLabel = "Family") {
+        section("a", footer = "These apps are on in every profile, on top of each profile's own apps. Parent always has every app.") {
+            apps.forEach { a ->
+                ToggleRow(a.label, a.pkg in family.commonApps, leading = { AppIcon(state, a.pkg, 29) }) { on ->
+                    val next = if (on) family.commonApps + a.pkg else family.commonApps - a.pkg
+                    gate.run(if (on) "Turn on ${a.label} in every profile." else "Turn off ${a.label} for everyone.") { pw ->
+                        state.family = state.client!!.setCommonApps(next, pw)
+                    }
+                }
+            }
+        }
     }
 }
 

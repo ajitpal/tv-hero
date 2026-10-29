@@ -20,7 +20,7 @@ import javax.net.ssl.SSLSocket
 import javax.net.ssl.SSLSocketFactory
 
 /** An error the TV reported (or a network failure), with a message fit to show a person. */
-class TvException(val status: Int, message: String) : Exception(message)
+class TvException(val status: Int, message: String, val refusedKey: Boolean = false) : Exception(message)
 
 data class TvApp(
     val pkg: String,
@@ -74,6 +74,8 @@ data class Family(
     val parentUsed: Int,
     val sleepAt: Long,
     val maxKids: Int,
+    /** Apps for everyone: on in every profile on top of its own apps. */
+    val commonApps: Set<String> = emptySet(),
 )
 
 data class NowPlaying(
@@ -271,6 +273,9 @@ class TvClient(
         parseFamily(request("POST", "/v1/profiles/save", JSONObject().put("profile", k.json()).put("password", password))
             .getJSONObject("profiles"))
 
+    suspend fun setCommonApps(apps: Set<String>, password: String): Family =
+        parseFamily(request("POST", "/v1/profiles/common", JSONObject().put("apps", JSONArray(apps.toList())).put("password", password)))
+
     suspend fun deleteKid(id: String, password: String): Family =
         parseFamily(request("POST", "/v1/profiles/delete", JSONObject().put("id", id).put("password", password))
             .getJSONObject("profiles"))
@@ -349,7 +354,8 @@ class TvClient(
         val a = o.optJSONArray("kids") ?: JSONArray()
         return Family((0 until a.length()).map { Kid.from(a.getJSONObject(it)) }, o.optString("active", "parent"),
             o.optString("on_wake", "ask"), o.optBoolean("pin_set"), o.optBoolean("locked"),
-            o.optInt("parent_used_today"), o.optLong("sleep_at"), o.optInt("max_kids", 10))
+            o.optInt("parent_used_today"), o.optLong("sleep_at"), o.optInt("max_kids", 10),
+            o.optJSONArray("common_apps")?.strings()?.toSet() ?: emptySet())
     }
 
     private fun parseRemote(o: JSONObject) = RemoteAccess(o.optBoolean("adb_enabled"), o.optString("adb_port"),
@@ -397,7 +403,7 @@ class TvClient(
                 last = e
             }
         }
-        throw last?.takeIf { it.message?.startsWith("This TV") == true }
+        throw last?.takeIf { it.refusedKey }
             ?: TvException(0, if (remoteHost.isNullOrBlank()) "Can't reach the TV at $host. Is it on and on the same Wi-Fi?"
             else "Can't reach the TV at home or over the internet. Is it on, and is Tailscale on here and on the TV?")
     }
@@ -432,9 +438,12 @@ class TvClient(
                     throw TvException(code, if (msg.isNullOrBlank()) "The TV answered $code." else msg.replaceFirstChar { it.uppercase() } + ".")
                 }
                 out
+            } catch (e: javax.net.ssl.SSLHandshakeException) {
+                // The TV refused our key (this phone was removed), a different device answered, or the network
+                // dropped mid-handshake. AppState decides which, by checking the TV is up and retrying.
+                throw TvException(0, "The TV didn't accept this phone's key.", refusedKey = true)
             } catch (e: javax.net.ssl.SSLException) {
-                // The TV dropped us during the handshake (this phone was removed), or a different TV answered.
-                throw TvException(0, "This TV no longer accepts this phone, or a different device answered. Pair again.")
+                throw TvException(0, "Can't reach the TV.")
             } catch (e: IOException) {
                 throw TvException(0, "Can't reach the TV.")
             } finally {

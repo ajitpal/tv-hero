@@ -240,8 +240,10 @@ fun SectionScope.Row(
     chevron: Boolean = false,
     titleColor: Color? = null,
     enabled: Boolean = true,
-    onClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
+    // Last on purpose: `Row("Title") { … }` must mean "on tap". With `trailing` last, that block was
+    // composable content and ran on every recomposition (Settings opened its last page by itself).
+    onClick: (() -> Unit)? = null,
 ) {
     val c = Hig.colors
     divider(if (leading != null) 60.dp else 16.dp)
@@ -268,9 +270,9 @@ fun SectionScope.Row(
 @Composable
 fun SectionScope.ToggleRow(title: String, checked: Boolean, subtitle: String? = null, enabled: Boolean = true,
                            leading: (@Composable () -> Unit)? = null, onChange: (Boolean) -> Unit) {
-    Row(title, subtitle, leading = leading, enabled = enabled, onClick = { onChange(!checked) }) {
+    Row(title, subtitle, leading = leading, enabled = enabled, onClick = { onChange(!checked) }, trailing = {
         IosSwitch(checked, enabled, onChange)
-    }
+    })
 }
 
 /** A centred or leading text button row, e.g. "Forget This TV" in red. */

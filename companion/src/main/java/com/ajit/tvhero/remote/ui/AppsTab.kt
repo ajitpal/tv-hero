@@ -42,12 +42,12 @@ fun AppsTab(state: AppState, gate: PasswordGate) {
         item("search") { SearchField(query, { query = it }, "Search Apps", Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) }
         if (pending.isNotEmpty()) section("pending", "Waiting for Approval", "These were installed on the TV and stay blocked until you decide.") {
             pending.forEach { a ->
-                Row(a.label, "New on the TV", leading = { AppIcon(state, a.pkg, 32) }) {
+                Row(a.label, "New on the TV", leading = { AppIcon(state, a.pkg, 32) }, trailing = {
                     androidx.compose.foundation.layout.Row {
                         Text("Block", style = HigType.body, color = c.destructive, modifier = Modifier.clickable { block(a) }.padding(8.dp))
                         Text("Approve", style = HigType.headline, color = c.tint, modifier = Modifier.clickable { allow(a, true) }.padding(8.dp))
                     }
-                }
+                })
             }
         }
         section("rule", footer = "When on, anything installed on the TV, from the Play Store or elsewhere, waits for a parent's approval.") {

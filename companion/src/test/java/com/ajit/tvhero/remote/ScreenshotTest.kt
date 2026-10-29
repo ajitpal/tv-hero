@@ -14,9 +14,16 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onFirst
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ajit.tvhero.remote.ui.AppsTab
+import com.ajit.tvhero.remote.ui.CommonAppsPage
+import com.ajit.tvhero.remote.ui.HomeScreenPage
+import com.ajit.tvhero.remote.ui.KidPage
+import com.ajit.tvhero.remote.ui.PairScreen
+import com.ajit.tvhero.remote.ui.PhonesPage
+import com.ajit.tvhero.remote.ui.QuietPage
+import com.ajit.tvhero.remote.ui.RemoteAccessPage
 import com.ajit.tvhero.remote.ui.FamilyTab
 import com.ajit.tvhero.remote.ui.PasswordGate
 import com.ajit.tvhero.remote.ui.RemoteTab
@@ -56,35 +63,45 @@ class ScreenshotTest {
         state.connection = "home"
         state.apps = listOf(
             TvApp("com.google.android.youtube.tv", "YouTube", "allowed", true, false),
-            TvApp("com.google.android.youtube.tvkids", "YouTube Kids", "allowed", false, false),
+            TvApp("com.brave.browser", "Brave", "allowed", false, false),
             TvApp("in.startv.hotstar", "JioHotstar", "allowed", false, false),
             TvApp("com.mitv.tvhome.mitvplus", "Xiaomi TV+", "allowed", false, false),
+            TvApp("com.whatsapp", "WhatsApp", "allowed", false, false),
+            TvApp("com.phlox.tvwebbrowser", "TV Bro", "allowed", false, false),
             TvApp("com.android.tv", "Live TV", "allowed", true, true),
             TvApp("com.android.vending", "Google Play Store", "allowed", true, true),
+            TvApp("com.google.android.youtube.tvkids", "YouTube Kids", "blocked", false, false),
             TvApp("com.example.game", "Racing Game", "pending", false, false),
-            TvApp("com.example.shorts", "Shorts Player", "blocked", false, false),
         )
-        val colors = listOf(Color.RED, Color.rgb(255, 80, 120), Color.rgb(40, 60, 230), Color.rgb(255, 110, 60), Color.rgb(0, 120, 215),
-            Color.rgb(52, 168, 83), Color.rgb(140, 70, 200), Color.DKGRAY)
+        val colors = listOf(Color.RED, Color.rgb(251, 84, 43), Color.rgb(40, 60, 230), Color.rgb(255, 110, 60), Color.rgb(37, 211, 102),
+            Color.rgb(250, 220, 30), Color.rgb(0, 120, 215), Color.rgb(52, 168, 83), Color.rgb(255, 80, 120), Color.rgb(140, 70, 200))
         state.apps.forEachIndexed { i, a -> state.icons[a.pkg] = icon(colors[i], a.label.take(1)) }
+        val common = setOf("com.phlox.tvwebbrowser", "com.whatsapp", "com.brave.browser")
         state.family = Family(
             kids = listOf(
-                Kid("k1", "Aarav", 0, setOf("com.google.android.youtube.tvkids", "com.mitv.tvhome.mitvplus"), 90, true, 21 * 60, 7 * 60, 65, 0, 25),
-                Kid("k2", "Anaya", 7, setOf("com.google.android.youtube.tvkids"), 60, true, 20 * 60 + 30, 7 * 60, 60, 0, 0),
+                Kid("k7", "Family", 2, setOf("com.google.android.youtube.tv", "in.startv.hotstar", "com.mitv.tvhome.mitvplus", "com.android.tv"),
+                    0, false, 21 * 60, 7 * 60, 72, 0, -1),
+                Kid("k1", "Aarav", 0, setOf("com.google.android.youtube.tvkids"), 90, true, 21 * 60, 7 * 60, 65, 0, 25),
             ),
-            active = "k1", onWake = "ask", pinSet = true, locked = false, parentUsed = 48, sleepAt = 0, maxKids = 10,
+            active = "k7", onWake = "k7", pinSet = false, locked = false, parentUsed = 48, sleepAt = 0, maxKids = 10, commonApps = common,
         )
-        state.now = NowPlaying(true, "k1", "Aarav", "com.google.android.youtube.tvkids", "YouTube Kids",
-            "Peppa Pig: The Big Day Out", now - 23 * 60_000, "none", 25, false, 0)
+        state.now = NowPlaying(true, "k7", "Family", "in.startv.hotstar", "JioHotstar",
+            "India vs Australia, 2nd ODI", now - 23 * 60_000, "none", -1, false, 0)
+        state.volume = Volume(45, 100, false, 100)
         state.sessions = listOf(
-            Session("k2", "com.google.android.youtube.tvkids", "YouTube Kids", "Cocomelon Songs", now - 5 * 3600_000, now - 4 * 3600_000),
-            Session("parent", "in.startv.hotstar", "JioHotstar", "", now - 3 * 3600_000, now - 2 * 3600_000 - 600_000),
-            Session("k1", "com.mitv.tvhome.mitvplus", "Xiaomi TV+", "Cartoon Network", now - 90 * 60_000, now - 50 * 60_000),
-            Session("k1", "com.google.android.youtube.tvkids", "YouTube Kids", "Peppa Pig: The Big Day Out", now - 23 * 60_000, now),
+            Session("k1", "com.google.android.youtube.tvkids", "YouTube Kids", "Cocomelon Songs", now - 5 * 3600_000, now - 4 * 3600_000),
+            Session("k7", "com.brave.browser", "Brave", "", now - 90 * 60_000, now - 50 * 60_000),
+            Session("k7", "in.startv.hotstar", "JioHotstar", "India vs Australia, 2nd ODI", now - 23 * 60_000, now),
         )
-        state.home = HomeLayout(listOf("com.google.android.youtube.tv", "com.google.android.youtube.tvkids", "in.startv.hotstar",
-            "com.mitv.tvhome.mitvplus", "com.android.tv", "com.android.vending"), listOf(), 6, "Pal family", true)
-        state.remote = RemoteAccess(false, "", listOf("192.168.1.50", "100.101.12.7"), true, "100.101.12.7")
+        state.home = HomeLayout(listOf("com.google.android.youtube.tv", "com.brave.browser", "in.startv.hotstar",
+            "com.mitv.tvhome.mitvplus", "com.whatsapp", "com.phlox.tvwebbrowser"), listOf(), 6, "Pal family", true)
+        state.remote = RemoteAccess(false, "", listOf("192.168.1.50"), false, "")
+        state.internet = InternetControl(false, 0, "", false, "")
+        state.phones = listOf(
+            PairedPhone("p1", "Ajit's phone", now - 86400_000, now - 30_000, "home", true, true),
+            PairedPhone("p2", "Setup computer", now - 3 * 3600_000, now - 2 * 3600_000, "home", false, false),
+        )
+        state.requests = listOf(KidRequest("r1", "k1", "Aarav", "com.whatsapp", "WhatsApp", now - 600_000))
     }
 
     private fun icon(color: Int, letter: String): Bitmap {
@@ -111,15 +128,27 @@ class ScreenshotTest {
             }
         }
         compose.waitForIdle()
-        compose.onRoot().captureRoboImage(File(dir, "$name.png").path)
+        compose.onAllNodes(androidx.compose.ui.test.isRoot()).onFirst().captureRoboImage(File(dir, "$name.png").path)
     }
 
-    @Test fun tv() = shot("1-tv", 0) { TvTab(state, PasswordGate(state)) {} }
-    @Test fun family() = shot("2-family", 1) { FamilyTab(state, PasswordGate(state)) }
-    @Test fun apps() = shot("3-apps", 2) { AppsTab(state, PasswordGate(state)) }
-    @Test fun remote() = shot("4-remote", 3) { RemoteTab(state, compose.activity) }
-    @Test fun settings() = shot("5-settings", 4) { SettingsTab(state, PasswordGate(state)) }
+    private val gate get() = PasswordGate(state)
 
-    @Config(qualifiers = "w412dp-h915dp-xxhdpi-night")
-    @Test fun tvDark() = shot("6-tv-dark", 0) { TvTab(state, PasswordGate(state)) {} }
+    @Test fun tv() = shot("01-tv", 0) { TvTab(state, gate) {} }
+    @Test fun family() = shot("02-family", 1) { FamilyTab(state, gate) }
+    @Test fun familyProfile() = shot("03-family-profile", 1) { KidPage(state, gate, state.family!!.kids[0]) {} }
+    @Test fun kidProfile() = shot("04-kid-profile", 1) { KidPage(state, gate, state.family!!.kids[1]) {} }
+    @Test fun everyone() = shot("05-apps-for-everyone", 1) { CommonAppsPage(state, gate) {} }
+    @Test fun apps() = shot("06-apps", 2) { AppsTab(state, gate) }
+    @Test fun remote() = shot("07-remote", 3) { RemoteTab(state, compose.activity) }
+    @Test fun settings() = shot("08-settings", 4) { SettingsTab(state, gate) }
+    @Test fun homeScreen() = shot("09-home-screen", 4) { HomeScreenPage(state) {} }
+    @Test fun phones() = shot("10-who-can-control", 4) { PhonesPage(state, gate) {} }
+    @Test fun internet() = shot("11-internet-control", 4) { RemoteAccessPage(state, gate) {} }
+    @Test fun quiet() = shot("12-night-volume", 4) { QuietPage(state) {} }
+    @Test fun pair() = shot("13-pair", 4) { PairScreen(state, "192.168.1.50", "MiTV-AXSO0") {} }
+
+    @Config(qualifiers = "w412dp-h915dp-night-xxhdpi")
+    @Test fun tvDark() = shot("14-tv-dark", 0) { TvTab(state, gate) {} }
+    @Config(qualifiers = "w412dp-h915dp-night-xxhdpi")
+    @Test fun familyDark() = shot("15-family-dark", 1) { FamilyTab(state, gate) }
 }

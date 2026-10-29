@@ -79,7 +79,7 @@ fun ConnectScreen(state: AppState) {
  *  3. the parent password goes to the TV over the now-encrypted, pinned channel
  */
 @Composable
-private fun PairScreen(state: AppState, host: String, tvName: String, onCancel: () -> Unit) {
+internal fun PairScreen(state: AppState, host: String, tvName: String, onCancel: () -> Unit) {
     val scope = rememberCoroutineScope()
     val c = Hig.colors
     var step by remember { mutableStateOf("name") }   // name | starting | compare | password | working | error

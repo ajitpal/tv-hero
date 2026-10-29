@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
@@ -152,7 +153,7 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
 // ---------- Home Screen ----------
 
 @Composable
-private fun HomeScreenPage(state: AppState, onBack: () -> Unit) {
+internal fun HomeScreenPage(state: AppState, onBack: () -> Unit) {
     val current = state.home
     val c = Hig.colors
     if (current == null) { HigScreen("Home Screen", onBack = onBack, backLabel = "Settings") { section("l") { Row("Loading…") } }; return }
@@ -172,9 +173,9 @@ private fun HomeScreenPage(state: AppState, onBack: () -> Unit) {
                 state.run(onDone = { if (it) state.message = "Saved to the TV" }) { state.home = state.client!!.saveHome(edited) }
             } else Modifier))
     }) {
-        section("dock", "App Row", "The apps along the bottom of the TV's home screen, in this order. A kid only sees the ones on their list.") {
+        section("dock", "App Row", "The apps along the bottom of the TV's home screen, in this order. A profile only shows the ones on its list.") {
             dock.forEachIndexed { i, pkg ->
-                Row(labels[pkg] ?: pkg, leading = { AppIcon(state, pkg, 29) }) {
+                Row(labels[pkg] ?: pkg, leading = { AppIcon(state, pkg, 29) }, trailing = {
                     androidx.compose.foundation.layout.Row {
                         Icon(Icons.Rounded.KeyboardArrowUp, "Move up", tint = if (i > 0) c.tint else c.tertiaryLabel,
                             modifier = Modifier.padding(6.dp).clickableNoRipple { if (i > 0) dock = dock.toMutableList().apply { add(i - 1, removeAt(i)) } })
@@ -183,22 +184,21 @@ private fun HomeScreenPage(state: AppState, onBack: () -> Unit) {
                         Icon(Icons.Rounded.RemoveCircle, "Remove", tint = c.destructive,
                             modifier = Modifier.padding(6.dp).clickableNoRipple { dock = dock - pkg })
                     }
-                }
+                })
             }
             ButtonRow("Add App…") { adding = true }
         }
-        section("size", "Apps per Row: ${columns.toInt()}") {
-            Content(PaddingValues(horizontal = 16.dp, vertical = 4.dp)) {
-                Slider(columns, { columns = it }, valueRange = 4f..7f, steps = 2,
-                    colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = c.tint, inactiveTrackColor = c.fill,
-                        activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent))
+        section("size", "Apps per Row") {
+            Content(PaddingValues(horizontal = 16.dp, vertical = 10.dp)) {
+                com.ajit.tvhero.remote.ui.hig.Segmented(listOf("4", "5", "6", "7"), (columns.toInt() - 4).coerceIn(0, 3),
+                    Modifier.fillMaxWidth()) { columns = (it + 4).toFloat() }
             }
         }
-        section("greet", "Greeting", "Kids see their own name instead.") {
+        section("greet", "Greeting", "Other profiles see their own name instead.") {
             ToggleRow("Show Greeting", showGreeting) { showGreeting = it }
             if (showGreeting) FieldRow("Name", greeting, { greeting = it.take(40) }, "e.g. Pal family")
         }
-        section("hidden", "Hidden from Home", "Hidden apps still work; they just don't show on the TV's home screen.") {
+        section("hidden", "Show on Home", "Off hides an app from the TV's home screen. It still works, and profiles still decide who can open it.") {
             state.apps.filter { it.state == "allowed" && !it.protected }.forEach { a ->
                 ToggleRow(a.label, a.pkg !in hidden, leading = { AppIcon(state, a.pkg, 29) }) { show ->
                     hidden = if (show) hidden - a.pkg else hidden + a.pkg
@@ -218,7 +218,7 @@ private fun HomeScreenPage(state: AppState, onBack: () -> Unit) {
 // ---------- Night Volume ----------
 
 @Composable
-private fun QuietPage(state: AppState, onBack: () -> Unit) {
+internal fun QuietPage(state: AppState, onBack: () -> Unit) {
     val c = Hig.colors
     var q by remember { mutableStateOf<JSONObject?>(null) }
     LaunchedEffect(Unit) { state.run { q = state.client!!.quiet() } }
@@ -253,7 +253,7 @@ private fun QuietPage(state: AppState, onBack: () -> Unit) {
 // ---------- Remote Access ----------
 
 @Composable
-private fun RemoteAccessPage(state: AppState, gate: PasswordGate, onBack: () -> Unit) {
+internal fun RemoteAccessPage(state: AppState, gate: PasswordGate, onBack: () -> Unit) {
     val c = Hig.colors
     val ctx = LocalContext.current
     val r = state.remote
@@ -321,7 +321,7 @@ private fun RemoteAccessPage(state: AppState, gate: PasswordGate, onBack: () -> 
 // ---------- Who can control this TV ----------
 
 @Composable
-private fun PhonesPage(state: AppState, gate: PasswordGate, onBack: () -> Unit) {
+internal fun PhonesPage(state: AppState, gate: PasswordGate, onBack: () -> Unit) {
     val c = Hig.colors
     var confirm by remember { mutableStateOf<PairedPhone?>(null) }
     fun load() = state.run { state.phones = state.client!!.phones() }
@@ -334,9 +334,9 @@ private fun PhonesPage(state: AppState, gate: PasswordGate, onBack: () -> Unit) 
                 val seen = if (ph.lastSeen == 0L) "Not used yet" else (if (ph.active) "Active now" else "Last used " +
                     android.text.format.DateUtils.getRelativeTimeSpanString(ph.lastSeen)) + if (ph.lastVia == "internet") " · over the internet" else " · at home"
                 Row(ph.name + if (ph.isThisPhone) " (this phone)" else "", subtitle = seen,
-                    leading = { IconTile(Icons.Rounded.Smartphone, if (ph.lastVia == "internet") Color(0xFFFF9500) else Color(0xFF007AFF)) }) {
+                    leading = { IconTile(Icons.Rounded.Smartphone, if (ph.lastVia == "internet") Color(0xFFFF9500) else Color(0xFF007AFF)) }, trailing = {
                     Text("Remove", style = HigType.body, color = c.destructive, modifier = Modifier.clickableNoRipple { confirm = ph }.padding(6.dp))
-                }
+                })
             }
         }
     }
@@ -356,7 +356,7 @@ private fun PhonesPage(state: AppState, gate: PasswordGate, onBack: () -> Unit) 
 // ---------- Event log ----------
 
 @Composable
-private fun LogPage(state: AppState, onBack: () -> Unit) {
+internal fun LogPage(state: AppState, onBack: () -> Unit) {
     var log by remember { mutableStateOf(JSONArray()) }
     LaunchedEffect(Unit) { state.run { log = state.client!!.log() } }
     val labels = state.labels

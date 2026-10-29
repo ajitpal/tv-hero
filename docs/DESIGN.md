@@ -623,5 +623,6 @@ The UI shows this as one step: "Applying… Done".
 | Who can control (last used, home/internet, active now), revoke, action log with the phone's name | Verified with the Python client (one revocation bug found and fixed; re-check pending); phone UI built |
 | Phone: power and volume over the encrypted channel | TV side verified; phone UI built |
 | Phone app lock (fingerprint / screen lock) | Built |
+| Phone 2.1: fixed rows running their tap action while drawing (Settings opened a sub-page by itself, taps did nothing); Profiles + Apps for Everyone + Start-up Profile; safer "removed" detection; every screen rendered in `docs/screenshots/phone/` | Built and screenshot-reviewed; on-phone check by Ajit pending |
 | Phone: Home tab with status row, Now Playing sheet, trackpad remote, full-screen controller, Privacy & Debloat dashboard, Scenes, multi-TV switcher | **Not built yet**. The current tabs are TV, Family, Apps, Remote, Settings. |
 | Continue Watching row, focus parallax and light sweep, Picture & Sound from the phone, keyboard auto-open | Not built yet |

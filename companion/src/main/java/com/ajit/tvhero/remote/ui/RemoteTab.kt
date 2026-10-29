@@ -132,6 +132,8 @@ fun RemoteTab(state: AppState, activity: Activity) {
                     ClickPad(enabled = connected) { dir ->
                         when (dir) { 0 -> hid.tapKey(K.KEY_UP); 1 -> hid.tapKey(K.KEY_RIGHT); 2 -> hid.tapKey(K.KEY_DOWN); 3 -> hid.tapKey(K.KEY_LEFT); else -> hid.tapKey(K.KEY_ENTER) }
                     }
+                    if (!connected) Text("Connect Bluetooth above to use the arrows and OK", style = HigType.footnote,
+                        color = c.secondaryLabel, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp))
                     Spacer(Modifier.height(24.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
                         HoldButton(icon = Icons.Rounded.ChevronLeft, contentDescription = "Back", onDown = { back() })
@@ -232,8 +234,6 @@ private fun ClickPad(enabled: Boolean, onPress: (Int) -> Unit) {
         Box(Modifier.size(92.dp).clip(CircleShape).background(if (pressed == 4) c.tint.copy(alpha = 0.35f) else c.cell), contentAlignment = Alignment.Center) {
             Text("OK", style = HigType.headline, color = arrow)
         }
-        if (!enabled) Text("Connect Bluetooth\nto use the arrows", style = HigType.footnote, color = c.secondaryLabel, textAlign = TextAlign.Center,
-            modifier = Modifier.align(Alignment.Center).padding(top = 150.dp))
     }
 }
 

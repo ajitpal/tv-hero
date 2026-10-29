@@ -82,6 +82,9 @@ The script starts tv-hero first, then makes it Home, switches the stock launcher
 
 ## Everyday use (phone app)
 
+Screenshots of every screen: `docs/screenshots/phone/` (regenerate with `./gradlew :companion:testDebugUnitTest -Pscreenshots=record`).
+- **Family** tab: profiles (Family and kids), **Apps for Everyone**, **Start-up Profile**, each profile's apps, limit and bedtime.
+
 | Tab | |
 |---|---|
 | **Apps** | Waiting for approval (Approve / Block), every app with an Allowed switch, "Hold new apps for approval". |

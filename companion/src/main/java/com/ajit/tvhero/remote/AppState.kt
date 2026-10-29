@@ -40,6 +40,27 @@ class AppState(context: Context) {
     var requests by mutableStateOf<List<KidRequest>>(emptyList())
     /** Set when the TV refused this phone (it was removed): the app offers to pair again. */
     var revoked by mutableStateOf(false)
+    private var refusals = 0
+
+    /**
+     * Only call it "removed" when it really is: the TV answered 401 (not paired), or it refused this
+     * phone's key twice in a row while its pairing port answers (so it's up and it's the same TV address).
+     * A Wi-Fi drop mid-handshake must never send someone to "Pair Again", which forgets the TV.
+     */
+    private suspend fun noteFailure(c: TvClient, e: Throwable) {
+        if (e !is TvException) return
+        if (e.status == 401) { revoked = true; return }
+        if (!e.refusedKey) return
+        refusals++
+        if (refusals >= 2 && runCatching { c.info() }.isSuccess) revoked = true
+    }
+
+    /** "Try Again" on the removed screen. */
+    fun retryConnection() {
+        revoked = false
+        refusals = 0
+        refresh()
+    }
     /** App lock (see AppLock): true until the fingerprint / screen lock check passes. */
     var locked by mutableStateOf(false)
     var backgroundAt = 0L
@@ -117,10 +138,11 @@ class AppState(context: Context) {
                 phones = c.phones()
                 internet = c.internet()
                 learnRemoteAddress(c)
+                refusals = 0
             } catch (e: TvException) {
                 connection = ""
-                if (e.status == 401 || e.message?.startsWith("This TV no longer") == true) revoked = true
-                message = e.message
+                noteFailure(c, e)
+                if (!revoked) message = e.message
             } catch (e: Exception) {
                 message = e.message
             }
@@ -157,7 +179,7 @@ class AppState(context: Context) {
                         if (internet?.enabled != st.internetControl) internet = c.internet()
                     }.onFailure { e ->
                         connection = ""
-                        if (e is TvException && (e.status == 401 || e.message?.startsWith("This TV no longer") == true)) revoked = true
+                        noteFailure(c, e)
                     }
                 }
                 delay(5000)
