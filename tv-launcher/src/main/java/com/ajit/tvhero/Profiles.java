@@ -214,6 +214,15 @@ public final class Profiles {
         prefs.edit().putString("active", id == null ? PARENT : id).apply();
     }
 
+    /** True the first time it's asked after each boot (Settings.Global.BOOT_COUNT), false after that. */
+    public synchronized boolean firstStartThisBoot() {
+        int boot = android.provider.Settings.Global.getInt(app.getContentResolver(), android.provider.Settings.Global.BOOT_COUNT, -1);
+        if (boot < 0) return android.os.SystemClock.elapsedRealtime() < 5 * 60_000;   // no counter: only right after boot
+        if (prefs.getInt("startup_applied_boot", -1) == boot) return false;
+        prefs.edit().putInt("startup_applied_boot", boot).apply();
+        return true;
+    }
+
     /** "ask" shows Who's watching when the TV wakes; a profile id starts as that profile. */
     public synchronized String onWake() {
         String v = prefs.getString("on_wake", "ask");

@@ -129,8 +129,12 @@ public class GuardService extends AccessibilityService {
         }
         store.reconcile();
         // The TV starts in the start-up profile (Parent Menu > When the TV Turns On), not in whoever was last.
-        String wake = profiles.onWake();
-        if (!"ask".equals(wake)) profiles.setActive(wake);
+        // Once per boot only: Android also reconnects this service mid-session (uiautomator, crashes,
+        // updates), and that must not throw a parent who switched with the PIN back to the start-up profile.
+        if (profiles.firstStartThisBoot()) {
+            String wake = profiles.onWake();
+            if (!"ask".equals(wake)) profiles.setActive(wake);
+        }
         IntentFilter f = new IntentFilter();
         f.addAction(Intent.ACTION_PACKAGE_ADDED);
         f.addAction(Intent.ACTION_PACKAGE_FULLY_REMOVED);

@@ -169,6 +169,16 @@
             </intent-filter>
         </service>
 
+        <!-- Forgotten parent password / PIN: only ADB (shell holds WRITE_SECURE_SETTINGS) can send this. -->
+        <receiver
+            android:name=".RecoveryReceiver"
+            android:exported="true"
+            android:permission="android.permission.WRITE_SECURE_SETTINGS">
+            <intent-filter>
+                <action android:name="com.ajit.tvhero.RESET_PARENT" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".HomeKeyService"
             android:label="@string/home_key_name"

@@ -33,12 +33,22 @@ Pairing works only from the home network, one at a time, and must finish within 
 | This phone | Settings → Unpair This Phone: no password needed, takes effect on the TV at once. |
 | Everything off | Turn internet control off (any phone, no password), then remove phones. On the TV, Parent Menu → Debugging (ADB) off. |
 
+## Forgotten parent password or PIN
+
+There's no reset from a phone or from the TV's remote. With ADB on (which itself needs Parent access to the TV's Settings, or the old password from a phone):
+
+```
+adb shell am broadcast -n com.ajit.tvhero/.RecoveryReceiver -a com.ajit.tvhero.RESET_PARENT --es password <new, 6+> --es pin <4-6 digits>
+```
+
+The receiver demands WRITE_SECURE_SETTINGS from the sender, which only the shell and the system hold, so no app on the TV can use it. The event log records "parent_reset … by ADB". The new values aren't logged.
+
 ## The TV itself
 
 - **ADB.** Android 9 TVs speak ADB over plain TCP (5555). It's used only for setup and debloat and should stay off; `tools/adb-closed.py` checks. The phone app and the TV's Parent Menu both show it and can switch it off; switching it on needs the password.
 - **Debloat** only disables packages (`pm disable-user`), never uninstalls system apps. Every list has a restore script (`debloat/`, `tools/restore.sh`).
 - **Guard.** An accessibility service. It reads only which app is in front (window-state events), never screen content, and it draws the lock/prompt overlays.
-- **DNS filtering** (AdGuard Family) is set on the TV only.
+- **DNS filtering** (AdGuard Family) was set as strict Private DNS on the TV. **Android 9 can't validate strict Private DNS through a VPN**, so with Tailscale on, every name lookup failed and the TV said "no internet". Private DNS is now "automatic" while Tailscale runs. The family filter has to come from elsewhere: Tailscale's DNS settings (global nameservers 94.140.14.15 / 94.140.15.16) or the router.
 
 ## Known limits (be honest about them)
 
