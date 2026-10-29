@@ -97,6 +97,16 @@ Screenshots of every screen: `docs/screenshots/phone/` (regenerate with `./gradl
 
 28 packages disabled (not uninstalled): Xiaomi and Google telemetry, PatchWall and sponsored rows, partner auto-installers, TV Manager, update service (re-enable to check for firmware), unused apps; stock launcher replaced. Private DNS `family.adguard-dns.com` on the TV only (ads, trackers, adult sites; YouTube Restricted Mode). Details and undo commands: `debloat/README.md`.
 
+## Control from anywhere (Tailscale)
+
+Set up on 29 Oct 2026. The TV (Tailscale 1.104, address `100.x.y.z`) and the phone are in the same tailnet.
+- On the TV, Tailscale is the **always-on VPN** (`settings secure always_on_vpn_app=com.tailscale.ipn`, lockdown off) and is exempt from battery optimisation. After a reboot it reconnects by itself (verified: up 2 minutes after boot).
+- The TV app reports its Tailscale address (`GET /v1/remote`). The phone app stores it and uses it when the home address doesn't answer.
+- **Internet control stays off until you turn it on:** phone app → Settings → Internet Control → Allow Control From Anywhere, then the parent password, then **Allow** on the TV.
+- In the Tailscale admin console, **disable key expiry** for the TV, or it drops off the tailnet when its key expires (Tailscale's default is 180 days, as far as I know).
+- On the phone, set Tailscale as always-on VPN too (Android Settings → Network → VPN → Tailscale ⚙ → Always-on VPN; leave "Block connections without VPN" off).
+- When the TV is in deep standby its Wi-Fi may be off, so nothing can reach it until it wakes.
+
 ## Security notes
 
 Full detail in `docs/SECURITY.md`. In short:
