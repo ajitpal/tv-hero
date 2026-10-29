@@ -4,12 +4,18 @@ Status: plan, revised 29 Oct 2026. Nothing here is built yet; the base screensav
 
 **Target:** any Android TV or Google TV box or television (Android 9 / API 28 and later), not only the Xiaomi MiTV-AXSO0 that tv-hero was built on. Someone with only the tv-hero phone app sets one up to the state the home TV is in today, and gets the same parental controls, screensaver and tools.
 
-Phase 3 has three parts:
-- **A.** Set up any Android TV from the phone alone.
-- **B.** A weather-aware screensaver.
-- **C.** Tools on the TV: timers, HIIT, and add-ons.
+Phase 3 delivers three things, on every supported TV and at every setup level:
 
-Section D is the device matrix and testing that make "any Android TV" true.
+| Part | What the family gets | At Full level | At Guard only | At Remote only |
+|---|---|---|---|---|
+| **A. Setup** | Any Android TV set up from the phone alone | ✓ | ✓ | ✓ |
+| **B. Screensaver** | Watch + date, then weather scenes, as the TV's screensaver and on demand | ✓ TV screensaver + Home idle + button | ✓ as the TV screensaver where allowed, else as an app | ✓ as an app |
+| **C. Tools** | Timer, stopwatch, HIIT with music, more built-in tools, add-ons others build | ✓ Tools row on Home | ✓ Tools app on the TV's home | ✓ Tools app |
+
+All three ship in **one TV app** (tv-hero) that the setup wizard installs. The screensaver and the tools are
+chosen in the wizard (step "Extras") and can be changed later from the phone or the TV.
+
+Section D is the device matrix and testing that make "any Android TV" true for all three parts.
 
 Statements marked *(check)* are what I expect from Android's documentation and earlier work, but they haven't been tried on that kind of device yet. They're the first things to test.
 
@@ -32,8 +38,8 @@ The 2.x work assumed one model: a known package list to disable, Android 9 rules
 
 | Level | What the TV gets | When |
 |---|---|---|
-| **Full** | tv-hero is Home, the guard runs, debloat, screensaver, tools, everything in 2.x | Home can be replaced, or the Home key can be caught reliably |
-| **Guard only** | The stock home stays. The guard still enforces profiles, limits, bedtime, quiz and lock screens; tv-hero's screensaver and tools are available as apps. | Google TV devices that insist on their own home *(check per device)* |
+| **Full** | tv-hero is Home, the guard runs, debloat, screensaver, Tools row on Home, everything in 2.x | Home can be replaced, or the Home key can be caught reliably |
+| **Guard only** | The stock home stays. The guard still enforces profiles, limits, bedtime, quiz and lock screens; tv-hero's screensaver (as the TV screensaver where allowed) and the Tools app are there too. | Google TV devices that insist on their own home *(check per device)* |
 | **Remote only** | Pairing, remote, power, volume; no parental rules | The person chooses it, or the guard can't be enabled (for example a firmware that blocks accessibility services) |
 
 The phone app shows which level a TV is at, and what would lift it a level.
@@ -48,7 +54,7 @@ The phone app shows which level a TV is at, and what would lift it a level.
 Phone app ──ADB (pairing code on 11+, TCP 5555 on 9–10; home Wi-Fi only)──▶ TV
   1. connect   2. probe capabilities   3. pick level + recipe   4. baseline
   5. install tv-hero (+ chosen apps)   6. Home / guard / screensaver   7. debloat
-  8. pair (mutual TLS, existing)   9. family template   10. ADB off + check
+  8. extras: screensaver + tools   9. pair (mutual TLS, existing)   10. family template   11. ADB off + check
 ```
 
 ### Pieces to build
@@ -98,7 +104,8 @@ Phone app ──ADB (pairing code on 11+, TCP 5555 on 9–10; home Wi-Fi only)�
 | 4 | Install tv-hero; grant `WRITE_SECURE_SETTINGS` and notification listener access | phone | |
 | 5 | Make tv-hero Home (Full level), check it with a Home press, and put the old home back on failure | phone | Port of `tools/install-tv.sh`. On Google TV, check whether the Home key comes back to tv-hero. |
 | 6 | Enable the guard; confirm it's bound (re-set the setting if not; reboot as the last resort) | phone | |
-| 7 | Screensaver: tv-hero's clock as the TV's screensaver, keeping the old one for undo | phone | Skipped where firmware locks it *(check)*. |
+| 7 | **Extras: screensaver.** tv-hero's watch as the TV's screensaver (old one kept for undo), idle time, style, weather on/off and the location for weather (from the phone) | phone | Where firmware locks the screensaver *(check)*: Home idle clock and the button instead. |
+| 7b | **Extras: tools.** Pick the built-in tools to show (Timer, Stopwatch, HIIT…), which profiles see them, and optional add-ons | phone | Tools are in the tv-hero app, so nothing extra is installed; add-ons follow the app approval rules. |
 | 8 | Debloat in batches, with the input safety check after each | phone | Brand and model overlays only. |
 | 9 | Optional apps (browser, Brave/YouTube tile, WhatsApp) | phone + person | First-run screens need the remote. |
 | 10 | Pair the phone (code comparison + Allow on the TV) and set the password and PIN | person | Unchanged protocol 2. |
@@ -117,35 +124,62 @@ Phone app ──ADB (pairing code on 11+, TCP 5555 on 9–10; home Wi-Fi only)�
 
 ---
 
-## B. Screensaver that follows the weather
+## B. Screensaver (watch, then weather), on every TV
 
-**Done (2.4):** analogue watch with time and date on a time-of-day gradient; the TV's screensaver; after 5 idle minutes on Home; watch button on Home; phone button. Screen time doesn't count while it shows (2.4.1).
+**Done (2.4, home TV):**
+- an analogue watch with the time, weekday and date, on a time-of-day gradient that drifts gently against burn-in
+- it is the TV's own screensaver, starts after 5 idle minutes on Home, from the watch button on Home, or from the phone
+- screen time doesn't count while it shows (2.4.1)
 
 **Phase 3:**
-1. **Weather scenes:** clear (day sky, stars at night), clouds, rain, fog or haze, storm, heat. Each is a slow gradient with a few drawn shapes; no video and no blur, so it runs on 1 GB TVs.
-2. **Source:** the launcher still reads no network itself. The weather add-on fetches the weather and the screensaver reads its last reading. The service must be chosen and its terms checked; Open-Meteo is a candidate. The location comes from the phone (a city or coarse coordinates), never from the TV.
-3. **Settings on the phone and the TV:** idle time, watch style (analogue, digital or both), weather on or off, dim at night, start now.
-4. **Per device:** on firmware where the screensaver can't be changed *(check: some Google TV builds)*, the clock still starts from Home after the idle time, and from the button.
+1. **On any TV.**
+   - At Full level and Guard only, the wizard sets tv-hero's watch as the TV's screensaver (`screensaver_components`), keeps the old choice for undo, and sets the idle time where the TV allows (WRITE_SETTINGS granted over ADB).
+   - Where Google TV firmware keeps its own Ambient mode *(check)*, the watch still opens from Home's idle timer (Full level), from the phone, or from a **Clock** tile/app.
+2. **Weather scenes:** clear (day sky, stars at night), clouds, rain, fog or haze, storm, heat. Each is a slow gradient with a few drawn shapes. No video and no blur, so it runs on 1 GB TVs, with a lighter mode chosen automatically on low-RAM devices.
+3. **Weather source:** the launcher still reads no network itself. The weather add-on fetches the weather and the screensaver reads its last reading. The service must be chosen and its terms checked; Open-Meteo is a candidate. The location comes from the phone (a city or coarse coordinates), never from the TV.
+4. **Faces and content:**
+   - faces: analogue, digital, both, and a large "across the room" digital
+   - optional temperature and the next hours, today's calendar, or a quote
+   - Hindi or English date
+5. **Settings** (phone: Settings → Screensaver; TV: Parent Menu → Screensaver): start now, idle time, face, weather on or off, dim at night, which profiles may change it.
+6. **Rules kept:** it never counts as screen time, never shows over a lock screen, and any key closes it.
 
-## C. Tools on the TV
+## C. Tools on the TV, on every TV
 
-1. **Built in** (a Tools row on Home, a Tools tab on the phone):
-   - **Timer and stopwatch:** big digits, started from the remote or the phone, with a chime.
-   - **HIIT / workout timer:**
-     - work, rest, rounds and sets, with presets (Tabata 20/10 × 8, EMOM, custom) built on the phone
-     - beeps and a colour for each phase
-     - **music underneath:** the person's own files, a USB stick, or a music app already on the TV, turned down under the beeps
-   - Later: breathing, a chore and reward board, a homework timer using the Earn Time questions.
-2. **Add-ons anyone can build.** The weather add-on already works this way, and it generalises:
-   - An add-on is an ordinary APK with an activity for the action `com.ajit.tvhero.TOOL`, plus metadata: name, icon, and which profiles see it by default.
-   - Home lists the tools; the phone can open one (`POST /v1/tools/open`).
-   - An SDK doc covers the contract, the D-pad rules and the HIG style. A template project and the timer as a sample help others get started.
-   - **Safety:** add-ons are apps. They stay blocked until a parent approves them, profiles decide who can open them, lock screens cover them, and they get no access to tv-hero's API unless paired like a phone.
-3. **Works on every TV:** plain Java and Views, D-pad first, light on memory, and tested against the device matrix (D).
+Tools are small full-screen apps inside tv-hero, made for the remote and readable across the room.
+- **At Full level** they sit in a **Tools** row on Home.
+- **At Guard only and Remote only** they live in a **tv-hero Tools** app on the TV's own home screen.
+- **From the phone** a Tools tab starts, sets up and controls them (start, pause, next).
 
----
+1. **Built-in tools (first set):**
+
+   | Tool | What it does | Phone control |
+   |---|---|---|
+   | **Timer** | Big countdown, several named timers ("Pasta 10 min"), chime and a message at the end | set, start, pause, +1 min |
+   | **Stopwatch** | Large digits with laps | start, lap, stop |
+   | **HIIT / workout timer** | Work, rest, rounds and sets; presets (Tabata 20/10 × 8, EMOM, AMRAP, custom); 3-2-1 beeps; a colour per phase; the exercise name on screen; a total-time bar | build presets, start, pause, skip |
+   | **Music under workouts** | Plays the person's own music: files from the phone (sent to the TV), a USB stick, or a music app already on the TV. Its volume is turned down under the beeps and back up after. | pick the playlist |
+   | **Breathing** | Calm in/out animation for 1–5 minutes | start |
+   | **Homework timer** | Focus blocks with breaks; can unlock Earn Time questions after | start |
+   | **Chore and reward board** | Kids' tasks; done ones can give Earn Time minutes (parent approves) | add tasks, approve |
+
+   Streaming-music apps are only used if they keep playing in the background on that TV. Nothing is downloaded from streaming services.
+2. **Add-ons anyone can build** (the weather add-on already works this way):
+   - **Contract:** an ordinary APK with an activity for the action `com.ajit.tvhero.TOOL`, plus metadata: name, icon, category, and which profiles see it by default.
+   - **Discovery:** Home and the Tools app list installed tools, and the phone lists them too (`GET /v1/tools`, `POST /v1/tools/open`).
+   - **Optional control channel:** a bound service or broadcast with documented commands (start, pause, next), so the phone can drive an add-on through tv-hero without the add-on opening its own network port.
+   - **SDK pack:** a template project, the Timer as a sample, D-pad and HIG rules, and a checklist for 1 GB TVs.
+   - **Safety:**
+     - add-ons are apps, so they stay blocked until a parent approves them
+     - profiles decide who sees each add-on
+     - lock screens cover them, and their time counts like any app
+     - they get no access to tv-hero's API, settings or family data
+     - a "tools catalogue" (later) would list reviewed add-ons only
+3. **Rules for every tool:** plain Java and Views, D-pad first, works offline, light on memory, tested on the device matrix (D). Screen time counts while a tool is open, like any app. A parent can mark a tool as "doesn't count" (Timer, Breathing).
 
 ## D. Device matrix and testing
+
+Every device run checks all three parts: setup reaches its level and undoes cleanly; the screensaver starts (as the TV screensaver or the fallback) and closes on any key; the Timer and HIIT tools run with the remote and from the phone, with music ducking.
 
 | Kind | Examples | How |
 |---|---|---|
@@ -159,17 +193,20 @@ Phone app ──ADB (pairing code on 11+, TCP 5555 on 9–10; home Wi-Fi only)�
 
 ## Milestones
 
-| M | What | Check |
-|---|---|---|
-| M1 | ADB client (TCP + pairing) and capability probe, read-only | It reports the right capabilities on the Xiaomi and one Android 11+ device. |
-| M2 | Install and update tv-hero from the phone, on any TV (core recipe without debloat) | It updates the home TV without a computer, and reaches Full or Guard only on a Google TV device. |
-| M3 | Setup levels and the Google TV Home-key handling | Results recorded per device in the matrix. |
-| M4 | Recipe engine with undo, never-touch list, Xiaomi overlay | Disable and undo one list on the home TV, with screenshots. |
-| M5 | Emulator CI for core and undo | Green on all emulator API levels. |
-| M6 | Backup and template import | Export the home TV, import onto a second TV, compare. |
-| M7 | Brand overlays for the next 2–3 brands | Real-device runs. |
-| M8 | Tools (timer, HIIT), then weather scenes, then the add-on SDK | Per feature. |
-| M9 | Docs: README "Set up any TV", SECURITY, brand guides | |
+| M | Part | What | Check |
+|---|---|---|---|
+| M1 | A | ADB client (TCP and pairing code) and capability probe, read-only | It reports the right capabilities on the Xiaomi and one Android 11+ device. |
+| M2 | A | Install and update tv-hero from the phone on any TV (core recipe, no debloat) | It updates the home TV without a computer. |
+| M3 | C | **Tools 1:** Timer, Stopwatch, HIIT with presets and beeps; Tools row on Home, Tools app, phone Tools tab | Used on the home TV. |
+| M4 | C | Music under workouts (phone files, USB, ducking) | A HIIT session with music. |
+| M5 | B | Screensaver settings (face, idle, dim) on phone and TV; fallback where the TV screensaver is locked | Home TV and one Google TV device. |
+| M6 | A | Setup levels, Google TV Home-key handling, and the Extras step (screensaver and tools) in the wizard | Results recorded per device in the matrix. |
+| M7 | A | Recipe engine with undo and the never-touch list; Xiaomi overlay; emulator CI | Green on all emulator API levels. |
+| M8 | B | Weather scenes, weather from the add-on, location from the phone | A week on the home TV. |
+| M9 | A | Backup, "Same as my other TV" template | Export the home TV, import onto a second TV. |
+| M10 | C | Add-on contract, control channel and SDK pack; Breathing, Homework and Chores tools | A sample add-on built from the SDK, by someone other than us if possible. |
+| M11 | A | Brand overlays for 2–3 more brands; brand picture guides | Real-device runs. |
+| M12 | all | Docs: README "Set up any TV", Screensaver, Tools, SDK, SECURITY | |
 
 ## Open decisions (Ajit)
 
@@ -178,6 +215,8 @@ Phone app ──ADB (pairing code on 11+, TCP 5555 on 9–10; home Wi-Fi only)�
 3. **Third-party apps in the wizard:** download from official sources with pinned hashes, or leave them to the Play Store on the TV.
 4. **Community recipes:** accept brand or model overlays from others (reviewed, then shipped in releases), or keep them in-house.
 5. **Languages:** Hindi and others for the wizard and TV screens, now or later.
+6. **Which tools first** after Timer, Stopwatch and HIIT (suggested: Breathing, then Homework timer, then Chores).
+7. **Weather service** for the screensaver (the terms must allow this use) and whether the screensaver may show the temperature at all.
 
 ## Risks
 
