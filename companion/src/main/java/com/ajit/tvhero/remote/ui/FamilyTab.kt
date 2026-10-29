@@ -57,6 +57,7 @@ fun FamilyTab(state: AppState, gate: PasswordGate) {
     var open by remember { mutableStateOf<String?>(null) }
     var adding by remember { mutableStateOf(false) }
     var wakeSheet by remember { mutableStateOf(false) }
+    var switchSheet by remember { mutableStateOf(false) }
     var everyone by remember { mutableStateOf(false) }
     val family = state.family
     if (everyone && family != null) { CommonAppsPage(state, gate) { everyone = false }; return }
@@ -97,6 +98,7 @@ fun FamilyTab(state: AppState, gate: PasswordGate) {
                 else -> family.kids.firstOrNull { it.id == family.onWake }?.name ?: "Ask"
             }
             Row("Start-up Profile", value = wake, chevron = true) { wakeSheet = true }
+            Row("Profile Switches", value = switchText(family.switchLimit), chevron = true) { switchSheet = true }
             Row("Parent", subtitle = "Every app. On the TV, switching to Parent needs the PIN (or the parent password).",
                 value = minutesText(family.parentUsed), leading = { Avatar("P", Color(0xFF8E8E93), 40.dp) })
         }
@@ -116,6 +118,22 @@ fun FamilyTab(state: AppState, gate: PasswordGate) {
                     open = f.kids.lastOrNull()?.id
                 }
             }), enabled = { it == 0 || name.isNotBlank() })
+    }
+    if (switchSheet && family != null) {
+        HigSheet("Profile Switches", onCancel = { switchSheet = false }, done = null) {
+            section("s", footer = "How often a kid or Guest can change profile on the TV each day without asking. After that the TV offers " +
+                "Ask a Parent (it shows here under Needs You) or the Parent PIN. Switching to a profile with no daily limit always needs a parent. " +
+                "Used today: ${family.switchesToday}.") {
+                listOf(1, 2, 3, 0, -1).forEach { n ->
+                    Row(switchText(n), trailing = { if (family.switchLimit == n) Icon(Icons.Rounded.Check, null, tint = c.tint) }, onClick = {
+                        switchSheet = false
+                        val loosens = if (n < 0) family.switchLimit >= 0 else family.switchLimit >= 0 && n > family.switchLimit
+                        if (loosens) gate.run("Allow more profile switches on the TV.") { pw -> state.family = state.client!!.setSwitchLimit(n, pw) }
+                        else state.run { state.family = state.client!!.setSwitchLimit(n, null) }
+                    })
+                }
+            }
+        }
     }
     if (wakeSheet && family != null) {
         HigSheet("Start-up Profile", onCancel = { wakeSheet = false }, done = null) {
@@ -142,6 +160,7 @@ internal fun KidPage(state: AppState, gate: PasswordGate, kid: Kid, onBack: () -
         gate.run(reason) { pw -> state.family = state.client!!.saveKid(updated, pw) }
     val watching = family.active == kid.id
 
+    if (sheet == "end") EndTimeAlert(state, kid) { sheet = null }
     HigScreen(kid.name, onBack = onBack, backLabel = "Family") {
         item("head") {
             Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -158,19 +177,7 @@ internal fun KidPage(state: AppState, gate: PasswordGate, kid: Kid, onBack: () -
         section("time", "Screen Time", "The limit counts all TV time in ${kid.name}'s profile. The TV warns 5 minutes and 1 minute before, then shows a Time's up screen.") {
             Row("Today", value = minutesText(kid.usedToday))
             Row("Daily Limit", value = if (kid.dailyLimit == 0) "None" else minutesText(kid.dailyLimit), chevron = true) { sheet = "limit" }
-            if (kid.dailyLimit > 0) {
-                Row("Left Today", value = minutesText(kid.minutesLeft.coerceAtLeast(0)) + if (kid.extraToday != 0) " (incl. ${if (kid.extraToday > 0) "+" else ""}${minutesText(kid.extraToday)})" else "")
-                Content(PaddingValues(horizontal = 16.dp, vertical = 10.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        listOf(15, 30, 60).forEach { m ->
-                            Text("+${minutesText(m)}", style = HigType.subhead, color = c.tint, textAlign = TextAlign.Center,
-                                modifier = Modifier.weight(1f).clip(CircleShape).background(c.tint.copy(alpha = 0.12f))
-                                    .clickable { gate.run("Give ${kid.name} $m more minutes today.") { pw -> state.family = state.client!!.extraTime(kid.id, m, pw) } }
-                                    .padding(vertical = 8.dp))
-                        }
-                    }
-                }
-            }
+            TimeToday(state, gate, kid) { sheet = "end" }
         }
         section("bed", "Bedtime", "At bedtime the TV shows a good-night screen and goes to standby a minute later. A parent can allow one more hour with the PIN.") {
             ToggleRow("Bedtime", kid.bedtimeOn) { on -> save(kid.copy(bedtimeOn = on)) }
@@ -331,24 +338,14 @@ internal fun GuestPage(state: AppState, gate: PasswordGate, onBack: () -> Unit) 
     val c = Hig.colors
     val g = state.family?.guest ?: return
     var sheet by remember { mutableStateOf(false) }
+    var ending by remember { mutableStateOf(false) }
+    if (ending) EndTimeAlert(state, g.asKid()) { ending = false }
     HigScreen("Guest", onBack = onBack, backLabel = "Family") {
         section("time", "Screen Time", "One allowance a day, shared by every guest that day. When it's used up the TV shows Time's up; " +
             "guests can ask for more time and it appears under Needs You.") {
             Row("Today", value = minutesText(g.usedToday))
             Row("Daily Limit", value = if (g.dailyLimit == 0) "None" else minutesText(g.dailyLimit), chevron = true) { sheet = true }
-            if (g.dailyLimit > 0) {
-                Row("Left Today", value = minutesText(g.minutesLeft.coerceAtLeast(0)) + if (g.extraToday != 0) " (incl. +${minutesText(g.extraToday)})" else "")
-                Content(PaddingValues(horizontal = 16.dp, vertical = 10.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        listOf(15, 30, 60).forEach { m ->
-                            Text("+${minutesText(m)}", style = HigType.subhead, color = c.tint, textAlign = TextAlign.Center,
-                                modifier = Modifier.weight(1f).clip(CircleShape).background(c.tint.copy(alpha = 0.12f))
-                                    .clickable { gate.run("Give guests $m more minutes today.") { pw -> state.family = state.client!!.extraTime("guest", m, pw) } }
-                                    .padding(vertical = 8.dp))
-                        }
-                    }
-                }
-            }
+            TimeToday(state, gate, g.asKid()) { ending = true }
         }
     }
     if (sheet) HigSheet("Guest Daily Limit", onCancel = { sheet = false }, done = null) {
@@ -359,4 +356,51 @@ internal fun GuestPage(state: AppState, gate: PasswordGate, onBack: () -> Unit) 
             }
         }
     }
+}
+
+internal fun switchText(n: Int) = when {
+    n < 0 -> "No Limit"
+    n == 0 -> "Always Ask a Parent"
+    n == 1 -> "Once a Day"
+    else -> "$n Times a Day"
+}
+
+/**
+ * Today's time for a profile: what's left, give or take minutes, and End Now. Giving needs the
+ * password; taking away and ending don't (they only tighten).
+ */
+@Composable
+internal fun com.ajit.tvhero.remote.ui.hig.SectionScope.TimeToday(state: AppState, gate: PasswordGate, kid: Kid, onEnd: () -> Unit) {
+    val c = Hig.colors
+    val limited = kid.minutesLeft >= 0
+    if (limited) {
+        Row("Left Today", value = (if (kid.endedToday && kid.minutesLeft == 0) "Ended by a parent" else minutesText(kid.minutesLeft)) +
+            if (kid.extraToday > 0 && !kid.endedToday) " (incl. +${minutesText(kid.extraToday)})" else "")
+        Content(PaddingValues(horizontal = 16.dp, vertical = 10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(-15, 15, 30, 60).forEach { m ->
+                    val canTake = m > 0 || kid.minutesLeft > 0
+                    Text((if (m < 0) "\u2212" else "+") + minutesText(kotlin.math.abs(m)), style = HigType.subhead,
+                        color = if (!canTake) c.tertiaryLabel else if (m < 0) c.orange else c.tint, textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f).clip(CircleShape).background((if (m < 0) c.orange else c.tint).copy(alpha = 0.12f))
+                            .clickable(enabled = canTake) {
+                                if (m < 0) state.run { state.family = state.client!!.takeTime(kid.id, -m) }
+                                else gate.run("Give ${kid.name} $m more minutes today.") { pw -> state.family = state.client!!.extraTime(kid.id, m, pw) }
+                            }.padding(vertical = 8.dp))
+                }
+            }
+        }
+    }
+    if (!(kid.endedToday && kid.minutesLeft == 0)) ButtonRow("End Today's Time Now", destructive = true, onClick = onEnd)
+}
+
+/** Confirms End Now; no password, since it only tightens. */
+@Composable
+internal fun EndTimeAlert(state: AppState, kid: Kid, onDone: () -> Unit) {
+    HigAlert("End ${kid.name}'s TV time?", "If ${kid.name} is watching, the TV shows Time's up now. It counts for today only; " +
+        "adding time later lets them watch again.", onDone,
+        buttons = listOf("Cancel" to onDone, "End Now" to {
+            onDone()
+            state.run { state.family = state.client!!.endToday(kid.id); state.refresh() }
+        }), destructiveIndex = 1)
 }

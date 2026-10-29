@@ -70,13 +70,14 @@ The script starts tv-hero first, then makes it Home, switches the stock launcher
 - **The TV starts in the Family profile**: YouTube, YouTube · Brave, JioHotstar, Xiaomi TV+, WhatsApp, Browser, Live TV, Miracast. Settings and the Play Store are for Parent.
 - **Profile button** (round letter, top right): *Who's watching?* with every profile, Guest, Parent (PIN, or the parent password while no PIN is set) and the **Parent Menu**.
 - **Parent Menu** (no phone needed):
-  - profiles (add, rename, apps, daily limit, bedtime, Earn Time, remove)
+  - profiles (add, rename, apps, daily limit, bedtime, Earn Time, Time Today: add, take away, end now, remove)
   - **Apps for Everyone** (on in every profile; out of the box: Browser, WhatsApp, YouTube · Brave)
   - which profile the TV starts in
   - Parent PIN
   - who can control the TV
   - internet control, debugging, Guest mode, **Guest Time** (a daily allowance shared by all guests)
 - **Time's up, Bedtime and Paused lock the TV.** Whatever was playing is paused, the app is sent away and nothing else opens behind the screen. All a child can do there is switch profile (the PIN is needed to move to a profile with no daily limit), **Ask for Time** (it shows on the parents' phones under Needs You) or enter the Parent PIN.
+- **Profile switches:** a kid or Guest can change profile on the TV once a day (Family → Profile Switches on the phone, or Profile Switches in the Parent Menu). After that, and always for a profile with no daily limit, the TV offers **Ask a Parent** (Needs You on the phone) or the Parent PIN.
 - **Earn Time** (Time's up only): questions in Maths, English words, General knowledge, Hindi and Puzzles, at Easy, Medium or Hard. Each right answer adds 5 minutes, up to 15 minutes a day (both set per profile). A wrong answer costs nothing, but three wrong in a row means a 10-minute break, so guessing doesn't pay. The questions are built into the TV app: no internet, no tracking; the TV keeps only today's count.
 - **YouTube · Brave** opens m.youtube.com in Brave (ad and tracker blocking) and reuses one tab. Brave 1.80.124 is the last release for Android 9 (Chromium 138), so it no longer gets security updates: use it for YouTube, and the **Browser** (TV Bro, made for the remote) for everything else.
 - **WhatsApp** is the phone app. On first start, link it to your phone (⋮ → *Link as companion device*, scan the code with WhatsApp on your phone). Type with the phone's Bluetooth keyboard (Remote tab).
@@ -86,7 +87,8 @@ The script starts tv-hero first, then makes it Home, switches the stock launcher
 
 Screenshots of every screen: `docs/screenshots/phone/` (regenerate with `./gradlew :companion:testDebugUnitTest -Pscreenshots=record`).
 - **Family** tab: profiles (Family and kids), **Guest** (daily limit, extra time), **Apps for Everyone**, **Start-up Profile**, each profile's apps, limit, bedtime and **Earn Time** (on/off, minutes per right answer, most per day, level, topics, earned today).
-- **TV** tab, **Needs You**: kids' requests for an app, more time today, or a later bedtime.
+- **TV** tab, **Needs You**: kids' requests for an app, more time today, a later bedtime, or another profile switch.
+- **Time Today** (TV tab, each profile page, Guest page): −15 / +15 / +30 / +1 hr for today, and **End Today's Time Now**, which shows Time's up on the TV at once, even for a profile without a daily limit. Giving time needs the password; taking it away or ending it doesn't. When a parent ends the time, Earn Time isn't offered.
 
 | Tab | |
 |---|---|

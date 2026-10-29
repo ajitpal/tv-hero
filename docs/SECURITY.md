@@ -10,7 +10,7 @@ tv-hero lets a phone control a family TV and its parental rules, so the threats 
 | Commands in transit | Mutual TLS (TLS 1.2 on the TV, ECDHE + AES-GCM, forward secrecy), certificates pinned by SHA-256 on both sides. |
 | Device keys | EC P-256 keys generated inside each device's Android Keystore. They can't be exported, even by tv-hero. |
 | Parent password | Stored on the TV only as PBKDF2-HMAC-SHA1 (20 000 rounds, random salt). It travels only inside the TLS channel. 5 wrong tries lock checks for 5 minutes. Never logged. |
-| Loosening a rule | Allowing or approving an app, resuming a paused TV, switching to Parent, adding time, removing another phone, turning internet control on: each needs the password. Tightening (block, pause, sleep, internet off) never does. |
+| Loosening a rule | Allowing or approving an app, resuming a paused TV, switching to Parent, adding time, removing another phone, turning internet control on: each needs the password. Tightening (block, pause, sleep, internet off, taking minutes away, ending today's time, fewer profile switches) never does. |
 | Remote (internet) control | **Off by default.** Turning it on needs the password, a phone on the home network, **and Allow on the TV**. It can't be turned on from afar or by accident. Off works at once, from anywhere. |
 | The app on the phone | App lock: fingerprint, or the phone's screen lock as a fallback, when the app opens and after 30 s in the background. |
 

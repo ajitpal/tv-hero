@@ -256,6 +256,26 @@ public final class Profiles {
         prefs.edit().putInt("guest_limit", Math.max(0, Math.min(24 * 60, minutes))).apply();
     }
 
+    // ---------- profile switches on the TV ----------
+
+    /** Free profile switches a day on the TV from a kid or Guest profile; -1 = no limit. Then a parent decides. */
+    public synchronized int switchLimit() { return prefs.getInt("switch_limit", 1); }
+
+    public synchronized void setSwitchLimit(int n) { prefs.edit().putInt("switch_limit", Math.max(-1, Math.min(10, n))).apply(); }
+
+    public synchronized int switchesToday() {
+        return today().equals(prefs.getString("switch_day", "")) ? prefs.getInt("switch_used", 0) : 0;
+    }
+
+    public synchronized boolean freeSwitchLeft() {
+        int limit = switchLimit();
+        return limit < 0 || switchesToday() < limit;
+    }
+
+    public synchronized void noteSwitch() {
+        prefs.edit().putInt("switch_used", switchesToday() + 1).putString("switch_day", today()).apply();
+    }
+
     public synchronized boolean isGuest() { return GUEST.equals(activeId()); }
 
     public synchronized void setActive(String id) {
@@ -345,9 +365,57 @@ public final class Profiles {
     }
 
     public synchronized void addExtra(String profile, int minutes) {
+        setExtra(profile, extraMinutes(profile) + minutes);
+        if (minutes > 0) putToday("ended", profile, null);   // time given back: no longer "ended by a parent"
+    }
+
+    private void setExtra(String profile, int minutes) {
         JSONObject x = extraToday();
-        try { x.put(profile, x.optInt(profile, 0) + minutes); } catch (JSONException ignored) { }
+        try { x.put(profile, minutes); } catch (JSONException ignored) { }
         prefs.edit().putString("extra", x.toString()).putString("extra_day", today()).apply();
+    }
+
+    // Today-only controls a parent sets: {"limit": {profile: minutes}, "ended": {profile: true}}; reset each day.
+
+    private JSONObject todayCtl() {
+        if (!today().equals(prefs.getString("ctl_day", ""))) return new JSONObject();
+        try { return new JSONObject(prefs.getString("ctl", "{}")); } catch (JSONException e) { return new JSONObject(); }
+    }
+
+    private void putToday(String group, String profile, Object value) {
+        JSONObject c = todayCtl();
+        try {
+            JSONObject g = c.optJSONObject(group);
+            if (g == null) g = new JSONObject();
+            if (value == null) g.remove(profile); else g.put(profile, value);
+            c.put(group, g);
+        } catch (JSONException ignored) { }
+        prefs.edit().putString("ctl", c.toString()).putString("ctl_day", today()).apply();
+    }
+
+    /** Today's limit: the profile's daily limit, or a limit a parent set just for today (End Now); -1 for none. */
+    synchronized int limitToday(Kid k) {
+        if (k.dailyLimit > 0) return k.dailyLimit;
+        JSONObject l = todayCtl().optJSONObject("limit");
+        return l != null && l.has(k.id) ? l.optInt(k.id) : -1;
+    }
+
+    /** True when a parent ended this profile's TV time today (Earn Time is then not offered). */
+    public synchronized boolean endedToday(String profile) {
+        JSONObject e = todayCtl().optJSONObject("ended");
+        return e != null && e.optBoolean(profile, false);
+    }
+
+    /** Ends today's TV time for [k] now, with or without a daily limit. Adding time later reopens it. */
+    public synchronized void endToday(Kid k) {
+        int used = usedMinutes(k.id);
+        if (k.dailyLimit > 0) {
+            setExtra(k.id, used - k.dailyLimit);
+        } else {
+            putToday("limit", k.id, used);
+            setExtra(k.id, 0);
+        }
+        putToday("ended", k.id, true);
     }
 
     public synchronized int extraMinutes(String profile) {
@@ -361,8 +429,10 @@ public final class Profiles {
 
     /** Minutes left today for a kid, or -1 for no limit. Extra time counts. */
     public synchronized int minutesLeft(Kid k) {
-        if (k == null || k.dailyLimit <= 0) return -1;
-        return Math.max(0, k.dailyLimit + extraMinutes(k.id) - usedMinutes(k.id));
+        if (k == null) return -1;
+        int limit = limitToday(k);
+        if (limit < 0) return -1;
+        return Math.max(0, limit + extraMinutes(k.id) - usedMinutes(k.id));
     }
 
     // ---------- earn time (quiz) ----------
@@ -508,14 +578,16 @@ public final class Profiles {
         JSONArray kids = new JSONArray();
         for (Kid k : kids()) {
             kids.put(k.json().put("used_today", usedMinutes(k.id)).put("extra_today", extraMinutes(k.id))
+                    .put("ended_today", endedToday(k.id))
                     .put("quiz_earned_today", quizEarned(k.id)).put("quiz_right_today", quizRight(k.id))
                     .put("minutes_left", minutesLeft(k)));
         }
         Kid g = guest();
         JSONObject guest = new JSONObject().put("daily_limit", g.dailyLimit).put("used_today", usedMinutes(GUEST))
-                .put("extra_today", extraMinutes(GUEST)).put("minutes_left", minutesLeft(g));
+                .put("extra_today", extraMinutes(GUEST)).put("minutes_left", minutesLeft(g)).put("ended_today", endedToday(GUEST));
         return new JSONObject().put("kids", kids).put("guest", guest).put("active", activeId()).put("on_wake", onWake())
                 .put("common_apps", new JSONArray(commonApps()))
+                .put("switch_limit", switchLimit()).put("switches_today", switchesToday())
                 .put("pin_set", pinSet()).put("locked", locked()).put("max_kids", MAX_KIDS)
                 .put("parent_used_today", usedMinutes(PARENT)).put("sleep_at", sleepAt());
     }

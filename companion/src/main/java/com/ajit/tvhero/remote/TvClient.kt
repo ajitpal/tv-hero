@@ -53,6 +53,8 @@ data class Kid(
     val quiz: QuizSettings = QuizSettings(),
     val quizEarnedToday: Int = 0,
     val quizRightToday: Int = 0,
+    /** A parent ended today's time (End Now); adding time reopens it. */
+    val endedToday: Boolean = false,
 ) {
     fun json(): JSONObject = JSONObject().put("id", id).put("name", name).put("color", color)
         .put("allowed", JSONArray(allowed.toList())).put("daily_limit", dailyLimit)
@@ -66,7 +68,7 @@ data class Kid(
             o.optInt("daily_limit"), o.optBoolean("bedtime_on"), o.optInt("bedtime_start", 21 * 60),
             o.optInt("bedtime_end", 7 * 60), o.optInt("used_today"), o.optInt("extra_today"), o.optInt("minutes_left", -1),
             o.optJSONObject("quiz")?.let { QuizSettings.from(it) } ?: QuizSettings(),
-            o.optInt("quiz_earned_today"), o.optInt("quiz_right_today"),
+            o.optInt("quiz_earned_today"), o.optInt("quiz_right_today"), o.optBoolean("ended_today"),
         )
     }
 }
@@ -97,7 +99,12 @@ data class QuizSettings(
 }
 
 /** Guest's screen time: one daily allowance shared by every guest that day; 0 = no limit. */
-data class GuestTime(val dailyLimit: Int = 0, val usedToday: Int = 0, val extraToday: Int = 0, val minutesLeft: Int = -1)
+data class GuestTime(val dailyLimit: Int = 0, val usedToday: Int = 0, val extraToday: Int = 0, val minutesLeft: Int = -1,
+                     val endedToday: Boolean = false) {
+    /** Guest as a profile, for the shared time controls. */
+    fun asKid() = Kid("guest", "Guest", -1, emptySet(), dailyLimit, false, 0, 0, usedToday, extraToday, minutesLeft,
+        QuizSettings(enabled = false), endedToday = endedToday)
+}
 
 data class Family(
     val kids: List<Kid>,
@@ -111,6 +118,9 @@ data class Family(
     /** Apps for everyone: on in every profile on top of its own apps. */
     val commonApps: Set<String> = emptySet(),
     val guest: GuestTime = GuestTime(),
+    /** Free profile switches a day on the TV from a kid or Guest; -1 = no limit, 0 = always ask. */
+    val switchLimit: Int = 1,
+    val switchesToday: Int = 0,
 )
 
 data class NowPlaying(
@@ -330,6 +340,20 @@ class TvClient(
     suspend fun extraTime(id: String, minutes: Int, password: String): Family = parseFamily(request("POST", "/v1/profiles/extra",
         JSONObject().put("id", id).put("minutes", minutes).put("password", password)))
 
+    /** Takes minutes away for today: no password, it only tightens. */
+    suspend fun takeTime(id: String, minutes: Int): Family = parseFamily(request("POST", "/v1/profiles/extra",
+        JSONObject().put("id", id).put("minutes", -kotlin.math.abs(minutes))))
+
+    /** Ends a profile's TV time for today now (Time's up at once if it's watching). No password. */
+    suspend fun endToday(id: String): Family = parseFamily(request("POST", "/v1/profiles/end", JSONObject().put("id", id)))
+
+    /** Free profile switches a day on the TV; the password is needed only to allow more. */
+    suspend fun setSwitchLimit(limit: Int, password: String?): Family {
+        val b = JSONObject().put("limit", limit)
+        if (password != null) b.put("password", password)
+        return parseFamily(request("POST", "/v1/profiles/switches", b))
+    }
+
     suspend fun setOnWake(value: String, password: String): Family =
         parseFamily(request("POST", "/v1/profiles/on_wake", JSONObject().put("on_wake", value).put("password", password)))
 
@@ -397,7 +421,8 @@ class TvClient(
             o.optString("on_wake", "ask"), o.optBoolean("pin_set"), o.optBoolean("locked"),
             o.optInt("parent_used_today"), o.optLong("sleep_at"), o.optInt("max_kids", 10),
             o.optJSONArray("common_apps")?.strings()?.toSet() ?: emptySet(),
-            o.optJSONObject("guest")?.let { g -> GuestTime(g.optInt("daily_limit"), g.optInt("used_today"), g.optInt("extra_today"), g.optInt("minutes_left", -1)) } ?: GuestTime())
+            o.optJSONObject("guest")?.let { g -> GuestTime(g.optInt("daily_limit"), g.optInt("used_today"), g.optInt("extra_today"), g.optInt("minutes_left", -1), g.optBoolean("ended_today")) } ?: GuestTime(),
+            o.optInt("switch_limit", 1), o.optInt("switches_today"))
     }
 
     private fun parseRemote(o: JSONObject) = RemoteAccess(o.optBoolean("adb_enabled"), o.optString("adb_port"),

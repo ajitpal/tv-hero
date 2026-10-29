@@ -56,7 +56,7 @@ fun TvTab(state: AppState, gate: PasswordGate, openTab: (Int) -> Unit) {
     val now = state.now
     val family = state.family
     val c = Hig.colors
-    val activeKid = family?.kids?.firstOrNull { it.id == family.active }
+    val activeKid = family?.kids?.firstOrNull { it.id == family.active } ?: family?.takeIf { it.active == "guest" }?.guest?.asKid()
 
     HigScreen(title = state.tv?.name?.removePrefix("tv-hero · ") ?: "TV", trailing = { ConnectionBadge(state.connection) }) {
         item("now") { NowCard(state) }
@@ -73,16 +73,17 @@ fun TvTab(state: AppState, gate: PasswordGate, openTab: (Int) -> Unit) {
             }
             Row(Modifier.padding(horizontal = 16.dp).padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 ActionTile("Who's Watching", Icons.Rounded.Group, c.tint, Modifier.weight(1f)) { sheet = "who" }
-                ActionTile("More Time", Icons.Rounded.MoreTime, c.green, Modifier.weight(1f), enabled = activeKid != null) { sheet = "extra" }
+                ActionTile("Time Today", Icons.Rounded.MoreTime, c.green, Modifier.weight(1f), enabled = activeKid != null) { sheet = "extra" }
             }
         }
         if (state.requests.isNotEmpty()) section("asks", "Needs You", "Allowing needs the parent password: an app goes on that profile's list, extra time counts for today only.") {
             state.requests.forEach { r ->
-                val asked = when (r.kind) { "time" -> "${r.profileName} asked for more time"; "bedtime" -> "${r.profileName} asked to stay up"; else -> "${r.profileName} asked to watch" }
+                val asked = when (r.kind) { "time" -> "${r.profileName} asked for more time"; "bedtime" -> "${r.profileName} asked to stay up"
+                    "switch" -> "${r.profileName} asked to change profile"; else -> "${r.profileName} asked to watch" }
                 Row(r.label, asked, leading = {
                     if (r.kind == "app") AppIcon(state, r.pkg, 32)
-                    else com.ajit.tvhero.remote.ui.hig.IconTile(if (r.kind == "time") Icons.Rounded.MoreTime else Icons.Rounded.Bedtime,
-                        if (r.kind == "time") c.green else Color(0xFF5856D6), 32.dp)
+                    else com.ajit.tvhero.remote.ui.hig.IconTile(when (r.kind) { "time" -> Icons.Rounded.MoreTime; "switch" -> Icons.Rounded.Group; else -> Icons.Rounded.Bedtime },
+                        when (r.kind) { "time" -> c.green; "switch" -> c.tint; else -> Color(0xFF5856D6) }, 32.dp)
                 }, trailing = {
                     androidx.compose.foundation.layout.Row {
                         Text("Decline", style = HigType.body, color = c.secondaryLabel, modifier = Modifier.clickable {
@@ -150,16 +151,12 @@ fun TvTab(state: AppState, gate: PasswordGate, openTab: (Int) -> Unit) {
             }
             section("w2") { ButtonRow("Show “Who’s Watching?” on the TV") { sheet = null; state.run { state.client!!.key("picker") } } }
         }
-        "extra" -> if (activeKid != null) HigSheet("More Time for ${activeKid.name}", onCancel = { sheet = null }, done = null) {
-            section("e", footer = "Added to today only. ${activeKid.name} has ${if (activeKid.minutesLeft < 0) "no limit" else minutesText(activeKid.minutesLeft) + " left"}.") {
-                listOf(15, 30, 60).forEach { m ->
-                    Row("+ ${minutesText(m)}", onClick = {
-                        sheet = null
-                        gate.run("Give ${activeKid.name} $m more minutes.") { pw -> state.family = state.client!!.extraTime(activeKid.id, m, pw) }
-                    })
-                }
+        "extra" -> if (activeKid != null) HigSheet("Time Today for ${activeKid.name}", onCancel = { sheet = null }, done = null) {
+            section("e", footer = "Counts for today only. Giving time needs the password; taking it away or ending it doesn't.") {
+                TimeToday(state, gate, activeKid) { sheet = "end" }
             }
         }
+        "end" -> if (activeKid != null) EndTimeAlert(state, activeKid) { sheet = null }
     }
 }
 

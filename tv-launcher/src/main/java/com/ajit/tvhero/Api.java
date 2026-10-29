@@ -144,6 +144,8 @@ final class Api implements ControlServer.Handler {
                 case "POST /v1/profiles/delete": return deleteProfile(b);
                 case "POST /v1/profiles/activate": return activate(b);
                 case "POST /v1/profiles/extra": return extra(b);
+                case "POST /v1/profiles/end": return endToday(b);
+                case "POST /v1/profiles/switches": return switchLimit(b);
                 case "POST /v1/profiles/on_wake": return onWake(b);
                 case "POST /v1/profiles/common": return setCommon(b);
                 case "GET /v1/requests": return requests();
@@ -405,6 +407,10 @@ final class Api implements ControlServer.Handler {
             String what = o.optString("package");
             if (what.startsWith("time:")) o.put("kind", "time").put("label", what.substring(5) + " more minutes today");
             else if (what.startsWith("bedtime:")) o.put("kind", "bedtime").put("label", "Stay up " + what.substring(8) + " minutes later");
+            else if (what.startsWith("switch:")) {
+                Profiles.Kid to = profiles.kid(what.substring(7));
+                o.put("kind", "switch").put("label", "Switch to " + (to == null ? "another profile" : to.name));
+            }
             else o.put("kind", "app").put("label", labels.get(what));
         }
         return ok(new JSONObject().put("requests", open));
@@ -424,6 +430,13 @@ final class Api implements ControlServer.Handler {
             String what = r.optString("package");
             if (k != null && what.startsWith("time:")) {
                 profiles.addExtra(k.id, Math.max(5, Math.min(240, parseMinutes(what.substring(5)))));
+            } else if (what.startsWith("switch:")) {
+                Profiles.Kid to = profiles.kid(what.substring(7));
+                if (to != null) {
+                    profiles.setActive(to.id);
+                    actions.globalAction("picker_done");
+                    log("profile", to.name);
+                }
             } else if (k != null && what.startsWith("bedtime:")) {
                 profiles.snoozeBedtime(Math.max(5, Math.min(180, parseMinutes(what.substring(8)))));
             } else if (k != null) {
@@ -692,15 +705,41 @@ final class Api implements ControlServer.Handler {
         return ok(profiles.json());
     }
 
+    /** Adds minutes for today (password), or takes them away (no password: it only tightens). */
     private ControlServer.Response extra(JSONObject b) throws JSONException {
-        ControlServer.Response denied = needPassword(b);
-        if (denied != null) return denied;
+        if (b.optInt("minutes", 15) > 0) {
+            ControlServer.Response denied = needPassword(b);
+            if (denied != null) return denied;
+        }
         Profiles.Kid k = profiles.kid(b.optString("id"));
         if (k == null) return error(404, "no such profile");
         int minutes = Math.max(-240, Math.min(240, b.optInt("minutes", 15)));
         profiles.addExtra(k.id, minutes);
         log("extra_time", k.name + " " + minutes);
         actions.refresh();
+        return ok(profiles.json());
+    }
+
+    /** Ends a profile's TV time for today now: Time's up at once if it's watching. No password (tightens). */
+    private ControlServer.Response endToday(JSONObject b) throws JSONException {
+        Profiles.Kid k = profiles.kid(b.optString("id"));
+        if (k == null) return error(404, "no such profile");
+        profiles.endToday(k);
+        log("time_ended", k.name);
+        actions.refresh();
+        return ok(profiles.json());
+    }
+
+    /** Free profile switches a day on the TV (-1 = no limit). Fewer needs nothing; more needs the password. */
+    private ControlServer.Response switchLimit(JSONObject b) throws JSONException {
+        int now = profiles.switchLimit(), want = Math.max(-1, Math.min(10, b.optInt("limit", now)));
+        boolean loosens = want < 0 ? now >= 0 : now >= 0 && want > now;
+        if (loosens) {
+            ControlServer.Response denied = needPassword(b);
+            if (denied != null) return denied;
+        }
+        profiles.setSwitchLimit(want);
+        log("switch_limit", String.valueOf(want));
         return ok(profiles.json());
     }
 

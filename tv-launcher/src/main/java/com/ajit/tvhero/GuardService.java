@@ -310,33 +310,51 @@ public class GuardService extends AccessibilityService {
     void showPicker(boolean fromHome) {
         List<Profiles.Kid> kids = profiles.kids();
         if (kids.isEmpty() && !fromHome) { pickerDone = true; return; }
-        ui.picker(kids, k -> {
-            Runnable go = () -> {
-                profiles.setActive(k.id);
-                pickerDone = true;
-                ui.hide();
-                store.log("profile", k.name, "TV");
-                refreshNow();
-            };
-            if (escapesLimits(k)) askPin("Parent PIN for " + k.name, go, () -> showPicker(fromHome));
-            else go.run();
-        }, () -> {
-            Runnable go = () -> {
-                profiles.setActive(Profiles.GUEST);
-                pickerDone = true;
-                ui.hide();
-                store.log("profile", "Guest", "TV");
-                refreshNow();
-            };
-            if (escapesLimits(profiles.guest())) askPin("Parent PIN for Guest", go, () -> showPicker(fromHome));
-            else go.run();
-        }, () -> askPin("Parent PIN", () -> {
+        ui.picker(kids, k -> chooseProfile(k, fromHome), () -> chooseProfile(profiles.guest(), fromHome), () -> askPin("Parent PIN", () -> {
             profiles.setActive(Profiles.PARENT);
             pickerDone = true;
             store.log("profile", "Parent", "TV");
             refreshNow();
         }, () -> showPicker(fromHome)), () -> askPin("Parent PIN", this::parentMenu, () -> showPicker(fromHome)),
                 fromHome ? () -> { ui.hide(); pickerDone = true; } : null);
+    }
+
+    /**
+     * A kid or Guest chosen on Who's watching. Moving from one limited profile to another is free
+     * [Profiles.switchLimit] times a day; after that, or to a profile without a daily limit, a parent
+     * decides: Ask a Parent (Needs You on the phone) or the PIN here.
+     */
+    private void chooseProfile(Profiles.Kid k, boolean fromHome) {
+        String from = profiles.activeId();
+        Runnable back = () -> showPicker(fromHome);
+        if (from.equals(k.id)) { ui.hide(); pickerDone = true; refreshNow(); return; }
+        boolean counts = pickerDone && !Profiles.PARENT.equals(from);
+        Runnable go = () -> {
+            if (counts) profiles.noteSwitch();
+            profiles.setActive(k.id);
+            pickerDone = true;
+            ui.hide();
+            store.log("profile", k.name, "TV");
+            refreshNow();
+        };
+        boolean overLimit = counts && !profiles.freeSwitchLeft();
+        if (!overLimit && !escapesLimits(k)) { go.run(); return; }
+        Profiles.Kid now = profiles.activeKid();
+        String why = overLimit
+                ? (profiles.switchLimit() == 0 ? "Switching profiles needs a parent's OK." :
+                   "That's " + (profiles.switchLimit() == 1 ? "the one profile switch" : "all " + profiles.switchLimit() + " profile switches")
+                           + " for today. A parent can say yes from their phone.")
+                : k.name + " has no daily limit, so a parent needs to say yes.";
+        java.util.List<Overlays.Action> actions = new java.util.ArrayList<>();
+        if (now != null) actions.add(new Overlays.Action("Ask a Parent", () -> {
+            store.addRequest(now.id, now.name, "switch:" + k.id);
+            store.log("request", "switch to " + k.name, now.name);
+            ui.toast("Asked. A parent will see it on their phone.");
+            back.run();
+        }));
+        actions.add(new Overlays.Action("Parent PIN", () -> askPin("Parent PIN for " + k.name, go, back)));
+        actions.add(new Overlays.Action("Back", back));
+        ui.message(Overlays.Kind.PICKER, "\uD83D\uDD01", "Switch to " + k.name + "?", why, back, actions.toArray(new Overlays.Action[0]));
     }
 
     // ---------- Parent Menu (on the TV, after the PIN) ----------
@@ -386,6 +404,13 @@ public class GuardService extends AccessibilityService {
             ui.hide();
             pickerDone = true;
             refreshNow();
+        }));
+        int sl = profiles.switchLimit(), switchesRow = items.size() + (switchRow ? 0 : 1);
+        items.add(new Overlays.Item("Profile Switches", sl < 0 ? "No limit" : sl == 0 ? "Ask a parent" : sl + " a day", () -> {
+            int[] steps = {1, 2, 3, -1, 0};
+            profiles.setSwitchLimit(nextOf(steps, profiles.switchLimit()));
+            store.log("switch_limit", String.valueOf(profiles.switchLimit()), "TV");
+            parentMenu(switchesRow);
         }));
         int gl = profiles.guestLimit(), guestRow = items.size() + (switchRow ? 0 : 1);
         items.add(new Overlays.Item("Guest Time", gl == 0 ? "No limit" : minutes(gl) + " a day", () -> {
@@ -502,14 +527,16 @@ public class GuardService extends AccessibilityService {
             profileMenu(id, 2);
         }));
         items.add(new Overlays.Item("Earn Time", k.quizOn ? "Up to " + k.quizCap + " min a day" : "Off", () -> quizMenu(id, 0)));
+        int left = profiles.minutesLeft(k);
+        items.add(new Overlays.Item("Time Today", left < 0 ? "No limit" : minutes(left) + " left", () -> timeTodayMenu(id, 0)));
         items.add(new Overlays.Item("Rename", k.name, () -> ui.textInput("Rename profile", "Name", k.name, false, name -> {
             k.name = name;
             saveKid(k);
-            profileMenu(id, 4);
-        }, () -> profileMenu(id, 4))));
+            profileMenu(id, 5);
+        }, () -> profileMenu(id, 5))));
         items.add(new Overlays.Item("Remove Profile", null, () -> ui.message(Overlays.Kind.CONFIRM, "\uD83D\uDDD1", "Remove " + k.name + "?",
-                "Their apps, limits and history are deleted. Apps themselves stay on the TV.", () -> profileMenu(id, 5),
-                new Overlays.Action("Cancel", () -> profileMenu(id, 5)),
+                "Their apps, limits and history are deleted. Apps themselves stay on the TV.", () -> profileMenu(id, 6),
+                new Overlays.Action("Cancel", () -> profileMenu(id, 6)),
                 new Overlays.Action("Remove", () -> {
                     profiles.delete(id);
                     if (id.equals(profiles.onWake())) profiles.setOnWake("ask");
@@ -519,6 +546,32 @@ public class GuardService extends AccessibilityService {
         items.add(new Overlays.Item("Back", null, () -> profilesMenu(0)));
         ui.menu(Overlays.Kind.MENU, k.name, "Press OK on Daily Limit or Bedtime to step through the choices. Bedtime ends at " + clock(k.bedEnd) + ".",
                 items, () -> profilesMenu(0), focus);
+    }
+
+    /** Today only: give or take minutes, or end the profile's TV time now (Time's up at once). */
+    private void timeTodayMenu(String id, int focus) {
+        Profiles.Kid k = profiles.kid(id);
+        if (k == null) { profilesMenu(0); return; }
+        int left = profiles.minutesLeft(k);
+        java.util.List<Overlays.Item> items = new java.util.ArrayList<>();
+        int[] steps = {15, 30, -15, -30};
+        for (int i = 0; i < steps.length; i++) {
+            int m = steps[i], at = i;
+            if (left < 0) continue;   // no limit today: only End Now applies
+            items.add(new Overlays.Item((m > 0 ? "Add " : "Take Away ") + minutes(Math.abs(m)), null, () -> {
+                profiles.addExtra(k.id, m);
+                store.log("extra_time", k.name + " " + m, "TV");
+                timeTodayMenu(id, at);
+            }));
+        }
+        items.add(new Overlays.Item("End Today's Time Now", null, () -> {
+            profiles.endToday(k);
+            store.log("time_ended", k.name, "TV");
+            timeTodayMenu(id, items.size() - 2);
+        }));
+        items.add(new Overlays.Item("Back", null, () -> profileMenu(id, 4)));
+        ui.menu(Overlays.Kind.MENU, "Time Today \u00b7 " + k.name,
+                (left < 0 ? "No limit today." : minutes(left) + " left today.") + " Changes count for today only.", items, () -> profileMenu(id, 4), focus);
     }
 
     private static final int[] QUIZ_MINUTES = {2, 5, 10};
@@ -757,7 +810,7 @@ public class GuardService extends AccessibilityService {
         boolean bedtime = kid.inBedtime(m) && System.currentTimeMillis() > profiles.bedtimeSnoozeUntil();
         int left = profiles.minutesLeft(kid);
         if (bedtime) {
-            if (ui.kind() != Overlays.Kind.BEDTIME && ui.kind() != Overlays.Kind.PIN) showBedtime(kid);
+            if (ui.kind() != Overlays.Kind.BEDTIME && ui.kind() != Overlays.Kind.PIN && ui.kind() != Overlays.Kind.PICKER) showBedtime(kid);
             if (bedtimeSleepAt == 0) bedtimeSleepAt = nowEl + 60_000;
             else if (nowEl >= bedtimeSleepAt) { bedtimeSleepAt = 0; sleep(); }
             return;
@@ -765,7 +818,7 @@ public class GuardService extends AccessibilityService {
         bedtimeSleepAt = 0;
         if (left == 0) {
             Overlays.Kind on = ui.kind();
-            if (on != Overlays.Kind.TIMES_UP && on != Overlays.Kind.PIN && on != Overlays.Kind.QUIZ) showTimesUp(kid);
+            if (on != Overlays.Kind.TIMES_UP && on != Overlays.Kind.PIN && on != Overlays.Kind.QUIZ && on != Overlays.Kind.PICKER) showTimesUp(kid);
             return;
         }
         if (ui.kind() == Overlays.Kind.TIMES_UP || ui.kind() == Overlays.Kind.BEDTIME || ui.kind() == Overlays.Kind.LOCKED) ui.hide();
@@ -797,14 +850,16 @@ public class GuardService extends AccessibilityService {
             store.log("times_up", kid.name);
         }
         int earned = profiles.quizEarned(kid.id);
-        boolean canEarn = kid.quizOn && earned < kid.quizCap;
-        String body = "Your " + kid.dailyLimit + " minutes are used up.";
+        boolean ended = profiles.endedToday(kid.id);
+        boolean canEarn = kid.quizOn && earned < kid.quizCap && !ended;
+        String body = ended ? "A parent ended TV time for today."
+                : kid.dailyLimit > 0 ? "Your " + kid.dailyLimit + " minutes are used up." : "Today's TV time is used up.";
         if (canEarn) body += " Answer questions to earn up to " + (kid.quizCap - earned) + " more minutes, or ask a parent.";
-        else if (kid.quizOn && kid.quizCap > 0) body += " You earned all " + kid.quizCap + " bonus minutes today. Well done!";
+        else if (!ended && kid.quizOn && kid.quizCap > 0) body += " You earned all " + kid.quizCap + " bonus minutes today. Well done!";
         else body += " A parent can add more time from their phone.";
         java.util.List<Overlays.Action> actions = new java.util.ArrayList<>();
         if (canEarn) actions.add(new Overlays.Action("\u2B50 Earn Time", () -> startQuiz(kid.id)));
-        actions.add(new Overlays.Action("Switch Profile", this::showPicker));
+        actions.add(new Overlays.Action("Switch Profile", () -> showPicker(true)));
         actions.add(new Overlays.Action("Ask for Time", () -> askForTime(kid, "time:30")));
         actions.add(new Overlays.Action("Parent PIN", () -> askPin("Parent PIN: 30 more minutes", () -> {
             profiles.addExtra(kid.id, 30);
@@ -820,7 +875,7 @@ public class GuardService extends AccessibilityService {
         store.log("bedtime", kid.name);
         ui.message(Overlays.Kind.BEDTIME, "🌙", "It's bedtime, " + kid.name,
                 "The TV turns off in a minute. Good night!", null,
-                new Overlays.Action("Switch Profile", this::showPicker),
+                new Overlays.Action("Switch Profile", () -> showPicker(true)),
                 new Overlays.Action("Ask for Time", () -> askForTime(kid, "bedtime:60")),
                 new Overlays.Action("Parent PIN", () -> askPin("Parent PIN: 1 more hour tonight", () -> {
                     profiles.snoozeBedtime(60);
