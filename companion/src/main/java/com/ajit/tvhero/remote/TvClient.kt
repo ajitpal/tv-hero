@@ -398,6 +398,14 @@ class TvClient(
     }
 
     suspend fun launch(pkg: String) { request("POST", "/v1/launch", JSONObject().put("package", pkg)) }
+    // ---------- tools (Phase 3) ----------
+
+    suspend fun tools(): JSONObject = request("GET", "/v1/tools")
+
+    suspend fun startTool(body: JSONObject): JSONObject = request("POST", "/v1/tools/start", body)
+
+    suspend fun toolControl(action: String): JSONObject = request("POST", "/v1/tools/control", JSONObject().put("action", action))
+
     suspend fun key(action: String) { request("POST", "/v1/key", JSONObject().put("action", action)) }
 
     // ---------- account and remote access ----------

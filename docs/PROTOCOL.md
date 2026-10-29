@@ -90,6 +90,9 @@ Changes that loosen protection also need `"password"` in the body.
 | `GET /v1/internet` | | | `{enabled, since, by, pending, tailscale_ip}` |
 | `POST /v1/internet` | `{enabled}` | ✔ to turn on | off: at once, from anywhere. On: only from the home network, answers **202** `pending: true` and the TV asks someone to press Allow. |
 | `POST /v1/password` | `{password, new_password}` (≥ 6) | ✔ | |
+| `GET /v1/tools` | | | `{state: {tool: none\|timer\|stopwatch\|workout, running, finished, label, elapsed_ms, left_ms, laps, phase, phase_left_ms, …}, presets: [workout…], tools}` |
+| `POST /v1/tools/start` | `{tool: timer, minutes \| seconds, label}` \| `{tool: stopwatch}` \| `{tool: workout, workout: {name, prepare, work, rest, rounds, sets, set_rest, exercises}}` \| `{tool: clock}` | | starts it and brings its screen forward (unless a lock screen is up) |
+| `POST /v1/tools/control` | `{action: pause \| resume \| toggle \| stop \| add_minute \| lap \| skip}` | | |
 | `GET /v1/log` | | | last 200 events `{t, type, package, by}`; `by` names the phone or "TV" |
 | `GET /v1/remote`, `POST /v1/adb` | `{enabled}` | ✔ | Tailscale status; network debugging on/off |
 

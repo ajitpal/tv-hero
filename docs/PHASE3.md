@@ -2,6 +2,7 @@
 
 Status (29 Oct 2026):
 - **M1 done:** ADB client (`adb/`) and capability probe. The real TV was probed with it; it reports Full level on the Xiaomi. The encoded public key matches `adbkey.pub` byte for byte, and a streamed install took 3.3 s.
+- **M3 built (2.6):** Timer, Stopwatch and Workout (HIIT) on the TV, a Tools button on Home and a "tv-hero Tools" launcher entry, and phone TV tab → Tools with live control and custom workouts. Tools don't count as screen time.
 - **M2 built:** phone Settings → About → TV App: Check the TV and Update the TV App, with the APK built into the phone app. It still needs a check on Ajit's phone.
 - The base screensaver (2.4) is also done.
 - Everything else here is still a plan.

@@ -813,7 +813,7 @@ public class GuardService extends AccessibilityService {
         long elapsed = Math.min(nowEl - lastTick, 2 * TICK_MS);
         lastTick = nowEl;
         if (!screenOn()) return;
-        if (playbackLock()) stopPlayback(); else releaseFocus();
+        if (playbackLock()) { stopPlayback(); ToolsEngine.get(this).pauseForLock(); } else releaseFocus();
         String active = profiles.activeId();
         Profiles.Kid kid = profiles.activeKid();
         if (!isScreenLock() && watching()) profiles.addUsage(active, (int) (elapsed / 1000));
@@ -995,6 +995,20 @@ public class GuardService extends AccessibilityService {
                     new Overlays.Action("Next Question", () -> startQuiz(kid.id)),
                     new Overlays.Action("Back", this::endQuiz));
         }
+    }
+
+    // ---------- tools ----------
+
+    void toolToast(String msg) { if (ui != null) ui.toast(msg); }
+
+    /** Brings a tool's screen forward (its timer ended), unless a lock screen or prompt is showing. */
+    void showTool(Class<?> screen) {
+        if (ui != null && ui.showing()) return;
+        main.post(() -> {
+            try {
+                startActivity(new Intent(this, screen).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            } catch (RuntimeException ignored) { }
+        });
     }
 
     /** A limited profile (daily limit or bedtime) switching to one with no daily limit would skip it: PIN. */

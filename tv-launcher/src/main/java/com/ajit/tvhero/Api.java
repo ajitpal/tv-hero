@@ -138,6 +138,9 @@ final class Api implements ControlServer.Handler {
                 case "GET /v1/internet": return internet();
                 case "POST /v1/internet": return setInternet(b, home);
                 case "GET /v1/log": return ok(new JSONObject().put("log", store.logJson()));
+                case "GET /v1/tools": return tools(null, null);
+                case "POST /v1/tools/start": return tools(b, "start");
+                case "POST /v1/tools/control": return tools(b, "control");
                 case "GET /v1/now": return ok(actions.now());
                 case "GET /v1/profiles": return ok(profiles.json());
                 case "POST /v1/profiles/save": return saveProfile(b);
@@ -754,6 +757,81 @@ final class Api implements ControlServer.Handler {
         profiles.setSwitchLimit(want);
         log("switch_limit", String.valueOf(want));
         return ok(profiles.json());
+    }
+
+    // ---------- tools (Phase 3): timer, stopwatch, workout ----------
+
+    /**
+     * Starts or controls a tool on the TV and returns its state. No password: tools change no rule.
+     * Runs on the main thread, where ToolsEngine lives.
+     */
+    private ControlServer.Response tools(JSONObject b, String what) throws JSONException {
+        ToolsEngine e = ToolsEngine.get(ctx);
+        final String[] err = {null};
+        final JSONObject[] out = {null};
+        java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
+        main.post(() -> {
+            try {
+                if ("start".equals(what)) {
+                    String tool = b.optString("tool");
+                    ToolsCore.Tool shown;
+                    switch (tool) {
+                        case "timer":
+                            long ms = b.has("seconds") ? b.optLong("seconds") * 1000 : b.optLong("minutes", 5) * 60_000;
+                            e.startTimer(ms, b.optString("label", "").trim());
+                            shown = ToolsCore.Tool.TIMER;
+                            break;
+                        case "stopwatch":
+                            e.startStopwatch();
+                            shown = ToolsCore.Tool.STOPWATCH;
+                            break;
+                        case "workout": {
+                            JSONObject spec = b.optJSONObject("workout");
+                            e.startWorkout(spec != null ? ToolsEngine.specFrom(spec) : Workout.presets().get(0));
+                            shown = ToolsCore.Tool.WORKOUT;
+                            break;
+                        }
+                        case "clock":
+                            actions.globalAction("screensaver");
+                            shown = null;
+                            break;
+                        default:
+                            err[0] = "unknown tool";
+                            return;
+                    }
+                    if (shown != null) {
+                        GuardService g = GuardService.instance;
+                        if (g != null) g.showTool(shown == ToolsCore.Tool.TIMER ? TimerActivity.class
+                                : shown == ToolsCore.Tool.STOPWATCH ? StopwatchActivity.class : WorkoutActivity.class);
+                    }
+                    log("tool_started", tool);
+                } else if ("control".equals(what)) {
+                    switch (b.optString("action")) {
+                        case "pause": e.pause(); break;
+                        case "resume": e.resume(); break;
+                        case "toggle": e.toggle(); break;
+                        case "stop": e.stop(); break;
+                        case "add_minute": e.addMinute(); break;
+                        case "lap": e.lap(); break;
+                        case "skip": e.skip(); break;
+                        default: err[0] = "unknown action"; return;
+                    }
+                }
+                out[0] = e.json();
+            } catch (JSONException x) {
+                err[0] = "bad request";
+            } finally {
+                done.countDown();
+            }
+        });
+        try {
+            if (!done.await(3, java.util.concurrent.TimeUnit.SECONDS)) return error(503, "the TV is busy");
+        } catch (InterruptedException x) {
+            Thread.currentThread().interrupt();
+            return error(503, "interrupted");
+        }
+        if (err[0] != null) return error(400, err[0]);
+        return ok(out[0]);
     }
 
     /** Apps for everyone: on in every profile on top of its own apps. Needs the password (it can loosen rules). */

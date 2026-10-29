@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.MoreTime
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
@@ -53,6 +54,8 @@ fun TvTab(state: AppState, gate: PasswordGate, openTab: (Int) -> Unit) {
     var sheet by remember { mutableStateOf<String?>(null) }   // sleep | who | extra
     var allActivity by remember { mutableStateOf(false) }
     if (allActivity) { ActivityPage(state) { allActivity = false }; return }
+    var tools by remember { mutableStateOf(false) }
+    if (tools) { ToolsPage(state) { tools = false }; return }
     val now = state.now
     val family = state.family
     val c = Hig.colors
@@ -76,8 +79,9 @@ fun TvTab(state: AppState, gate: PasswordGate, openTab: (Int) -> Unit) {
                 ActionTile("Time Today", Icons.Rounded.MoreTime, c.green, Modifier.weight(1f), enabled = activeKid != null) { sheet = "extra" }
             }
         }
-        section("clock", footer = "The TV also shows it by itself after 5 idle minutes on Home, and as its screensaver. Any key on the remote closes it.") {
-            ButtonRow("Show the Clock Screensaver") { state.run { state.client!!.key("screensaver") } }
+        section("tools", footer = "Timer, Stopwatch and Workout (HIIT) on the TV, started and controlled from here. The clock screensaver is there too.") {
+            Row("Tools", subtitle = "Timer · Stopwatch · Workout · Clock", chevron = true,
+                leading = { com.ajit.tvhero.remote.ui.hig.IconTile(Icons.Rounded.Timer, Color(0xFFFF9500)) }) { tools = true }
         }
         if (state.requests.isNotEmpty()) section("asks", "Needs You", "Allowing needs the parent password: an app goes on that profile's list, extra time counts for today only.") {
             state.requests.forEach { r ->

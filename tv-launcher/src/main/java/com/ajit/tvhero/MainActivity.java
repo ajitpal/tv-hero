@@ -2400,6 +2400,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         clock.setOnClickListener(v -> open(new Intent(this, ClockActivity.class)));
         bar.addView(clock, 1);
         topAppButtons.add(clock);
+
+        // Tools: Timer, Stopwatch, Workout.
+        TextView tools = (TextView) getLayoutInflater().inflate(R.layout.top_app_button, bar, false);
+        tools.setId(View.generateViewId());
+        Drawable sw = getDrawable(R.drawable.ic_tools);
+        if (sw != null) {
+            sw.setBounds(0, 0, size, size);
+            tools.setCompoundDrawablesRelative(sw, null, null, null);
+        }
+        tools.setContentDescription("Tools: timer, stopwatch, workout");
+        tools.setOnClickListener(v -> open(new Intent(this, ToolsActivity.class)));
+        bar.addView(tools, 2);
+        topAppButtons.add(tools);
     }
 
     private void addTopBarApps(List<String> packages, Map<String, String> launchActions) {
