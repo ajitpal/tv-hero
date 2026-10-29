@@ -35,6 +35,8 @@ class AppState(context: Context) {
     var sessions by mutableStateOf<List<Session>>(emptyList())
     var remote by mutableStateOf<RemoteAccess?>(null)
     var volume by mutableStateOf<Volume?>(null)
+    /** The TV app's version, from its status. */
+    var tvVersion by mutableStateOf("")
     var phones by mutableStateOf<List<PairedPhone>>(emptyList())
     var internet by mutableStateOf<InternetControl?>(null)
     var requests by mutableStateOf<List<KidRequest>>(emptyList())
@@ -174,6 +176,7 @@ class AppState(context: Context) {
                     runCatching {
                         val st = c.status()
                         volume = st.volume
+                        tvVersion = st.version
                         now = c.now()
                         connection = c.via
                         if (internet?.enabled != st.internetControl) internet = c.internet()

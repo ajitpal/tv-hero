@@ -139,7 +139,7 @@ data class NowPlaying(
 
 data class Session(val profile: String, val pkg: String, val label: String, val title: String, val start: Long, val end: Long)
 
-data class TvStatus(val power: String, val volume: Volume, val profile: String, val internetControl: Boolean)
+data class TvStatus(val power: String, val volume: Volume, val profile: String, val internetControl: Boolean, val version: String = "")
 
 data class Volume(val level: Int, val max: Int, val muted: Boolean, val cap: Int)
 
@@ -220,7 +220,7 @@ class TvClient(
 
     suspend fun status(): TvStatus {
         val o = request("GET", Protocol.Path.STATUS)
-        return TvStatus(o.optString("power"), parseVolume(o.getJSONObject("volume")), o.optString("profile"), o.optBoolean("internet_control"))
+        return TvStatus(o.optString("power"), parseVolume(o.getJSONObject("volume")), o.optString("profile"), o.optBoolean("internet_control"), o.optString("version"))
     }
 
     suspend fun volume(): Volume = parseVolume(request("GET", Protocol.Path.VOLUME))

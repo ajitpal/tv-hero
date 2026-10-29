@@ -110,6 +110,15 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
             }
             ButtonRow("Unpair This Phone", destructive = true) { alert = "forget" }
         }
+        section("about", "About") {
+            val ctx = androidx.compose.ui.platform.LocalContext.current
+            val app = remember {
+                runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0) }.getOrNull()
+                    ?.let { "${it.versionName} (${androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(it)})" } ?: "?"
+            }
+            Row("Phone App", value = app)
+            Row("TV App", value = state.tvVersion.ifBlank { "—" })
+        }
     }
 
     when (alert) {

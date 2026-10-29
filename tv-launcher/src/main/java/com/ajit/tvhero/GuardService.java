@@ -419,8 +419,8 @@ public class GuardService extends AccessibilityService {
             parentMenu(guestRow);
         }));
         items.add(new Overlays.Item("Done", null, () -> { ui.hide(); pickerDone = true; refreshNow(); }));
-        ui.menu(Overlays.Kind.MENU, "Parent Menu", profiles.pinSet() ? "Everything here can also be done from the tv-hero app on your phone."
-                        : "Tip: set a Parent PIN. It's quicker with the remote than the password.",
+        ui.menu(Overlays.Kind.MENU, "Parent Menu", (profiles.pinSet() ? "Everything here can also be done from the tv-hero app on your phone."
+                        : "Tip: set a Parent PIN. It's quicker with the remote than the password.") + "  \u00b7  tv-hero " + Api.BuildConfigInfo.versionName(this),
                 items, () -> { ui.hide(); pickerDone = true; refreshNow(); }, focus);
     }
 

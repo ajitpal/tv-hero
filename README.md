@@ -96,7 +96,7 @@ Screenshots of every screen: `docs/screenshots/phone/` (regenerate with `./gradl
 | **Home screen** | Order of the home row, apps per row, greeting, apps hidden from Home. Saved straight to the TV. |
 | **Remote** | D-pad, OK, Back, Home, Menu, play/pause, volume, typing (Bluetooth); Home/Back and "Open on TV" also over Wi-Fi. |
 | **Controller** | Bluetooth set-up, then a game pad: D-pad, A B X Y, L1 R1, Select / Home / Start, two thumbsticks. |
-| **Settings** | Change password, phones paired with the TV (remove), recent activity (blocked attempts, installs), forget the TV. |
+| **Settings** | About (phone and TV app versions), change password, phones paired with the TV (remove), recent activity (blocked attempts, installs), forget the TV. |
 
 ## Debloat and privacy (already applied on this TV)
 
