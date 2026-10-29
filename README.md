@@ -88,7 +88,7 @@ The script starts tv-hero first, then makes it Home, switches the stock launcher
 Screenshots of every screen: `docs/screenshots/phone/` (regenerate with `./gradlew :companion:testDebugUnitTest -Pscreenshots=record`).
 - **Family** tab: profiles (Family and kids), **Guest** (daily limit, extra time), **Apps for Everyone**, **Start-up Profile**, each profile's apps, limit, bedtime and **Earn Time** (on/off, minutes per right answer, most per day, level, topics, earned today).
 - **TV** tab, **Needs You**: kids' requests for an app, more time today, a later bedtime, or another profile switch.
-- **Time Today** (TV tab, each profile page, Guest page): −15 / +15 / +30 / +1 hr for today, and **End Today's Time Now**, which shows Time's up on the TV at once, even for a profile without a daily limit. Giving time needs the password; taking it away or ending it doesn't. When a parent ends the time, Earn Time isn't offered.
+- **Time Today** (TV tab, each profile page, Guest page): −15 / +15 / +30 / +1 hr for today, and **End Today's Time Now**, which shows Time's up on the TV at once, even for a profile without a daily limit. Giving time needs the password; taking it away or ending it doesn't. Earn Time is still offered after End Now, up to the daily max; **Let … Earn Again Today** on the profile page clears today's count (password).
 
 | Tab | |
 |---|---|

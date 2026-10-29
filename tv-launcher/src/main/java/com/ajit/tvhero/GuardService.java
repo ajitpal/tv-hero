@@ -851,11 +851,11 @@ public class GuardService extends AccessibilityService {
         }
         int earned = profiles.quizEarned(kid.id);
         boolean ended = profiles.endedToday(kid.id);
-        boolean canEarn = kid.quizOn && earned < kid.quizCap && !ended;
+        boolean canEarn = kid.quizOn && earned < kid.quizCap;   // also after End Now (Ajit's choice)
         String body = ended ? "A parent ended TV time for today."
                 : kid.dailyLimit > 0 ? "Your " + kid.dailyLimit + " minutes are used up." : "Today's TV time is used up.";
         if (canEarn) body += " Answer questions to earn up to " + (kid.quizCap - earned) + " more minutes, or ask a parent.";
-        else if (!ended && kid.quizOn && kid.quizCap > 0) body += " You earned all " + kid.quizCap + " bonus minutes today. Well done!";
+        else if (kid.quizOn && kid.quizCap > 0) body += " You earned all " + kid.quizCap + " bonus minutes today. Well done!";
         else body += " A parent can add more time from their phone.";
         java.util.List<Overlays.Action> actions = new java.util.ArrayList<>();
         if (canEarn) actions.add(new Overlays.Action("\u2B50 Earn Time", () -> startQuiz(kid.id)));

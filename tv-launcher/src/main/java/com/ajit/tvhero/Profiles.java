@@ -400,7 +400,7 @@ public final class Profiles {
         return l != null && l.has(k.id) ? l.optInt(k.id) : -1;
     }
 
-    /** True when a parent ended this profile's TV time today (Earn Time is then not offered). */
+    /** True when a parent ended this profile's TV time today (shown on Time's up and the phone). */
     public synchronized boolean endedToday(String profile) {
         JSONObject e = todayCtl().optJSONObject("ended");
         return e != null && e.optBoolean(profile, false);
@@ -452,6 +452,9 @@ public final class Profiles {
         try { all.put(profile, o); } catch (JSONException ignored) { }
         prefs.edit().putString("quiz", all.toString()).putString("quiz_day", today()).apply();
     }
+
+    /** Clears today's questions for a profile: earned minutes, answers and any break (minutes already given stay). */
+    public synchronized void quizReset(String profile) { putQuiz(profile, new JSONObject()); }
 
     /** Minutes this profile earned with questions today. */
     public synchronized int quizEarned(String profile) { return quizToday(profile).optInt("earned", 0); }

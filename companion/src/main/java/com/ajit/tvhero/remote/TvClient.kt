@@ -347,6 +347,10 @@ class TvClient(
     /** Ends a profile's TV time for today now (Time's up at once if it's watching). No password. */
     suspend fun endToday(id: String): Family = parseFamily(request("POST", "/v1/profiles/end", JSONObject().put("id", id)))
 
+    /** Lets a profile earn its daily maximum with questions again today. */
+    suspend fun quizReset(id: String, password: String): Family = parseFamily(request("POST", "/v1/profiles/quiz_reset",
+        JSONObject().put("id", id).put("password", password)))
+
     /** Free profile switches a day on the TV; the password is needed only to allow more. */
     suspend fun setSwitchLimit(limit: Int, password: String?): Family {
         val b = JSONObject().put("limit", limit)

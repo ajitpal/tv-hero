@@ -145,6 +145,7 @@ final class Api implements ControlServer.Handler {
                 case "POST /v1/profiles/activate": return activate(b);
                 case "POST /v1/profiles/extra": return extra(b);
                 case "POST /v1/profiles/end": return endToday(b);
+                case "POST /v1/profiles/quiz_reset": return quizReset(b);
                 case "POST /v1/profiles/switches": return switchLimit(b);
                 case "POST /v1/profiles/on_wake": return onWake(b);
                 case "POST /v1/profiles/common": return setCommon(b);
@@ -726,6 +727,18 @@ final class Api implements ControlServer.Handler {
         if (k == null) return error(404, "no such profile");
         profiles.endToday(k);
         log("time_ended", k.name);
+        actions.refresh();
+        return ok(profiles.json());
+    }
+
+    /** Lets a profile earn its daily maximum with questions again today. Password: it loosens. */
+    private ControlServer.Response quizReset(JSONObject b) throws JSONException {
+        ControlServer.Response denied = needPassword(b);
+        if (denied != null) return denied;
+        Profiles.Kid k = profiles.kid(b.optString("id"));
+        if (k == null) return error(404, "no such profile");
+        profiles.quizReset(k.id);
+        log("quiz_reset", k.name);
         actions.refresh();
         return ok(profiles.json());
     }

@@ -188,11 +188,14 @@ internal fun KidPage(state: AppState, gate: PasswordGate, kid: Kid, onBack: () -
         }
         val q = kid.quiz
         section("quiz", "Earn Time", "When time's up, ${kid.name} can answer questions on the TV: each right answer adds minutes, up to the most per day. " +
-            "Three wrong in a row means a 10-minute break. The questions are built into the TV and nothing is sent anywhere.") {
+            "Three wrong in a row means a 10-minute break. Questions are offered even after you end the time with End Now. They're built into the TV and nothing is sent anywhere.") {
             ToggleRow("Earn Time with Questions", q.enabled) { on -> save(kid.copy(quiz = q.copy(enabled = on))) }
             if (q.enabled) {
                 if (kid.dailyLimit == 0) Row("Needs a daily limit", subtitle = "Questions appear on the Time's up screen, so set a Daily Limit first.")
                 Row("Earned Today", value = "${minutesText(kid.quizEarnedToday)} · ${kid.quizRightToday} right")
+                if (kid.quizEarnedToday > 0) ButtonRow("Let ${kid.name} Earn Again Today") {
+                    gate.run("Let ${kid.name} earn up to ${minutesText(q.dailyMax)} again today.") { pw -> state.family = state.client!!.quizReset(kid.id, pw) }
+                }
                 Row("Each Right Answer", value = minutesText(q.minutes), chevron = true) { sheet = "qmin" }
                 Row("Most per Day", value = minutesText(q.dailyMax), chevron = true) { sheet = "qmax" }
                 Content(PaddingValues(horizontal = 16.dp, vertical = 10.dp)) {

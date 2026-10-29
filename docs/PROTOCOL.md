@@ -77,6 +77,7 @@ Changes that loosen protection also need `"password"` in the body.
 | (guest) | `GET /v1/profiles` → `guest: {daily_limit, used_today, extra_today, minutes_left}`. Set with `profiles/save {profile: {id: "guest", daily_limit}}`; `/extra` and requests accept `id: "guest"` | ✔ | Guest's daily allowance, shared by all guests that day |
 | `POST /v1/profiles/extra` | `{id, minutes: -240..240}` | ✔ to add | today only; taking minutes away needs no password |
 | `POST /v1/profiles/end` | `{id}` (a kid or `guest`) | | ends today's time now: Time's up at once if that profile is watching, even without a daily limit. Adding time reopens it. Profiles show `ended_today`. |
+| `POST /v1/profiles/quiz_reset` | `{id}` | ✔ | clears today's Earn Time count (earned minutes, answers, break) so the profile can earn its daily max again |
 | `POST /v1/profiles/switches` | `{limit: -1..10}` | ✔ to allow more | free profile switches a day on the TV from a kid or Guest (default 1; -1 no limit, 0 always ask). `GET /v1/profiles` has `switch_limit`, `switches_today`. |
 | `POST /v1/profiles/common` | `{apps: [package…]}` | ✔ | Apps for Everyone: on in every profile on top of its own (`common_apps` in `GET /v1/profiles`) |
 | `GET /v1/requests`, `POST /v1/requests/answer` | `{id, allow}` | ✔ to allow | kids' requests, each with `kind`: `app` (allow the app), `time` ("time:30": more minutes today), `bedtime` ("bedtime:60": stay up later), `switch` ("switch:<profile id>": allowing it switches the TV to that profile) |
