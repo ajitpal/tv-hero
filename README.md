@@ -68,6 +68,7 @@ The script starts tv-hero first, then makes it Home, switches the stock launcher
 ## Everyday use (on the TV)
 
 - **The TV starts in the Family profile**: YouTube, YouTube · Brave, JioHotstar, Xiaomi TV+, WhatsApp, Browser, Live TV, Miracast. Settings and the Play Store are for Parent.
+- **Clock screensaver**: an analogue watch with the time and date on a gradient that follows the time of day. It's the TV's screensaver, starts after 5 idle minutes on Home, from the **watch button** next to the profile button, or from the phone (TV tab → Show the Clock Screensaver). Any key closes it.
 - **Profile button** (round letter, top right): *Who's watching?* with every profile, Guest, Parent (PIN, or the parent password while no PIN is set) and the **Parent Menu**.
 - **Parent Menu** (no phone needed):
   - profiles (add, rename, apps, daily limit, bedtime, Earn Time, Time Today: add, take away, end now, remove)

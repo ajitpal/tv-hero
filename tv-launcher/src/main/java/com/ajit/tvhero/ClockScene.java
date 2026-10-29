@@ -36,16 +36,30 @@ final class ClockScene {
     /** The glow's colour change: 16 steps over 8 s. Animated per frame it redrew the full-screen gradient ~480 times. */
     private static final int GLOW_STEPS = 16;
     private static final long GLOW_STEP_MS = 500L;
-    /** Deep, low-brightness glow colours; the glow is drawn at partial alpha on black. */
-    private static final int[] PALETTE = {0xFF2B5CFF, 0xFF00A39A, 0xFF8A3FFC, 0xFFE0661B, 0xFFD6336C};
+    /**
+     * The backdrop: a diagonal three-colour gradient that follows the time of day (night, dawn, day, evening),
+     * deep and low in brightness so the white watch reads well and the panel isn't lit up at night.
+     */
+    private static final int[][] SKIES = {
+            {0xFF04060F, 0xFF0D1A3F, 0xFF221047},   // night
+            {0xFF140C2E, 0xFF4A2463, 0xFFA84A5E},   // dawn
+            {0xFF061830, 0xFF0F3F6E, 0xFF13697F},   // day
+            {0xFF0E0A26, 0xFF33194F, 0xFF7A3352},   // evening
+    };
+
+    static int skyFor(int hour) {
+        if (hour >= 21 || hour < 5) return 0;
+        if (hour < 8) return 1;
+        if (hour < 17) return 2;
+        return 3;
+    }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Random random = new Random();
     private final View content;
     private final ImageView ambient;
     private final GradientDrawable glow;
-    private int colorIndex;
-    private int glowColor;
+    private int[] skyColors;
     /** clock_wallpaper or clock_glow false: something else (a picture, or plain black) replaced the coloured glow. */
     private boolean wallpaperShown;
     /** clock_wallpaper: the picture start() decodes, its darkening, and the resources to draw it with. */
@@ -76,13 +90,9 @@ final class ClockScene {
     ClockScene(View root) {
         content = root.findViewById(R.id.dreamContent);
         ambient = root.findViewById(R.id.dreamAmbient);
-        glow = new GradientDrawable();
-        glow.setGradientType(GradientDrawable.RADIAL_GRADIENT);
+        glow = new GradientDrawable(GradientDrawable.Orientation.TL_BR, SKIES[0]);
         ambient.setBackground(glow);
-        ambient.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) ->
-                glow.setGradientRadius((r - l) * 0.55f));
-        colorIndex = random.nextInt(PALETTE.length);
-        setGlow(PALETTE[colorIndex]);
+        setSky(SKIES[skyFor(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY))].clone());
     }
 
     void start() {
@@ -234,31 +244,32 @@ final class ClockScene {
         View parent = (View) content.getParent();
         int maxX = Math.max(0, parent.getWidth() - content.getWidth());
         int maxY = Math.max(0, parent.getHeight() - content.getHeight());
-        float x = maxX * (0.1f + 0.8f * random.nextFloat());
-        float y = maxY * (0.1f + 0.8f * random.nextFloat());
+        // Near the middle, a little off each minute: enough to spare the panel, calm enough to look composed.
+        float x = maxX * (0.3f + 0.4f * random.nextFloat());
+        float y = maxY * (0.3f + 0.4f * random.nextFloat());
         content.setX(x);
         content.setY(y);
-        if (parent.getWidth() > 0 && parent.getHeight() > 0) {
-            glow.setGradientCenter((x + content.getWidth() / 2f) / parent.getWidth(),
-                    (y + content.getHeight() / 2f) / parent.getHeight());
-        }
     }
 
+    /** Every minute: blend towards the sky for this hour (a no-op unless the hour band changed). */
     private void shiftGlow() {
         if (wallpaperShown) return;
-        int from = glowColor;
-        colorIndex = (colorIndex + 1) % PALETTE.length;
-        int to = PALETTE[colorIndex];
+        int[] from = skyColors.clone();
+        int[] to = SKIES[skyFor(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY))];
+        if (java.util.Arrays.equals(from, to)) return;
         ArgbEvaluator mix = new ArgbEvaluator();
         for (int i = 1; i <= GLOW_STEPS; i++) {
             float f = (float) i / GLOW_STEPS;
-            handler.postDelayed(() -> setGlow((int) mix.evaluate(f, from, to)), i * GLOW_STEP_MS);
+            handler.postDelayed(() -> {
+                int[] c = new int[3];
+                for (int k = 0; k < 3; k++) c[k] = (int) mix.evaluate(f, from[k], to[k]);
+                setSky(c);
+            }, i * GLOW_STEP_MS * 4);
         }
     }
 
-    private void setGlow(int color) {
-        glowColor = color;
-        int c = color & 0x00FFFFFF;
-        glow.setColors(new int[]{0x40000000 | c, 0x14000000 | c, 0x00000000 | c});
+    private void setSky(int[] colors) {
+        skyColors = colors;
+        glow.setColors(colors);
     }
 }

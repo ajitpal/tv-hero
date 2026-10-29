@@ -1,8 +1,10 @@
-# Phase 3: set up a TV from the phone alone (plan)
+# Phase 3 plan: phone-only setup, ambient screensaver, TV tools
 
 Status: plan, 29 Oct 2026. Nothing here is built yet.
 
-## Goal
+Phase 3 has three parts: **A. set up a TV from the phone alone**, **B. a weather-aware screensaver**, **C. tools on the TV (timers, HIIT, add-ons)**. Part A is below first; B and C follow.
+
+## A. Goal
 
 Someone with only the tv-hero phone app and a stock Xiaomi Mi TV 4A Pro (MiTV-AXSO0, Android TV 9) can bring the TV to the state this TV is in today. No computer, no scripts.
 
@@ -95,3 +97,50 @@ Phone app ──ADB over TCP :5555 (home Wi-Fi, setup only)──▶ TV
 - The TV's ADB authorisation prompt and every first-run screen need the remote. The wizard must say exactly what to press.
 - Large APKs over ADB from a phone may be slow; Brave is about 200 MB. Show progress and allow resuming.
 - Disabling the wrong package can break input or HDMI. Use only the tested lists, check each batch, and undo at once if the check fails.
+
+---
+
+## B. Screensaver that follows the weather
+
+**Done in 2.4 (the base):**
+- An analogue watch with the time and date on a gradient that follows the time of day.
+- It is the TV's own screensaver (it replaced the Mi screensaver; the old choice is kept so it can be put back).
+- It starts after 5 idle minutes on Home, from the watch button on Home, or from the phone (TV tab → Show the Clock Screensaver).
+
+**Phase 3:**
+1. **Weather scenes.** The backdrop and a light animation match the weather outside: clear (day sky, stars at night), clouds, rain, fog or haze (common in Delhi winters), storm, hot. Each is a slow gradient with a few drawn shapes. No video, no blur: the TV has 1 GB of RAM.
+2. **Weather source.** Today the launcher reads no network: the existing weather add-on fetches the weather and the launcher reads its last reading. Keep that split, so the screensaver reads the same reading. The source must be chosen and its terms checked (Open-Meteo is a candidate: free and keyless). Location comes from the phone (city or coarse coordinates), never from the TV.
+3. **Content.** Optionally show the temperature and the next few hours, the day's calendar or a quote, with the watch.
+4. **Settings (phone and TV):**
+   - idle time
+   - watch style (analogue, digital, both)
+   - weather scenes on or off
+   - dim at night
+   - start now
+5. **Burn-in.** Keep the gentle drift every minute and the dark palette at night.
+6. **Timing.** Android's own screensaver timeout lives in system settings, and the TV app needs WRITE_SETTINGS (granted once over ADB at setup, or by the Part A wizard) to change it from the phone.
+
+## C. Tools on the TV
+
+1. **Built-in tools** (a Tools row on Home and a Tools tab on the phone):
+   - **Timer and stopwatch:** big digits readable across the room, started from the remote or the phone, with a gentle chime at the end.
+   - **HIIT / workout timer:** work, rest, rounds and sets, with a countdown beep and a colour per phase. Presets (Tabata 20/10 × 8, EMOM, custom), built from the phone. **Music:** play the person's own music in the background (a local file or USB stick, or a music app the TV already has, ducked under the beeps). Music from streaming services is out of scope unless their app allows background playback.
+   - Later: breathing exercise, a family chore and reward board, homework timer (with the Earn Time questions).
+2. **Add-ons that others can build.** The launcher already has an add-on model: the weather add-on is a separate app the launcher talks to through a content provider. Tools generalise it:
+   - An add-on is an ordinary APK that declares an activity with the action `com.ajit.tvhero.TOOL`, plus metadata: name, icon, and which profiles may see it by default.
+   - Home lists installed tools; the phone can start one (`POST /v1/tools/open`).
+   - A small SDK document describes the contract, the HIG style and the D-pad rules.
+   - **Safety:**
+     - Add-ons are apps like any other: new installs stay blocked until a parent approves them.
+     - Profiles decide who can open each add-on.
+     - The guard's lock screens cover them.
+     - An add-on gets no access to tv-hero's API or settings unless a parent pairs it like a phone.
+3. **Built with the same rules:** Java and Views, no Compose on the TV, D-pad first, light on memory.
+
+## Order of work (all of Phase 3)
+
+1. A M1–M2: ADB client and updating tv-hero from the phone (unlocks everything else).
+2. C1: Timer and HIIT timer (small, high use).
+3. B1–B2: weather scenes.
+4. A M3–M6: full phone-only setup.
+5. C2: add-on contract and SDK doc.

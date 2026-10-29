@@ -63,7 +63,7 @@ Changes that loosen protection also need `"password"` in the body.
 | `POST /v1/power` | `{action: sleep \| wake}` | | sleep: standby now. wake works only while the TV can still answer the network. |
 | `GET /v1/volume` | | | `{level, max, muted, cap}`. `cap` is the night-volume limit right now. |
 | `POST /v1/volume` | `{level}` \| `{step: ±1..5}` \| `{mute: bool}` | | volume. Never above `cap`. |
-| `POST /v1/key` | `{action: home \| back \| recents \| notifications \| quick_settings \| sleep \| picker}` | | |
+| `POST /v1/key` | `{action: home \| back \| recents \| notifications \| quick_settings \| sleep \| picker \| screensaver}` | | |
 | `POST /v1/launch` | `{package}` | | a kid's profile can only open its allowed apps |
 | `GET /v1/now` | | | what's on screen: app, title (from media notifications), profile, overlay, minutes_left |
 | `GET /v1/apps`, `GET /v1/apps/icon?package=` | | | apps with state `allowed` / `blocked` / `pending`; PNG icon |

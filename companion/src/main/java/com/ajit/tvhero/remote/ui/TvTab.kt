@@ -76,6 +76,9 @@ fun TvTab(state: AppState, gate: PasswordGate, openTab: (Int) -> Unit) {
                 ActionTile("Time Today", Icons.Rounded.MoreTime, c.green, Modifier.weight(1f), enabled = activeKid != null) { sheet = "extra" }
             }
         }
+        section("clock", footer = "The TV also shows it by itself after 5 idle minutes on Home, and as its screensaver. Any key on the remote closes it.") {
+            ButtonRow("Show the Clock Screensaver") { state.run { state.client!!.key("screensaver") } }
+        }
         if (state.requests.isNotEmpty()) section("asks", "Needs You", "Allowing needs the parent password: an app goes on that profile's list, extra time counts for today only.") {
             state.requests.forEach { r ->
                 val asked = when (r.kind) { "time" -> "${r.profileName} asked for more time"; "bedtime" -> "${r.profileName} asked to stay up"

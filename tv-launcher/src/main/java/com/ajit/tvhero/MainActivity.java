@@ -2386,6 +2386,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         });
         bar.addView(button, 0);
         topAppButtons.add(button);
+
+        // The clock screensaver, any time (it also starts by itself after a few idle minutes on Home).
+        TextView clock = (TextView) getLayoutInflater().inflate(R.layout.top_app_button, bar, false);
+        clock.setId(View.generateViewId());
+        Drawable watch = getDrawable(R.drawable.ic_watch);
+        int size = Math.round(22 * density);
+        if (watch != null) {
+            watch.setBounds(0, 0, size, size);
+            clock.setCompoundDrawablesRelative(watch, null, null, null);
+        }
+        clock.setContentDescription("Clock screensaver");
+        clock.setOnClickListener(v -> open(new Intent(this, ClockActivity.class)));
+        bar.addView(clock, 1);
+        topAppButtons.add(clock);
     }
 
     private void addTopBarApps(List<String> packages, Map<String, String> launchActions) {

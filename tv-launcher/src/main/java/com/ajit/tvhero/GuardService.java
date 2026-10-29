@@ -128,6 +128,7 @@ public class GuardService extends AccessibilityService {
             setServiceInfo(info);
         }
         store.reconcile();
+        useClockScreensaver();
         // The TV starts in the start-up profile (Parent Menu > When the TV Turns On), not in whoever was last.
         // Once per boot only: Android also reconnects this service mid-session (uiautomator, crashes,
         // updates), and that must not throw a parent who switched with the PIN back to the start-up profile.
@@ -169,6 +170,28 @@ public class GuardService extends AccessibilityService {
         registerNsd();
         main.postDelayed(tick, 3000);
         Log.i(TAG, "guard running");
+    }
+
+    /**
+     * Makes tv-hero's clock the TV's screensaver (the one Android shows after the TV's idle time), once.
+     * The previous choice is kept in "screensaver_before" so it can be put back. Needs WRITE_SECURE_SETTINGS,
+     * which the TV app was granted at setup; without it nothing changes.
+     */
+    private void useClockScreensaver() {
+        String ours = new android.content.ComponentName(this, ClockDream.class).flattenToString();
+        android.content.ContentResolver cr = getContentResolver();
+        android.content.SharedPreferences p = getSharedPreferences("guard", MODE_PRIVATE);
+        try {
+            String now = android.provider.Settings.Secure.getString(cr, "screensaver_components");
+            if (ours.equals(now) || p.getBoolean("screensaver_set", false)) return;
+            p.edit().putString("screensaver_before", now == null ? "" : now).apply();
+            android.provider.Settings.Secure.putString(cr, "screensaver_components", ours);
+            android.provider.Settings.Secure.putInt(cr, "screensaver_enabled", 1);
+            p.edit().putBoolean("screensaver_set", true).apply();
+            Log.i(TAG, "screensaver: " + ours + " (was " + now + ")");
+        } catch (SecurityException e) {
+            Log.w(TAG, "can't set the screensaver: " + e.getMessage());
+        }
     }
 
     // ---------- foreground app ----------
@@ -1128,6 +1151,12 @@ public class GuardService extends AccessibilityService {
                 return true;
             }
             case "picker": main.post(() -> showPicker(true)); return true;
+            case "screensaver": {
+                if (ui.showing()) return false;   // never over a lock screen or a prompt
+                Intent clock = new Intent(this, ClockActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                main.post(() -> { try { startActivity(clock); } catch (RuntimeException ignored) { } });
+                return true;
+            }
             case "picker_done": main.post(() -> {
                 pickerDone = true;
                 if (ui.kind() == Overlays.Kind.PICKER || ui.kind() == Overlays.Kind.PIN) ui.hide();
