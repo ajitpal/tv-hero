@@ -59,6 +59,7 @@ final class Overlays {
 
     /** Title, message and up to three buttons; Back runs [onBack] when given. */
     void message(Kind k, String emoji, String title, String body, Runnable onBack, Action... actions) {
+        long shownAt = android.os.SystemClock.uptimeMillis();
         LinearLayout box = column();
         if (emoji != null) box.addView(text(emoji, 56, Color.WHITE, false));
         box.addView(text(title, 32, Color.WHITE, true), gap(12));
@@ -71,7 +72,9 @@ final class Overlays {
         row.setGravity(Gravity.CENTER);
         View first = null;
         for (Action a : actions) {
-            TextView btn = button(a.label, () -> a.run.run());
+            TextView btn = button(a.label, () -> {
+                if (android.os.SystemClock.uptimeMillis() - shownAt >= 500) a.run.run();   // see quiz()
+            });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             lp.setMargins(dp(10), 0, dp(10), 0);
             row.addView(btn, lp);
@@ -165,6 +168,7 @@ final class Overlays {
      */
     void quiz(String topic, String question, List<String> options, String progress,
               java.util.function.IntConsumer onPick, Runnable onBack) {
+        long shownAt = android.os.SystemClock.uptimeMillis();
         LinearLayout box = column();
         box.addView(text(topic, 18, Color.argb(170, 255, 255, 255), true));
         TextView q = text(question, question.length() > 60 ? 28 : 36, Color.WHITE, true);
@@ -175,7 +179,10 @@ final class Overlays {
         View first = null;
         for (int i = 0; i < options.size(); i++) {
             int pick = i;
-            TextView b = button(options.get(i), () -> onPick.accept(pick));
+            // The OK press that opened this screen must not also answer it: picks in the first moment are ignored.
+            TextView b = button(options.get(i), () -> {
+                if (android.os.SystemClock.uptimeMillis() - shownAt >= 700) onPick.accept(pick);
+            });
             b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
             b.setMinWidth(dp(340));
             b.setPadding(dp(28), dp(16), dp(28), dp(16));
@@ -350,7 +357,9 @@ final class Overlays {
                 return super.dispatchKeyEvent(e);
             }
         };
-        root.setBackgroundColor(BG);
+        // Screens that lock the TV are fully opaque, so nothing of the app behind shows through.
+        boolean lock = k == Kind.TIMES_UP || k == Kind.BEDTIME || k == Kind.LOCKED || k == Kind.QUIZ;
+        root.setBackgroundColor(lock ? Color.rgb(5, 7, 12) : BG);
         root.addView(content, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
         try {

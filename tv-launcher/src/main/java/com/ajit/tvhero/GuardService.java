@@ -262,6 +262,13 @@ public class GuardService extends AccessibilityService {
     }
 
     /** Home, then stop the app once it's in the background. */
+    /** Closes whatever app is in front, also when the guard hasn't seen it start (e.g. right after an update). */
+    private void leaveApp() {
+        if (fgPkg.equals(getPackageName())) return;
+        if (fgPkg.isEmpty()) performGlobalAction(GLOBAL_ACTION_HOME);
+        else sendAway(fgPkg);
+    }
+
     private void sendAway(String pkg) {
         performGlobalAction(GLOBAL_ACTION_HOME);
         main.postDelayed(() -> {
@@ -774,7 +781,7 @@ public class GuardService extends AccessibilityService {
 
     private void showLocked() {
         stopPlayback();
-        if (!fgPkg.isEmpty() && !fgPkg.equals(getPackageName())) sendAway(fgPkg);
+        leaveApp();
         ui.message(Overlays.Kind.LOCKED, "⏸", "The TV is paused", "A parent paused the TV from their phone.", null,
                 new Overlays.Action("Parent PIN", () -> askPin("Parent PIN to unlock", () -> {
                     profiles.setLocked(false);
@@ -785,7 +792,7 @@ public class GuardService extends AccessibilityService {
 
     private void showTimesUp(Profiles.Kid kid) {
         stopPlayback();
-        if (!fgPkg.isEmpty() && !fgPkg.equals(getPackageName())) sendAway(fgPkg);
+        leaveApp();
         if (ui.kind() != Overlays.Kind.TIMES_UP && warned.add(Profiles.today() + kid.id + "T" + profiles.extraMinutes(kid.id))) {
             store.log("times_up", kid.name);
         }
@@ -809,7 +816,7 @@ public class GuardService extends AccessibilityService {
 
     private void showBedtime(Profiles.Kid kid) {
         stopPlayback();
-        if (!fgPkg.isEmpty() && !fgPkg.equals(getPackageName())) sendAway(fgPkg);
+        leaveApp();
         store.log("bedtime", kid.name);
         ui.message(Overlays.Kind.BEDTIME, "🌙", "It's bedtime, " + kid.name,
                 "The TV turns off in a minute. Good night!", null,
