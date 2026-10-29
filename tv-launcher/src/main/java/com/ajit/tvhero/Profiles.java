@@ -57,7 +57,10 @@ public final class Profiles {
     static final class Kid {
         String id, name;
         int color;
+        /** This profile's own apps. */
         Set<String> allowed = new HashSet<>();
+        /** What the profile may open: its own apps plus the apps for everyone. Filled when read. */
+        Set<String> all = new HashSet<>();
         int dailyLimit;          // minutes, 0 = no limit
         boolean bedtimeOn;
         int bedStart = 21 * 60, bedEnd = 7 * 60;   // minutes after midnight; may wrap past midnight
@@ -107,9 +110,36 @@ public final class Profiles {
         JSONArray a = arr("kids");
         for (int i = 0; i < a.length(); i++) {
             JSONObject o = a.optJSONObject(i);
-            if (o != null) out.add(Kid.from(o));
+            if (o != null) out.add(withCommon(Kid.from(o)));
         }
         return out;
+    }
+
+    private Kid withCommon(Kid k) {
+        k.all = new HashSet<>(k.allowed);
+        k.all.addAll(commonApps());
+        k.all.removeAll(KID_NEVER);
+        return k;
+    }
+
+    // ---------- apps for everyone ----------
+
+    /** Out of the box: the web browser, WhatsApp and YouTube in Brave (Ajit's choice, Oct 2026). */
+    static final Set<String> DEFAULT_COMMON = Set.of("com.phlox.tvwebbrowser", "com.whatsapp", "com.brave.browser");
+
+    /** Apps every profile gets on top of its own (not Parent: Parent has everything). */
+    public synchronized Set<String> commonApps() {
+        if (!prefs.contains("common_apps")) return new HashSet<>(DEFAULT_COMMON);
+        Set<String> out = new HashSet<>();
+        JSONArray a = arr("common_apps");
+        for (int i = 0; i < a.length(); i++) out.add(a.optString(i));
+        return out;
+    }
+
+    public synchronized void setCommonApps(Set<String> apps) {
+        Set<String> clean = new HashSet<>(apps);
+        clean.removeAll(KID_NEVER);
+        prefs.edit().putString("common_apps", new JSONArray(clean).toString()).apply();
     }
 
     public synchronized Kid kid(String id) {
@@ -174,6 +204,7 @@ public final class Profiles {
         g.color = -1;
         g.allowed = new HashSet<>(GuardStore.get(app).launchablePackages());
         g.allowed.removeAll(KID_NEVER);
+        g.all = g.allowed;
         return g;
     }
 
@@ -368,6 +399,7 @@ public final class Profiles {
                     .put("minutes_left", minutesLeft(k)));
         }
         return new JSONObject().put("kids", kids).put("active", activeId()).put("on_wake", onWake())
+                .put("common_apps", new JSONArray(commonApps()))
                 .put("pin_set", pinSet()).put("locked", locked()).put("max_kids", MAX_KIDS)
                 .put("parent_used_today", usedMinutes(PARENT)).put("sleep_at", sleepAt());
     }

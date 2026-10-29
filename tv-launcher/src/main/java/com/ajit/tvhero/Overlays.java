@@ -90,6 +90,12 @@ final class Overlays {
     /** Who's watching? Kids, then Guest, then Parent (PIN), and a small Parent Menu entry below. */
     void picker(List<Profiles.Kid> kids, java.util.function.Consumer<Profiles.Kid> onKid, Runnable onGuest,
                 Runnable onParent, Runnable onMenu) {
+        picker(kids, onKid, onGuest, onParent, onMenu, null);
+    }
+
+    /** [onBack] null: Back does nothing (a choice is needed, e.g. when the TV wakes). */
+    void picker(List<Profiles.Kid> kids, java.util.function.Consumer<Profiles.Kid> onKid, Runnable onGuest,
+                Runnable onParent, Runnable onMenu, Runnable onBack) {
         LinearLayout box = column();
         box.addView(text("Who's watching?", 36, Color.WHITE, true));
         LinearLayout row = new LinearLayout(ctx);
@@ -106,7 +112,7 @@ final class Overlays {
         if (first == null) first = parent;
         box.addView(row, gap(40));
         if (onMenu != null) box.addView(button("Parent Menu", onMenu), gap(28));
-        showFull(Kind.PICKER, box, null);
+        showFull(Kind.PICKER, box, onBack);
         first.requestFocus();
     }
 
@@ -161,6 +167,11 @@ final class Overlays {
 
     /** A focusable list, like a TV settings page: label on the left, value on the right. */
     void menu(Kind k, String title, String footer, List<Item> items, Runnable onBack) {
+        menu(k, title, footer, items, onBack, 0);
+    }
+
+    /** As above, with focus on row [focus], so a list redrawn after a toggle keeps its place. */
+    void menu(Kind k, String title, String footer, List<Item> items, Runnable onBack, int focus) {
         LinearLayout box = column();
         box.addView(text(title, 32, Color.WHITE, true));
         LinearLayout list = new LinearLayout(ctx);
@@ -194,9 +205,20 @@ final class Overlays {
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(680), ViewGroup.LayoutParams.WRAP_CONTENT);
             lp.topMargin = dp(6);
             list.addView(row, lp);
-            if (first == null) first = row;
+            if (first == null || list.getChildCount() - 1 == focus) first = row;
         }
-        box.addView(list, gap(24));
+        // Long lists (every app on the TV) scroll; the focused row is kept in view by the ScrollView.
+        android.widget.ScrollView scroll = new android.widget.ScrollView(ctx);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setClipToPadding(false);
+        scroll.addView(list);
+        int rows = items.size();
+        int maxH = dp(footer != null ? 400 : 460);
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                rows > 6 ? maxH : ViewGroup.LayoutParams.WRAP_CONTENT);
+        slp.gravity = Gravity.CENTER_HORIZONTAL;
+        slp.topMargin = dp(24);
+        box.addView(scroll, slp);
         if (footer != null) {
             TextView f = text(footer, 16, Color.argb(150, 255, 255, 255), false);
             f.setMaxWidth(dp(680));
@@ -204,6 +226,47 @@ final class Overlays {
         }
         showFull(k, box, onBack);
         if (first != null) first.requestFocus();
+    }
+
+    /** One line of text typed with the TV keyboard (or the phone's Bluetooth keyboard). */
+    void textInput(String title, String hint, String initial, boolean secret, java.util.function.Consumer<String> onDone, Runnable onCancel) {
+        LinearLayout box = column();
+        box.addView(text(title, 30, Color.WHITE, true));
+        android.widget.EditText field = new android.widget.EditText(ctx);
+        field.setSingleLine(true);
+        if (secret) field.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        field.setText(initial == null ? "" : initial);
+        field.setHint(hint);
+        field.setTextColor(Color.WHITE);
+        field.setHintTextColor(Color.argb(120, 255, 255, 255));
+        field.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+        field.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+        field.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(secret ? 64 : 24)});
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Color.argb(40, 255, 255, 255));
+        bg.setCornerRadius(dp(14));
+        field.setBackground(bg);
+        field.setPadding(dp(20), dp(14), dp(20), dp(14));
+        Runnable done = () -> {
+            String v = field.getText().toString().trim();
+            if (!v.isEmpty()) onDone.accept(v);
+        };
+        field.setOnEditorActionListener((v, actionId, e) -> { done.run(); return true; });
+        box.addView(field, new LinearLayout.LayoutParams(dp(520), ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout row = new LinearLayout(ctx);
+        row.setGravity(Gravity.CENTER);
+        TextView cancel = button("Cancel", onCancel), save = button("Save", done);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(dp(10), 0, dp(10), 0);
+        row.addView(cancel, lp);
+        row.addView(save, lp);
+        box.addView(row, gap(28));
+        showFull(Kind.MENU, box, onCancel);
+        field.requestFocus();
+        field.postDelayed(() -> {
+            android.view.inputmethod.InputMethodManager imm = ctx.getSystemService(android.view.inputmethod.InputMethodManager.class);
+            if (imm != null) imm.showSoftInput(field, 0);
+        }, 250);
     }
 
     /** A small note at the top right that leaves after 8 seconds and never takes the remote. */

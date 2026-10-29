@@ -71,6 +71,7 @@ public class GuardService extends AccessibilityService {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getData() == null) return;
+            packagesChanged();
             String pkg = intent.getData().getSchemeSpecificPart();
             boolean replacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
             if (Intent.ACTION_PACKAGE_ADDED.equals(intent.getAction()) && !replacing) {
@@ -81,6 +82,8 @@ public class GuardService extends AccessibilityService {
             }
         }
     };
+
+    void packagesChanged() { launchableAt = 0; }
 
     private final BroadcastReceiver screen = new BroadcastReceiver() {
         @Override
@@ -125,6 +128,9 @@ public class GuardService extends AccessibilityService {
             setServiceInfo(info);
         }
         store.reconcile();
+        // The TV starts in the start-up profile (Parent Menu > When the TV Turns On), not in whoever was last.
+        String wake = profiles.onWake();
+        if (!"ask".equals(wake)) profiles.setActive(wake);
         IntentFilter f = new IntentFilter();
         f.addAction(Intent.ACTION_PACKAGE_ADDED);
         f.addAction(Intent.ACTION_PACKAGE_FULLY_REMOVED);
@@ -177,6 +183,22 @@ public class GuardService extends AccessibilityService {
         check(pkg);
     }
 
+    private java.util.Set<String> launchableCache = java.util.Collections.emptySet();
+    private long launchableAt;
+
+    /**
+     * Profiles limit the apps a person can open. System components that pop up on their own (TV input
+     * services at boot, dialogs, the keyboard) have no launcher entry and are never blocked by a profile.
+     */
+    private boolean launchable(String pkg) {
+        long now = SystemClock.elapsedRealtime();
+        if (now - launchableAt > 5 * 60_000 || launchableCache.isEmpty()) {
+            launchableCache = new java.util.HashSet<>(store.launchablePackages());
+            launchableAt = now;
+        }
+        return launchableCache.contains(pkg);
+    }
+
     /** Blocks [pkg] if the rules say so. */
     private void check(String pkg) {
         if (pkg.equals(getPackageName()) || isScreenLock()) return;
@@ -190,7 +212,7 @@ public class GuardService extends AccessibilityService {
             body = pending ? "This app was just installed. A parent can approve it in the tv-hero app on their phone."
                     : "A parent has blocked this app. Ask them to allow it in the tv-hero app on their phone.";
         } else if (kid != null && !Profiles.KID_ALWAYS.contains(pkg)
-                && (Profiles.KID_NEVER.contains(pkg) || !kid.allowed.contains(pkg))) {
+                && (Profiles.KID_NEVER.contains(pkg) || (!kid.all.contains(pkg) && launchable(pkg)))) {
             title = label(pkg) + " isn't on " + kid.name + "'s list";
             body = Profiles.KID_NEVER.contains(pkg) ? "Settings and app installs are for parents."
                     : "Ask a parent to add it to your apps in the tv-hero app.";
@@ -212,6 +234,17 @@ public class GuardService extends AccessibilityService {
                         ui.hide();
                         ui.toast("Asked. A parent will see it on their phone.");
                     }));
+        } else if (kid != null && Profiles.KID_NEVER.contains(pkg)) {
+            // Settings, Play Store, installers: a parent in front of the TV can switch to Parent right here.
+            ui.message(Overlays.Kind.BLOCKED, "🔒", title, body, ui::hide,
+                    new Overlays.Action("OK", ui::hide),
+                    new Overlays.Action("Switch to Parent", () -> askPin("Parent PIN", () -> {
+                        profiles.setActive(Profiles.PARENT);
+                        pickerDone = true;
+                        store.log("profile", "Parent", "TV");
+                        refreshNow();
+                        ui.toast("Parent: all apps. Open it again.");
+                    }, ui::hide)));
         } else {
             ui.message(Overlays.Kind.BLOCKED, "🔒", title, body, ui::hide,
                     new Overlays.Action("OK", ui::hide));
@@ -254,9 +287,12 @@ public class GuardService extends AccessibilityService {
         showPicker();
     }
 
-    void showPicker() {
+    void showPicker() { showPicker(false); }
+
+    /** [fromHome]: opened with the profile button, so Back closes it. At wake it waits for a choice. */
+    void showPicker(boolean fromHome) {
         List<Profiles.Kid> kids = profiles.kids();
-        if (kids.isEmpty()) { pickerDone = true; return; }
+        if (kids.isEmpty() && !fromHome) { pickerDone = true; return; }
         ui.picker(kids, k -> {
             profiles.setActive(k.id);
             pickerDone = true;
@@ -274,13 +310,36 @@ public class GuardService extends AccessibilityService {
             pickerDone = true;
             store.log("profile", "Parent", "TV");
             refreshNow();
-        }, this::showPicker), () -> askPin("Parent PIN", this::parentMenu, this::showPicker));
+        }, () -> showPicker(fromHome)), () -> askPin("Parent PIN", this::parentMenu, () -> showPicker(fromHome)),
+                fromHome ? () -> { ui.hide(); pickerDone = true; } : null);
     }
 
     // ---------- Parent Menu (on the TV, after the PIN) ----------
 
-    void parentMenu() {
+    void parentMenu() { parentMenu(0); }
+
+    /** Rows of the Parent Menu, counted without "Switch to Parent" (shown only outside Parent). */
+    private static final int ROW_PROFILES = 1, ROW_COMMON = 2, ROW_WAKE = 3, ROW_PIN = 4, ROW_PHONES = 5;
+
+    private void parentMenu(int focus) {
         java.util.List<Overlays.Item> items = new java.util.ArrayList<>();
+        String active = profiles.activeId();
+        boolean switchRow = !Profiles.PARENT.equals(active);
+        if (focus > 0 && !switchRow) focus--;
+        if (switchRow) {
+            items.add(new Overlays.Item("Switch to Parent", "All apps", () -> {
+                profiles.setActive(Profiles.PARENT);
+                store.log("profile", "Parent", "TV");
+                ui.hide();
+                pickerDone = true;
+                refreshNow();
+            }));
+        }
+        int n = profiles.kids().size();
+        items.add(new Overlays.Item("Profiles", n + (n == 1 ? " profile" : " profiles"), () -> profilesMenu(0)));
+        items.add(new Overlays.Item("Apps for Everyone", profiles.commonApps().size() + " apps", () -> commonAppsMenu(0)));
+        items.add(new Overlays.Item("When the TV Turns On", wakeLabel(profiles.onWake()), this::wakeMenu));
+        items.add(new Overlays.Item("Parent PIN", profiles.pinSet() ? "Change" : "Not set", this::changePin));
         int phones = store.devicesJson().length();
         items.add(new Overlays.Item("Who Can Control This TV", phones + (phones == 1 ? " phone" : " phones"), this::phonesMenu));
         boolean net = store.internetControl();
@@ -289,7 +348,7 @@ public class GuardService extends AccessibilityService {
             else confirmInternet("the Parent Menu", ok -> { if (ok) { store.setInternetControl(true, "TV"); store.log("internet_on", "", "TV"); } parentMenu(); });
         }));
         boolean adb = android.provider.Settings.Global.getInt(getContentResolver(), android.provider.Settings.Global.ADB_ENABLED, 0) == 1;
-        items.add(new Overlays.Item("Debugging (ADB)", adb ? "On · press to turn off" : "Off", () -> {
+        items.add(new Overlays.Item("Debugging (ADB)", adb ? "On \u00b7 press to turn off" : "Off", () -> {
             if (adb) {
                 try { android.provider.Settings.Global.putInt(getContentResolver(), android.provider.Settings.Global.ADB_ENABLED, 0); } catch (SecurityException ignored) { }
                 store.log("adb_off", "", "TV");
@@ -303,9 +362,194 @@ public class GuardService extends AccessibilityService {
             pickerDone = true;
             refreshNow();
         }));
-        items.add(new Overlays.Item("Done", null, () -> { ui.hide(); pickerDone = true; }));
-        ui.menu(Overlays.Kind.MENU, "Parent Menu", "Internet control can only be turned on here, at the TV. Turning it off works from any paired phone.",
-                items, () -> { ui.hide(); pickerDone = true; });
+        items.add(new Overlays.Item("Done", null, () -> { ui.hide(); pickerDone = true; refreshNow(); }));
+        ui.menu(Overlays.Kind.MENU, "Parent Menu", profiles.pinSet() ? "Everything here can also be done from the tv-hero app on your phone."
+                        : "Tip: set a Parent PIN. It's quicker with the remote than the password.",
+                items, () -> { ui.hide(); pickerDone = true; refreshNow(); }, focus);
+    }
+
+    private String wakeLabel(String w) {
+        if ("ask".equals(w)) return "Ask Who's Watching";
+        if (Profiles.PARENT.equals(w)) return "Parent";
+        Profiles.Kid k = profiles.kid(w);
+        return k == null ? "Ask Who's Watching" : k.name;
+    }
+
+    private void wakeMenu() {
+        java.util.List<Overlays.Item> items = new java.util.ArrayList<>();
+        String now = profiles.onWake();
+        java.util.List<String> ids = new java.util.ArrayList<>();
+        for (Profiles.Kid k : profiles.kids()) ids.add(k.id);
+        ids.add(Profiles.PARENT);
+        ids.add("ask");
+        for (String id : ids) {
+            items.add(new Overlays.Item(wakeLabel(id), id.equals(now) ? "\u2713" : "", () -> {
+                profiles.setOnWake(id);
+                store.log("on_wake", wakeLabel(id), "TV");
+                parentMenu(ROW_WAKE);
+            }));
+        }
+        ui.menu(Overlays.Kind.MENU, "When the TV Turns On", "The TV opens in this profile. Parent always needs the PIN on the TV.",
+                items, () -> parentMenu(ROW_WAKE));
+    }
+
+    private void changePin() {
+        ui.pin("New parent PIN (4\u20136 digits)", first -> {
+            main.post(() -> ui.pin("Enter the new PIN again", again -> {
+                if (!again.equals(first)) return false;
+                profiles.setPin(first);
+                store.log("pin_changed", "", "TV");
+                main.post(() -> { ui.toast("Parent PIN saved"); parentMenu(ROW_PIN); });
+                return true;
+            }, () -> parentMenu(ROW_PIN)));
+            return true;
+        }, () -> parentMenu(ROW_PIN));
+    }
+
+    // ---------- profiles, on the TV ----------
+
+    /** Launchable apps a profile could be given (never Settings, Play Store or installers), sorted by name. */
+    private java.util.List<String[]> choosableApps() {
+        java.util.List<String> pkgs = new java.util.ArrayList<>();
+        for (String p : store.launchablePackages()) {
+            if (Profiles.KID_NEVER.contains(p) || store.state(p) != GuardStore.State.ALLOWED) continue;
+            if (p.equals(getPackageName())) continue;
+            pkgs.add(p);
+        }
+        java.util.Map<String, String> labels = new java.util.HashMap<>(GuardStore.labels(this, pkgs));
+        labels.putAll(Config.packageMap(java.util.Arrays.asList(getResources().getStringArray(R.array.app_labels))));   // Home's names
+        java.util.List<String[]> out = new java.util.ArrayList<>();
+        for (String p : pkgs) out.add(new String[]{p, labels.containsKey(p) ? labels.get(p) : p});
+        out.sort((x, y) -> x[1].compareToIgnoreCase(y[1]));
+        return out;
+    }
+
+    private void profilesMenu(int focus) {
+        java.util.List<Overlays.Item> items = new java.util.ArrayList<>();
+        for (Profiles.Kid k : profiles.kids()) {
+            String v = k.all.size() + " apps" + (k.dailyLimit > 0 ? " \u00b7 " + minutes(k.dailyLimit) + " a day" : "")
+                    + (k.bedtimeOn ? " \u00b7 bedtime " + clock(k.bedStart) : "");
+            items.add(new Overlays.Item(k.name, v, () -> profileMenu(k.id, 0)));
+        }
+        if (profiles.kids().size() < Profiles.MAX_KIDS) {
+            items.add(new Overlays.Item("Add Profile", "+", () -> ui.textInput("New profile", "Name", "", false, name -> {
+                try {
+                    JSONObject o = new JSONObject().put("name", name).put("color", profiles.kids().size()).put("allowed", new org.json.JSONArray());
+                    Profiles.Kid k = profiles.save(o);
+                    store.log("profile_saved", name, "TV");
+                    if (k != null) profileMenu(k.id, 0); else profilesMenu(0);
+                } catch (org.json.JSONException e) { profilesMenu(0); }
+            }, () -> profilesMenu(0))));
+        }
+        items.add(new Overlays.Item("Back", null, () -> parentMenu(ROW_PROFILES)));
+        ui.menu(Overlays.Kind.MENU, "Profiles", "Every profile also gets the Apps for Everyone. Settings and the Play Store are for Parent only.",
+                items, () -> parentMenu(ROW_PROFILES), focus);
+    }
+
+    private static final int[] LIMITS = {0, 30, 60, 90, 120, 180, 240};
+    private static final int[] BEDTIMES = {-1, 20 * 60, 20 * 60 + 30, 21 * 60, 21 * 60 + 30, 22 * 60, 22 * 60 + 30};
+
+    private void profileMenu(String id, int focus) {
+        Profiles.Kid k = profiles.kid(id);
+        if (k == null) { profilesMenu(0); return; }
+        java.util.List<Overlays.Item> items = new java.util.ArrayList<>();
+        items.add(new Overlays.Item("Apps", k.allowed.size() + " own + " + profiles.commonApps().size() + " for everyone", () -> profileAppsMenu(id, 0)));
+        items.add(new Overlays.Item("Daily Limit", k.dailyLimit == 0 ? "No limit" : minutes(k.dailyLimit), () -> {
+            int i = 0;
+            for (int j = 0; j < LIMITS.length; j++) if (LIMITS[j] == k.dailyLimit) i = j;
+            k.dailyLimit = LIMITS[(i + 1) % LIMITS.length];
+            saveKid(k);
+            profileMenu(id, 1);
+        }));
+        items.add(new Overlays.Item("Bedtime", k.bedtimeOn ? clock(k.bedStart) + " \u2013 " + clock(k.bedEnd) : "Off", () -> {
+            int i = 0;
+            for (int j = 0; j < BEDTIMES.length; j++) if (k.bedtimeOn ? BEDTIMES[j] == k.bedStart : BEDTIMES[j] < 0) i = j;
+            int next = BEDTIMES[(i + 1) % BEDTIMES.length];
+            k.bedtimeOn = next >= 0;
+            if (next >= 0) { k.bedStart = next; if (k.bedEnd == k.bedStart) k.bedEnd = 7 * 60; }
+            saveKid(k);
+            profileMenu(id, 2);
+        }));
+        items.add(new Overlays.Item("Rename", k.name, () -> ui.textInput("Rename profile", "Name", k.name, false, name -> {
+            k.name = name;
+            saveKid(k);
+            profileMenu(id, 3);
+        }, () -> profileMenu(id, 3))));
+        items.add(new Overlays.Item("Remove Profile", null, () -> ui.message(Overlays.Kind.CONFIRM, "\uD83D\uDDD1", "Remove " + k.name + "?",
+                "Their apps, limits and history are deleted. Apps themselves stay on the TV.", () -> profileMenu(id, 4),
+                new Overlays.Action("Cancel", () -> profileMenu(id, 4)),
+                new Overlays.Action("Remove", () -> {
+                    profiles.delete(id);
+                    if (id.equals(profiles.onWake())) profiles.setOnWake("ask");
+                    store.log("profile_removed", k.name, "TV");
+                    profilesMenu(0);
+                }))));
+        items.add(new Overlays.Item("Back", null, () -> profilesMenu(0)));
+        ui.menu(Overlays.Kind.MENU, k.name, "Press OK on Daily Limit or Bedtime to step through the choices. Bedtime ends at " + clock(k.bedEnd) + ".",
+                items, () -> profilesMenu(0), focus);
+    }
+
+    private void saveKid(Profiles.Kid k) {
+        try {
+            profiles.save(k.json());
+            store.log("profile_saved", k.name, "TV");
+            sendBroadcast(new Intent(GuardStore.ACTION_CHANGED).setPackage(getPackageName()));
+        } catch (org.json.JSONException ignored) { }
+    }
+
+    private void profileAppsMenu(String id, int focus) {
+        Profiles.Kid k = profiles.kid(id);
+        if (k == null) { profilesMenu(0); return; }
+        java.util.Set<String> common = profiles.commonApps();
+        java.util.List<Overlays.Item> items = new java.util.ArrayList<>();
+        java.util.List<String[]> apps = choosableApps();
+        for (int i = 0; i < apps.size(); i++) {
+            final int row = i;
+            String pkg = apps.get(i)[0];
+            if (common.contains(pkg)) {
+                items.add(new Overlays.Item(apps.get(i)[1], "Everyone", () -> ui.toast("Change it in Apps for Everyone")));
+            } else {
+                boolean on = k.allowed.contains(pkg);
+                items.add(new Overlays.Item(apps.get(i)[1], on ? "On" : "Off", () -> {
+                    if (on) k.allowed.remove(pkg); else k.allowed.add(pkg);
+                    saveKid(k);
+                    profileAppsMenu(id, row);
+                }));
+            }
+        }
+        items.add(new Overlays.Item("Back", null, () -> profileMenu(id, 0)));
+        ui.menu(Overlays.Kind.MENU, k.name + ": Apps", "On: shows on " + k.name + "'s Home and opens. Off: hidden and blocked.",
+                items, () -> profileMenu(id, 0), focus);
+    }
+
+    private void commonAppsMenu(int focus) {
+        java.util.Set<String> common = profiles.commonApps();
+        java.util.List<Overlays.Item> items = new java.util.ArrayList<>();
+        java.util.List<String[]> apps = choosableApps();
+        for (int i = 0; i < apps.size(); i++) {
+            final int row = i;
+            String pkg = apps.get(i)[0];
+            boolean on = common.contains(pkg);
+            items.add(new Overlays.Item(apps.get(i)[1], on ? "On" : "Off", () -> {
+                java.util.Set<String> next = profiles.commonApps();
+                if (on) next.remove(pkg); else next.add(pkg);
+                profiles.setCommonApps(next);
+                store.log("common_apps", (on ? "-" : "+") + pkg, "TV");
+                sendBroadcast(new Intent(GuardStore.ACTION_CHANGED).setPackage(getPackageName()));
+                commonAppsMenu(row);
+            }));
+        }
+        items.add(new Overlays.Item("Back", null, () -> parentMenu(ROW_COMMON)));
+        ui.menu(Overlays.Kind.MENU, "Apps for Everyone", "These apps are on in every profile, on top of each profile's own apps.",
+                items, () -> parentMenu(ROW_COMMON), focus);
+    }
+
+    private static String minutes(int m) {
+        return m < 60 ? m + " min" : (m % 60 == 0 ? (m / 60) + " h" : (m / 60) + " h " + (m % 60) + " min");
+    }
+
+    private static String clock(int minuteOfDay) {
+        return String.format(java.util.Locale.ROOT, "%d:%02d", minuteOfDay / 60, minuteOfDay % 60);
     }
 
     private void phonesMenu() {
@@ -323,8 +567,8 @@ public class GuardService extends AccessibilityService {
                     new Overlays.Action("Cancel", this::phonesMenu),
                     new Overlays.Action("Remove", () -> { store.removeDevice(id); store.log("device_removed", name, "TV"); phonesMenu(); }))));
         }
-        items.add(new Overlays.Item("Back", null, this::parentMenu));
-        ui.menu(Overlays.Kind.MENU, "Who Can Control This TV", "Removing a phone takes effect at once.", items, this::parentMenu);
+        items.add(new Overlays.Item("Back", null, () -> parentMenu(ROW_PHONES)));
+        ui.menu(Overlays.Kind.MENU, "Who Can Control This TV", "Removing a phone takes effect at once.", items, () -> parentMenu(ROW_PHONES));
     }
 
     // ---------- prompts the phone app waits for ----------
@@ -366,10 +610,16 @@ public class GuardService extends AccessibilityService {
 
     /** Asks for the parent PIN on the TV; without one set, explains how to set it. */
     private void askPin(String title, Runnable onOk, Runnable onCancel) {
-        if (!profiles.pinSet()) {
-            ui.message(Overlays.Kind.PIN, "🔑", "No parent PIN yet",
-                    "Set one in the tv-hero app on your phone (Settings → Parent PIN), or switch profiles from the phone.",
-                    onCancel, new Overlays.Action("OK", onCancel));
+        if (!profiles.pinSet()) {   // no PIN yet: the parent password works on the TV too (TV keyboard)
+            ui.textInput("Parent password", "The password from the tv-hero app", "", true, pw -> {
+                GuardStore.PasswordResult r = store.checkPassword(pw);
+                if (r == GuardStore.PasswordResult.OK) {
+                    ui.hide();
+                    onOk.run();
+                } else {
+                    ui.toast(r == GuardStore.PasswordResult.LOCKED ? "Too many tries. Wait 5 minutes." : "Wrong password");
+                }
+            }, onCancel);
             return;
         }
         ui.pin(title, pin -> {
@@ -408,7 +658,7 @@ public class GuardService extends AccessibilityService {
             if (left <= 65_000 && warned.add("sleep" + sleepAt)) ui.toast("The TV turns off in 1 minute");
         }
 
-        if (profiles.kids().isEmpty() && (ui.kind() == Overlays.Kind.PICKER || ui.kind() == Overlays.Kind.PIN)) {
+        if (profiles.kids().isEmpty() && !pickerDone && (ui.kind() == Overlays.Kind.PICKER || ui.kind() == Overlays.Kind.PIN)) {
             ui.hide();
             pickerDone = true;
         }
@@ -590,7 +840,7 @@ public class GuardService extends AccessibilityService {
                 wl.acquire(3000);
                 return true;
             }
-            case "picker": main.post(this::showPicker); return true;
+            case "picker": main.post(() -> showPicker(true)); return true;
             case "picker_done": main.post(() -> {
                 pickerDone = true;
                 if (ui.kind() == Overlays.Kind.PICKER || ui.kind() == Overlays.Kind.PIN) ui.hide();

@@ -616,11 +616,11 @@ final class Config {
         Profiles.Kid kid = Profiles.get(ctx).activeKid();
         if (kid != null) {
             for (String pkg : GuardStore.get(ctx).launchablePackages()) {
-                if (!kid.allowed.contains(pkg) || Profiles.KID_NEVER.contains(pkg)) {
+                if (!kid.all.contains(pkg) || Profiles.KID_NEVER.contains(pkg)) {
                     if (!hidden.contains(pkg)) hidden.add(pkg);
                 }
             }
-            dock.removeIf(pkg -> !kid.allowed.contains(pkg));
+            dock.removeIf(pkg -> !kid.all.contains(pkg));
             greetingName = kid.name;
         }
         // A theme push or reset invalidates choices made on the TV. On first use, remember the

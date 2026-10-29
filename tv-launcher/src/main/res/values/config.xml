@@ -70,10 +70,14 @@
          A tile whose action no longer resolves opens the app normally. MagentaTV's program guide:
          com.telekom.onetv.tv.pl=com.telekom.onetv.tv.pl.action.PROGRAM_GUIDE. -->
     <string-array name="launch_actions">
+        <!-- tv-hero: the Brave tile opens YouTube (Brave's ad and tracker blocking) -->
+        <item>com.brave.browser=url:https://m.youtube.com/</item>
     </string-array>
 
     <!-- A tile's name instead of the app's own: "package=Name". It also shows above the dock. -->
     <string-array name="app_labels">
+        <item>com.brave.browser=YouTube · Brave</item>
+        <item>com.phlox.tvwebbrowser=Browser</item>
     </string-array>
     <!-- A tile's artwork instead of the app's banner: "package=drawable", a banner_* drawable bundled with the
          launcher (res/drawable). banner_tv is a magenta field with the Live TV glyph. -->
@@ -398,6 +402,9 @@
          (many China-market TVs, e.g. Coocaa 8R145), a fresh Home with app_library on would otherwise be
          nearly empty. Empty (off) by default, so existing setups change nothing. -->
     <string-array name="library_apps" translatable="false">
+        <!-- tv-hero: phone apps without a TV launcher entry that belong on Home -->
+        <item>com.brave.browser</item>
+        <item>com.whatsapp</item>
     </string-array>
 
     <!-- Module cards: an app that declares a card can stand in for its tile with its own

@@ -65,6 +65,21 @@ The script starts tv-hero first, then makes it Home, switches the stock launcher
 
 **From a computer:** `python3 tools/tvhero_client.py <tv-ip> pair`, then `status`, `volume 30`, `devices`, `forget`.
 
+## Everyday use (on the TV)
+
+- **The TV starts in the Family profile**: YouTube, YouTube · Brave, JioHotstar, Xiaomi TV+, WhatsApp, Browser, Live TV, Miracast. Settings and the Play Store are for Parent.
+- **Profile button** (round letter, top right): *Who's watching?* with every profile, Guest, Parent (PIN, or the parent password while no PIN is set) and the **Parent Menu**.
+- **Parent Menu** (no phone needed):
+  - profiles (add, rename, apps, daily limit, bedtime, remove)
+  - **Apps for Everyone** (on in every profile; out of the box: Browser, WhatsApp, YouTube · Brave)
+  - which profile the TV starts in
+  - Parent PIN
+  - who can control the TV
+  - internet control, debugging, Guest mode
+- **YouTube · Brave** opens m.youtube.com in Brave (ad and tracker blocking) and reuses one tab. Brave 1.80.124 is the last release for Android 9 (Chromium 138), so it no longer gets security updates: use it for YouTube, and the **Browser** (TV Bro, made for the remote) for everything else.
+- **WhatsApp** is the phone app. On first start, link it to your phone (⋮ → *Link as companion device*, scan the code with WhatsApp on your phone). Type with the phone's Bluetooth keyboard (Remote tab).
+- A blocked Settings or Play Store screen has **Switch to Parent**.
+
 ## Everyday use (phone app)
 
 | Tab | |

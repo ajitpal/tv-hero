@@ -11,7 +11,7 @@ com.google.android.videos
 com.spocky.projengmenu          # Projectivy launcher
 com.overdevs.at4k               # AT4K launcher
 com.neilturner.aerialviews      # Aerial Views screensaver
-com.phlox.tvwebbrowser          # TV Bro browser
+# com.phlox.tvwebbrowser        # TV Bro browser: re-enabled 29 Oct 2026 (now the TV's web browser, updated to 2.1.6)
 nextapp.fx                      # FX file explorer
 com.yablio.sendfilestotv        # Send Files to TV
 com.vectorunit.purple.googleplay

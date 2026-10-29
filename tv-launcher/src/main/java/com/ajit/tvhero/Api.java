@@ -145,6 +145,7 @@ final class Api implements ControlServer.Handler {
                 case "POST /v1/profiles/activate": return activate(b);
                 case "POST /v1/profiles/extra": return extra(b);
                 case "POST /v1/profiles/on_wake": return onWake(b);
+                case "POST /v1/profiles/common": return setCommon(b);
                 case "GET /v1/requests": return requests();
                 case "POST /v1/requests/answer": return answerRequest(b);
                 case "POST /v1/pin": return setPin(b);
@@ -621,7 +622,7 @@ final class Api implements ControlServer.Handler {
         String pkg = b.optString("package");
         if (store.isRestricted(pkg)) return error(403, "this app is blocked");
         Profiles.Kid kid = profiles.activeKid();
-        if (kid != null && (!kid.allowed.contains(pkg) || Profiles.KID_NEVER.contains(pkg)))
+        if (kid != null && (!kid.all.contains(pkg) || Profiles.KID_NEVER.contains(pkg)))
             return error(403, "this app isn't on " + kid.name + "'s list");
         PackageManager pm = ctx.getPackageManager();
         Intent i = pm.getLeanbackLaunchIntentForPackage(pkg);
@@ -691,6 +692,23 @@ final class Api implements ControlServer.Handler {
         int minutes = Math.max(-240, Math.min(240, b.optInt("minutes", 15)));
         profiles.addExtra(k.id, minutes);
         log("extra_time", k.name + " " + minutes);
+        actions.refresh();
+        return ok(profiles.json());
+    }
+
+    /** Apps for everyone: on in every profile on top of its own apps. Needs the password (it can loosen rules). */
+    private ControlServer.Response setCommon(JSONObject b) throws JSONException {
+        ControlServer.Response denied = needPassword(b);
+        if (denied != null) return denied;
+        JSONArray a = b.optJSONArray("apps");
+        if (a == null) return error(400, "apps missing");
+        java.util.Set<String> apps = new java.util.HashSet<>();
+        for (int i = 0; i < a.length() && i < 64; i++) {
+            String p = a.optString(i, "").trim();
+            if (p.matches("[A-Za-z0-9_.]+")) apps.add(p);
+        }
+        profiles.setCommonApps(apps);
+        log("common_apps", apps.size() + " apps");
         actions.refresh();
         return ok(profiles.json());
     }

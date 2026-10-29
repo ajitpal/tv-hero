@@ -73,6 +73,7 @@ Changes that loosen protection also need `"password"` in the body.
 | `GET/POST /v1/settings` | `{block_new_installs}` | ✔ to turn off | |
 | `GET/POST /v1/home` | dock_apps, hidden_apps, columns, greeting_name, show_greeting | | |
 | `GET /v1/profiles`, `POST /v1/profiles/save`, `/delete`, `/activate`, `/extra`, `/on_wake` | | ✔ except activating a kid or `guest` | profiles (up to 10 kids), see `Profiles.java` |
+| `POST /v1/profiles/common` | `{apps: [package…]}` | ✔ | Apps for Everyone: on in every profile on top of its own (`common_apps` in `GET /v1/profiles`) |
 | `GET /v1/requests`, `POST /v1/requests/answer` | `{id, allow}` | ✔ to allow | kids' "Ask a parent" requests |
 | `POST /v1/pin` | `{pin}` (empty clears) | ✔ | parent PIN typed on the TV |
 | `POST /v1/lock` | `{locked}` | ✔ to unlock | pause the TV |

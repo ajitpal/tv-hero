@@ -614,7 +614,8 @@ The UI shows this as one step: "Applying… Done".
 |---|---|
 | TV Home: dock of up to 6 apps, greeting by profile, App Library, ambient clock, no ads | Verified |
 | Profiles (up to 10), Who's Watching, parent PIN, limits, bedtime, pause, sleep timer, night volume | Verified (1.1) |
-| Guest mode, Parent Menu on the TV (who can control, internet control, debugging off, guest) | Built |
+| Family start-up profile, Apps for Everyone, profile button on Home, Parent Menu on the TV (profiles, apps, limits, bedtime, start-up profile, PIN, who can control, internet control, debugging, guest), password fallback without a PIN, "Switch to Parent" on blocked Settings | **Verified** (2.1, 29 Oct 2026) |
+| Browser (TV Bro 2.1.6), WhatsApp, YouTube · Brave tile (Brave 1.80.124, one reused tab) | **Verified** installed and opening; WhatsApp not yet linked (the owner accepts its terms) |
 | Kids' *Ask a Parent* on the blocked screen → **Needs You** on the phone | Built |
 | Pairing: code comparison + Allow / Don't Allow on the TV (focus on Don't Allow) + password over TLS | **Verified** with the Python client; phone UI built |
 | Encrypted channel: mutual TLS, Keystore keys on both sides, pinned certificates | **Verified** (TLS 1.2, ECDHE-ECDSA-AES128-GCM) |

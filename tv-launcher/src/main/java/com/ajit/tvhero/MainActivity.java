@@ -745,6 +745,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         });
         btnLibraryTop.setVisibility(cfg.libraryButton && cfg.appLibrary ? View.VISIBLE : View.GONE);
         addTopBarApps(cfg.topBarApps, cfg.launchActions);
+        addProfileButton();
         weatherPill = WeatherPill.add(this, findViewById(R.id.topButtons), getString(R.string.weather_pill));
         if (weatherPill != null) topAppButtons.add(weatherPill.view());
         iconOnlyButtons = cfg.iconOnlyButtons;
@@ -2361,6 +2362,32 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * Puts each top_bar_apps app in the top bar as a round pill with the app's own logo, left of the network pill.
      * The logo keeps its colours: the pill style's tint, which turns the other icons white, is cleared.
      */
+    /**
+     * tv-hero: a round button with the active profile's initial, first in the top bar. OK opens
+     * "Who's watching?" (kids, Guest, Parent with the PIN, and the Parent Menu).
+     */
+    private void addProfileButton() {
+        ViewGroup bar = findViewById(R.id.topButtons);
+        Profiles profiles = Profiles.get(this);
+        String id = profiles.activeId();
+        Profiles.Kid kid = profiles.activeKid();
+        String name = Profiles.PARENT.equals(id) ? "Parent" : kid != null ? kid.name : "Parent";
+        TextView button = (TextView) getLayoutInflater().inflate(R.layout.top_app_button, bar, false);
+        button.setId(View.generateViewId());
+        button.setText(name.substring(0, 1).toUpperCase(java.util.Locale.ROOT));
+        button.setGravity(android.view.Gravity.CENTER);
+        button.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 17);
+        button.setTextColor(0xFFFFFFFF);
+        button.setContentDescription("Profile: " + name + ". Switch profile");
+        button.setOnClickListener(v -> {
+            GuardService g = GuardService.instance;
+            if (g != null) g.globalAction("picker");
+            else Toast.makeText(this, "tv-hero's guard isn't running", Toast.LENGTH_SHORT).show();
+        });
+        bar.addView(button, 0);
+        topAppButtons.add(button);
+    }
+
     private void addTopBarApps(List<String> packages, Map<String, String> launchActions) {
         ViewGroup bar = findViewById(R.id.topButtons);
         PackageManager pm = getPackageManager();
@@ -2371,6 +2398,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (launch == null) continue;   // not installed, or disabled
             // Use the same configured launch_actions as tiles; retain the normal entry if unavailable.
             launch = LaunchActions.select(pkg, launchActions, launch, (targetPackage, action) -> {
+                Intent byUrl = LaunchActions.urlIntent(targetPackage, action, getPackageName());
+                if (byUrl != null) return pm.resolveActivity(byUrl, 0) != null ? byUrl : null;
                 Intent custom = new Intent(action).setPackage(targetPackage);
                 return pm.resolveActivity(custom, 0) != null ? custom : null;
             });
