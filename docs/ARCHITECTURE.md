@@ -5,6 +5,7 @@ One repo, one Gradle build, three modules:
 ```
 tv-hero/
 ├── protocol/      plain Java library: ports, paths, TLS settings, pairing maths, pinned trust (tests + vectors)
+├── adb/           plain Java ADB client (auth, shell, streamed install), capability probe, setup steps (Phase 3)
 ├── tv-launcher/   TV app (Java, Views, minSdk 26): home screen, guard, control server      com.ajit.tvhero
 ├── companion/     phone app (Kotlin, Compose, minSdk 28): control, family, remote, HID     com.ajit.tvhero.remote
 ├── tools/         Python: ADB over Wi-Fi, install, debloat/restore, protocol-2 test client
@@ -64,6 +65,7 @@ tv-hero/
 
 ```bash
 ./gradlew :protocol:test                                   # pairing vectors, real mutual-TLS handshakes on the JVM
+./gradlew :adb:test :adb:cliJar                            # ADB client against a fake adbd; CLI: java -jar adb/build/libs/tvhero-adb-cli.jar <tv-ip> <adbkey> probe
 ./gradlew :tv-launcher:assembleRelease :tv-launcher:testReleaseUnitTest
 ./gradlew :companion:assembleRelease :companion:testReleaseUnitTest :companion:lintRelease
 python3 tools/tvhero_client.py --self-test                 # Python against the same vectors

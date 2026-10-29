@@ -4,6 +4,30 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose'
 }
 
+// Phase 3 (M2): the phone carries the TV app it was built with, so it can install or update tv-hero on
+// the TV over the home network. Same release key as the TV app; versions always match.
+evaluationDependsOn(':tv-launcher')
+def tvApkDir = layout.buildDirectory.dir('generated/tvApk')
+def tvLauncher = project(':tv-launcher')
+def bundleTvApk = tasks.register('bundleTvApk') {
+    dependsOn ':tv-launcher:assembleRelease'
+    def apk = tvLauncher.layout.buildDirectory.file('outputs/apk/release/tv-launcher-release.apk')
+    def outDir = tvApkDir.map { it.dir('assets') }
+    def code = tvLauncher.android.defaultConfig.versionCode
+    def name = tvLauncher.android.defaultConfig.versionName
+    inputs.file(apk)
+    inputs.property('code', code)
+    inputs.property('name', name)
+    outputs.dir(outDir)
+    doLast {
+        def dir = outDir.get().asFile
+        dir.mkdirs()
+        java.nio.file.Files.copy(apk.get().asFile.toPath(), new File(dir, 'tv-hero-tv.apk').toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        new File(dir, 'tv-hero-tv.properties').text = "versionCode=${code}\nversionName=${name}\n"
+    }
+}
+
 def keystoreProps = new Properties()
 def keystoreFile = rootProject.file('keystore.properties')
 if (keystoreFile.exists()) keystoreFile.withInputStream { keystoreProps.load(it) }
@@ -17,8 +41,8 @@ android {
         // 28: Bluetooth HID device profile (remote and game controller) arrived in Android 9.
         minSdk 28
         targetSdk 34
-        versionCode 9
-        versionName '2.4.1'
+        versionCode 10
+        versionName '2.5.0'
     }
 
     signingConfigs {
@@ -47,6 +71,8 @@ android {
     }
     kotlinOptions { jvmTarget = '17' }
     buildFeatures { compose true }
+    sourceSets { main { assets { srcDir tvApkDir.map { it.dir('assets') } } } }
+    androidResources { noCompress 'apk' }
     testOptions {
         unitTests {
             includeAndroidResources = true
@@ -64,6 +90,7 @@ android {
 
 dependencies {
     implementation project(':protocol')
+    implementation project(':adb')
     implementation 'androidx.biometric:biometric:1.1.0'
     implementation platform('androidx.compose:compose-bom:2024.09.03')
     implementation 'androidx.compose.ui:ui'
@@ -79,3 +106,5 @@ dependencies {
     testImplementation 'androidx.compose.ui:ui-test-junit4'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
 }
+
+tasks.named('preBuild') { dependsOn bundleTvApk }

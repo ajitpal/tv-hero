@@ -50,6 +50,17 @@ The receiver demands WRITE_SECURE_SETTINGS from the sender, which only the shell
 - **Guard.** An accessibility service. It reads only which app is in front (window-state events), never screen content, and it draws the lock/prompt overlays.
 - **DNS filtering** (AdGuard Family) was set as strict Private DNS on the TV. **Android 9 can't validate strict Private DNS through a VPN**, so with Tailscale on, every name lookup failed and the TV said "no internet". Private DNS is now "automatic" while Tailscale runs. The family filter has to come from elsewhere: Tailscale's DNS settings (global nameservers 94.140.14.15 / 94.140.15.16) or the router.
 
+## Updating the TV from the phone (Phase 3)
+
+Settings → About → TV App → **Update the TV App** installs the TV app built into the phone app, over the TV's own debugging connection (ADB), without a computer. Check the TV only reads.
+
+- **Home Wi-Fi only.** The ADB client (`adb/`) refuses any address that isn't private, link-local or loopback, so never the internet or Tailscale. ADB over TCP is unencrypted and gives full control of the TV.
+- **Short window.** The phone switches debugging on with the parent password (the existing `/v1/adb`), and always switches it off at the end, also after a failure. It uses the normal switch (`adb_enabled 0`) so the phone can switch it on again later.
+- **Its own key.** The phone's ADB key is RSA-2048 inside the Android Keystore, so it can't be copied off the phone. It's separate from the pairing (TLS) key. The first time, the TV asks "Allow debugging?". The phone shows the key's fingerprint so it can be compared with the TV before pressing Allow. Forget This TV deletes the key.
+- **Only fixed commands.** The client runs read-only probe commands, a streamed `cmd package install`, the guard re-enable and the debugging switch. There is no free-form shell, and commands with line breaks are refused.
+- **Same signer.** The APK inside the phone app is the release build signed with the same key as the installed TV app. Android refuses an update signed with any other key.
+- **Wireless debugging (Android 11+ pairing codes) isn't supported yet.** Such TVs report it clearly instead of falling back to anything weaker.
+
 ## Known limits (be honest about them)
 
 - **No PAKE.** Pairing's protection relies on a person comparing six digits and pressing Allow. A careless Allow on mismatched codes can let an attacker who is already on the Wi-Fi in. The wording on the TV pushes towards Don't Allow.

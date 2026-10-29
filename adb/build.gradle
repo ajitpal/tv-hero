@@ -1,0 +1,25 @@
+plugins {
+    id 'java-library'
+}
+
+// ADB client for setting up a TV from the phone (Phase 3). Plain Java, so it runs on the phone and,
+// for testing, from a computer (AdbCli). Java 11 bytecode like :protocol.
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+dependencies {
+    api project(':protocol')
+    testImplementation 'junit:junit:4.13.2'
+}
+
+// A runnable jar for checking the client against a real TV from a computer (never shipped in an app).
+tasks.register('cliJar', Jar) {
+    archiveFileName = 'tvhero-adb-cli.jar'
+    manifest { attributes 'Main-Class': 'com.ajit.tvhero.adb.AdbCli' }
+    from sourceSets.main.output
+    dependsOn configurations.runtimeClasspath
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

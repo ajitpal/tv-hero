@@ -16,3 +16,4 @@ rootProject.name = "tv-hero"
 include ':protocol'        // pure Java: commands, pairing, pinning, shared by both apps
 include ':tv-launcher'     // the TV app (home screen, guard, control server)
 include ':companion'       // the phone app
+include ':adb'             // pure Java ADB client: setting up a TV from the phone (Phase 3)

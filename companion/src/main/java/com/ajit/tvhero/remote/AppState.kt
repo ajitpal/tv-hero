@@ -21,6 +21,8 @@ class AppState(context: Context) {
     val discovery = Discovery(app)
     val hid = HidController(app)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    /** Phase 3: checking and updating the TV app from the phone. */
+    val updater by lazy { TvUpdater(app, this) }
 
     var tv by mutableStateOf<PairedTv?>(store.last())
         private set
@@ -113,6 +115,7 @@ class AppState(context: Context) {
     }
 
     fun forgetTv() {
+        AdbIdentity.forget()   // the TV asks to Allow a new debugging key next time
         tv?.let { store.forget(it.id) }
         tv = null
         client = null

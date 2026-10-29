@@ -1,6 +1,10 @@
 # Phase 3 plan: any Android TV, set up from the phone
 
-Status: plan, revised 29 Oct 2026. Nothing here is built yet; the base screensaver (2.4) is.
+Status (29 Oct 2026):
+- **M1 done:** ADB client (`adb/`) and capability probe. The real TV was probed with it; it reports Full level on the Xiaomi. The encoded public key matches `adbkey.pub` byte for byte, and a streamed install took 3.3 s.
+- **M2 built:** phone Settings → About → TV App: Check the TV and Update the TV App, with the APK built into the phone app. It still needs a check on Ajit's phone.
+- The base screensaver (2.4) is also done.
+- Everything else here is still a plan.
 
 **Target:** any Android TV or Google TV box or television (Android 9 / API 28 and later), not only the Xiaomi MiTV-AXSO0 that tv-hero was built on. Someone with only the tv-hero phone app sets one up to the state the home TV is in today, and gets the same parental controls, screensaver and tools.
 

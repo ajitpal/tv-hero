@@ -70,6 +70,7 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
         "remote" -> { RemoteAccessPage(state, gate) { page = null }; return }
         "phones" -> { PhonesPage(state, gate) { page = null }; return }
         "log" -> { LogPage(state) { page = null }; return }
+        "tvapp" -> { TvAppPage(state, gate) { page = null }; return }
     }
     val c = Hig.colors
     var alert by remember { mutableStateOf<String?>(null) }   // password | pin | forget | name
@@ -117,7 +118,7 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
                     ?.let { "${it.versionName} (${androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(it)})" } ?: "?"
             }
             Row("Phone App", value = app)
-            Row("TV App", value = state.tvVersion.ifBlank { "—" })
+            Row("TV App", value = state.tvVersion.ifBlank { "—" }, chevron = true) { page = "tvapp" }
         }
     }
 
