@@ -160,6 +160,8 @@ final class Api implements ControlServer.Handler {
                 case "GET /v1/quiet": return ok(profiles.quiet());
                 case "POST /v1/quiet": profiles.setQuiet(b); actions.refresh(); return ok(profiles.quiet());
                 case "GET /v1/activity": return activity(req.param("since"));
+                case "GET /v1/onscreen": return ok(OnScreen.get(ctx).json());
+                case "POST /v1/onscreen": return setOnScreen(b);
                 case "GET /v1/remote": return remote();
                 case "POST /v1/adb": return adb(b);
                 default: return error(404, "no such endpoint");
@@ -896,10 +898,33 @@ final class Api implements ControlServer.Handler {
         org.json.JSONArray sessions = profiles.sessions(s);
         java.util.Set<String> pkgs = new java.util.HashSet<>();
         for (int i = 0; i < sessions.length(); i++) pkgs.add(sessions.getJSONObject(i).optString("package"));
+        JSONObject apps = profiles.appUsageJson();   // seconds per profile and app, today (2.9)
+        for (java.util.Iterator<String> it = apps.keys(); it.hasNext(); ) {
+            JSONObject mine = apps.optJSONObject(it.next());
+            if (mine != null) for (java.util.Iterator<String> p = mine.keys(); p.hasNext(); ) pkgs.add(p.next());
+        }
         JSONObject labels = new JSONObject();
         for (Map.Entry<String, String> e : GuardStore.labels(ctx, new java.util.ArrayList<>(pkgs)).entrySet()) labels.put(e.getKey(), e.getValue());
+        GuardService g = GuardService.instance;
         return ok(new JSONObject().put("sessions", sessions).put("labels", labels)
-                .put("usage_today", profiles.usageMinutesJson()));
+                .put("usage_today", profiles.usageMinutesJson())
+                .put("usage_apps_today", apps)
+                .put("usage_source", g != null && g.usageAccess() ? "usage_stats" : "windows"));
+    }
+
+    /** On-screen notes (2.9). Notes only, never rules, so no password: see OnScreen. */
+    private ControlServer.Response setOnScreen(JSONObject b) throws JSONException {
+        OnScreen o = OnScreen.get(ctx);
+        o.apply(b);
+        StringBuilder what = new StringBuilder();
+        for (String k : OnScreen.KEYS) {
+            if (!b.has(k)) continue;
+            if (what.length() > 0) what.append(", ");
+            what.append(OnScreen.label(k)).append(o.on(k) ? " on" : " off");
+        }
+        if (what.length() > 0) log("onscreen", what.toString());
+        actions.refresh();
+        return ok(o.json());
     }
 
     // ---------- remote access ----------

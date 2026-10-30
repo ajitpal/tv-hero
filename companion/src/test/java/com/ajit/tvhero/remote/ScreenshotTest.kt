@@ -24,6 +24,7 @@ import com.ajit.tvhero.remote.ui.GuestPage
 import com.ajit.tvhero.remote.ui.PairScreen
 import com.ajit.tvhero.remote.ui.PhonesPage
 import com.ajit.tvhero.remote.ui.QuietPage
+import com.ajit.tvhero.remote.ui.OnScreenPage
 import com.ajit.tvhero.remote.ui.RemoteAccessPage
 import com.ajit.tvhero.remote.ui.FamilyTab
 import com.ajit.tvhero.remote.ui.PasswordGate
@@ -97,6 +98,13 @@ class ScreenshotTest {
             Session("k7", "com.brave.browser", "Brave", "", now - 90 * 60_000, now - 50 * 60_000),
             Session("k7", "in.startv.hotstar", "JioHotstar", "India vs Australia, 2nd ODI", now - 23 * 60_000, now),
         )
+        state.appTime = mapOf(
+            "k1" to listOf(AppTime("com.google.android.youtube.tvkids", "YouTube Kids", 41 * 60 + 12), AppTime("com.brave.browser", "Brave", 14 * 60 + 40),
+                AppTime("com.whatsapp", "WhatsApp", 9 * 60 + 5)),
+            "k7" to listOf(AppTime("in.startv.hotstar", "JioHotstar", 46 * 60), AppTime("com.brave.browser", "Brave", 26 * 60 + 30)),
+            "guest" to listOf(AppTime("com.google.android.youtube.tv", "YouTube", 20 * 60)),
+        )
+        state.usageSource = "usage_stats"
         state.home = HomeLayout(listOf("com.google.android.youtube.tv", "com.brave.browser", "in.startv.hotstar",
             "com.mitv.tvhome.mitvplus", "com.whatsapp", "com.phlox.tvwebbrowser"), listOf(), 6, "The Sharmas", true)
         state.remote = RemoteAccess(false, "", listOf("192.168.1.50"), false, "")
@@ -154,6 +162,9 @@ class ScreenshotTest {
     @Test fun internet() = shot("11-internet-control", 4) { RemoteAccessPage(state, gate) {} }
     @Test fun quiet() = shot("12-night-volume", 4) {
         QuietPage(state, org.json.JSONObject().put("enabled", true).put("start", 21 * 60 + 30).put("end", 7 * 60).put("cap_percent", 35)) {}
+    }
+    @Test fun onScreen() = shot("19-on-screen-notes", 4) {
+        OnScreenPage(state, com.ajit.tvhero.remote.OnScreenNotes(timeLeft = true, toolsCorner = true, homeInfo = false, warnings = true)) {}
     }
     @Test fun pair() = shot("13-pair", 4) { PairScreen(state, "192.168.1.50", "MiTV-AXSO0") {} }
 

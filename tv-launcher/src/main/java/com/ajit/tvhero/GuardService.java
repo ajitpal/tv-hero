@@ -55,6 +55,10 @@ public class GuardService extends AccessibilityService {
     private Overlays ui;
     private Profiles profiles;
     private GuardStore store;
+    private OnScreen onScreen;
+    /** Screen time by the second (2.9): see ScreenTime. */
+    private ScreenTime time;
+    private boolean ourDream;
 
     // What is in front, and since when
     private String fgPkg = "";
@@ -83,12 +87,13 @@ public class GuardService extends AccessibilityService {
         }
     };
 
-    void packagesChanged() { launchableAt = 0; }
+    void packagesChanged() { launchableAt = 0; windowKinds.clear(); }
 
     private final BroadcastReceiver screen = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+                account();
                 closeSession();
                 if (profiles.isGuest()) {   // guest mode ends at standby
                     String w = profiles.onWake();
@@ -99,6 +104,7 @@ public class GuardService extends AccessibilityService {
             } else if (Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
                 lastTick = SystemClock.elapsedRealtime();
                 fgSince = System.currentTimeMillis();
+                account();
                 onWake();
             } else if ("android.media.VOLUME_CHANGED_ACTION".equals(intent.getAction())) {
                 capVolume();
@@ -110,7 +116,8 @@ public class GuardService extends AccessibilityService {
         @Override
         public void run() {
             try { tick(); } catch (RuntimeException e) { Log.w(TAG, "tick", e); }
-            main.postDelayed(this, TICK_MS);
+            // Every 20 s; every 5 s while the time-left corner shows, so its minutes stay right.
+            main.postDelayed(this, ui != null && ui.cornerShowing() ? 5_000 : TICK_MS);
         }
     };
 
@@ -120,6 +127,10 @@ public class GuardService extends AccessibilityService {
         store = GuardStore.get(this);
         profiles = Profiles.get(this);
         ui = new Overlays(this);
+        onScreen = OnScreen.get(this);
+        time = new ScreenTime((p, pkg, sec) -> profiles.addUsage(p, pkg, sec), this::countsAsWatching);
+        ui.onChange = () -> main.post(this::account);
+        Profiles.onActiveChanged = () -> main.post(this::account);
         AccessibilityServiceInfo info = getServiceInfo();
         if (info != null) {
             info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
@@ -169,6 +180,7 @@ public class GuardService extends AccessibilityService {
             Log.e(TAG, "no secure channel: phones can't control the TV until this is fixed", e);
         }
         registerNsd();
+        account();
         main.postDelayed(tick, 3000);
         Log.i(TAG, "guard running");
     }
@@ -209,13 +221,123 @@ public class GuardService extends AccessibilityService {
             sendAway(pkg);
             return;
         }
-        if (!pkg.equals(fgPkg)) {
-            closeSession();
-            fgPkg = pkg;
-            fgTitle = "";
-            fgSince = System.currentTimeMillis();
-        }
+        account();
+        // Only a full-screen app changes what's in front: the volume bar, the keyboard, dialogs and our own
+        // corner notes don't (2.9: they used to stop the count while the video played on behind them).
+        if (time.onWindow(SystemClock.elapsedRealtime(), pkg, windowKind(pkg, event.getClassName()))) frontChanged(pkg);
         check(pkg);
+    }
+
+    private void frontChanged(String pkg) {
+        if (pkg.equals(fgPkg)) return;
+        closeSession();
+        fgPkg = pkg;
+        fgTitle = "";
+        fgSince = System.currentTimeMillis();
+    }
+
+    /**
+     * Brings screen time up to date: closes the running stretch whenever the profile, the screen, a lock
+     * screen or the screensaver changed. Cheap; called on every change and every tick.
+     */
+    void account() { account(false); }
+
+    /**
+     * [fromTick]: also ask Android's usage record what's in front (on the 20-second tick only, so a window
+     * event a moment ago is never overruled by a record that hasn't caught up yet).
+     */
+    private void account(boolean fromTick) {
+        if (time == null) return;
+        long now = SystemClock.elapsedRealtime();
+        time.setProfile(now, profiles.activeId());
+        time.setScreenOn(now, screenOn());
+        time.setLockScreen(now, ui.showing() && isScreenLock());
+        if (ClockDream.dreaming != ourDream) { ourDream = ClockDream.dreaming; time.setDream(now, ourDream); }
+        String used = fromTick ? usageFront() : null;
+        if (used != null && !used.isEmpty() && !used.equals(time.front()) && time.setFront(now, used)) frontChanged(used);
+        time.tick(now);
+        updateCorner();
+    }
+
+    // ---------- what kind of window ----------
+
+    private final java.util.Map<String, ScreenTime.Window> windowKinds = new java.util.HashMap<>();
+
+    /**
+     * An activity's window is a full-screen app (it takes the front); anything else (the volume bar, the
+     * keyboard, a toast, a dialog, an overlay) is a small window; the screensaver's package is a dream.
+     */
+    private ScreenTime.Window windowKind(String pkg, CharSequence cls) {
+        if (isDreamPackage(pkg)) return ScreenTime.Window.DREAM;
+        if (cls == null) return launchable(pkg) ? ScreenTime.Window.APP : ScreenTime.Window.SMALL;
+        String key = pkg + "/" + cls;
+        ScreenTime.Window k = windowKinds.get(key);
+        if (k != null) return k;
+        try {
+            getPackageManager().getActivityInfo(new ComponentName(pkg, cls.toString()), 0);
+            k = ScreenTime.Window.APP;
+        } catch (PackageManager.NameNotFoundException | RuntimeException e) {
+            k = ScreenTime.Window.SMALL;
+        }
+        if (windowKinds.size() > 300) windowKinds.clear();
+        windowKinds.put(key, k);
+        return k;
+    }
+
+    /** The package of the TV's screensaver (when it isn't ours: ours reports itself through ClockDream). */
+    private boolean isDreamPackage(String pkg) {
+        if (pkg.equals(getPackageName())) return false;
+        String s;
+        try { s = android.provider.Settings.Secure.getString(getContentResolver(), "screensaver_components"); }
+        catch (RuntimeException e) { return false; }
+        if (s == null) return false;
+        for (String c : s.split(",")) if (c.startsWith(pkg + "/")) return true;
+        return false;
+    }
+
+    // ---------- Android's app-usage record (where the phone granted it at setup) ----------
+
+    private long usageCheckedAt, usageQueriedAt;
+    private boolean usageAllowed;
+    private String usagePkg = "";
+
+    boolean usageAccess() {
+        long now = SystemClock.elapsedRealtime();
+        if (usageCheckedAt == 0 || now - usageCheckedAt > 60_000) {
+            usageCheckedAt = now;
+            try {
+                android.app.AppOpsManager aom = getSystemService(android.app.AppOpsManager.class);
+                usageAllowed = aom != null && aom.checkOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                        android.os.Process.myUid(), getPackageName()) == android.app.AppOpsManager.MODE_ALLOWED;
+            } catch (RuntimeException e) {
+                usageAllowed = false;
+            }
+        }
+        return usageAllowed;
+    }
+
+    /**
+     * The app Android last brought to the front, from its own usage record: the source of truth where the
+     * phone granted usage access during setup. Null when not granted (the window method is used alone).
+     */
+    private String usageFront() {
+        if (!usageAccess()) return null;
+        long now = System.currentTimeMillis();
+        if (now - usageQueriedAt < 1000) return usagePkg;
+        try {
+            android.app.usage.UsageStatsManager usm = getSystemService(android.app.usage.UsageStatsManager.class);
+            if (usm == null) return null;
+            long from = usageQueriedAt == 0 ? now - 3600_000 : usageQueriedAt - 2000;
+            android.app.usage.UsageEvents ev = usm.queryEvents(from, now);
+            android.app.usage.UsageEvents.Event e = new android.app.usage.UsageEvents.Event();
+            while (ev != null && ev.getNextEvent(e)) {
+                if (e.getEventType() == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND) usagePkg = e.getPackageName();
+            }
+            usageQueriedAt = now;
+        } catch (RuntimeException e) {
+            return null;
+        }
+        return usagePkg;
     }
 
     private java.util.Set<String> launchableCache = java.util.Collections.emptySet();
@@ -311,11 +433,10 @@ public class GuardService extends AccessibilityService {
 
     /**
      * Screen time counts only while an app is open: not Home, not the clock screensaver (ours or the
-     * TV's), not Settings, not system screens or the keyboard.
+     * TV's), not Settings, not system screens or the keyboard. ScreenTime adds the screen, lock-screen and
+     * screensaver conditions.
      */
-    private boolean watching() {
-        if (ClockDream.dreaming) return false;
-        String p = fgPkg;
+    private boolean countsAsWatching(String p) {
         if (p.isEmpty() || p.equals(getPackageName())) return false;
         if (Profiles.KID_ALWAYS.contains(p) || SETTINGS.contains(p)) return false;
         return launchable(p);
@@ -460,10 +581,33 @@ public class GuardService extends AccessibilityService {
             store.log("guest_limit", String.valueOf(profiles.guestLimit()), "TV");
             parentMenu(guestRow);
         }));
+        int notesRow = items.size() + (switchRow ? 0 : 1);
+        int notesOn = 0;
+        for (String k : OnScreen.KEYS) if (onScreen.on(k)) notesOn++;
+        items.add(new Overlays.Item("On-Screen Notes", notesOn == OnScreen.KEYS.length ? "All on" : notesOn + " of " + OnScreen.KEYS.length + " on",
+                () -> onScreenMenu(notesRow, 0)));
         items.add(new Overlays.Item("Done", null, () -> { ui.hide(); pickerDone = true; refreshNow(); }));
         ui.menu(Overlays.Kind.MENU, "Parent Menu", (profiles.pinSet() ? "Everything here can also be done from the tv-hero app on your phone."
                         : "Tip: set a Parent PIN. It's quicker with the remote than the password.") + "  \u00b7  tv-hero " + Api.BuildConfigInfo.versionName(this),
                 items, () -> { ui.hide(); pickerDone = true; refreshNow(); }, focus);
+    }
+
+    /** On-Screen Notes (2.9): each extra tv-hero draws on the TV, on or off. Notes only, never rules. */
+    private void onScreenMenu(int backRow, int focus) {
+        java.util.List<Overlays.Item> items = new java.util.ArrayList<>();
+        for (int i = 0; i < OnScreen.KEYS.length; i++) {
+            String k = OnScreen.KEYS[i];
+            int at = i;
+            items.add(new Overlays.Item(OnScreen.label(k), onScreen.on(k) ? "On" : "Off", () -> {
+                onScreen.set(k, !onScreen.on(k));
+                store.log("onscreen", OnScreen.label(k) + (onScreen.on(k) ? " on" : " off"), "TV");
+                updateMini();
+                onScreenMenu(backRow, at);
+            }));
+        }
+        items.add(new Overlays.Item("Back", null, () -> parentMenu(backRow)));
+        ui.menu(Overlays.Kind.MENU, "On-Screen Notes", "Switch off a note for everyone. Limits, bedtime and lock screens still apply. "
+                + "Each profile also chooses when its time-left corner shows (Profiles).", items, () -> parentMenu(backRow), focus);
     }
 
     private String wakeLabel(String w) {
@@ -571,14 +715,21 @@ public class GuardService extends AccessibilityService {
         items.add(new Overlays.Item("Earn Time", k.quizOn ? "Up to " + k.quizCap + " min a day" : "Off", () -> quizMenu(id, 0)));
         int left = profiles.minutesLeft(k);
         items.add(new Overlays.Item("Time Today", left < 0 ? "No limit" : minutes(left) + " left", () -> timeTodayMenu(id, 0)));
+        items.add(new Overlays.Item("Time-Left Corner", cornerLabel(k.corner), () -> {
+            k.corner = Profiles.CORNER_LAST5.equals(k.corner) ? Profiles.CORNER_ALWAYS
+                    : Profiles.CORNER_ALWAYS.equals(k.corner) ? Profiles.CORNER_OFF : Profiles.CORNER_LAST5;
+            saveKid(k);
+            updateCorner();
+            profileMenu(id, 5);
+        }));
         items.add(new Overlays.Item("Rename", k.name, () -> ui.textInput("Rename profile", "Name", k.name, false, name -> {
             k.name = name;
             saveKid(k);
-            profileMenu(id, 5);
-        }, () -> profileMenu(id, 5))));
+            profileMenu(id, 6);
+        }, () -> profileMenu(id, 6))));
         items.add(new Overlays.Item("Remove Profile", null, () -> ui.message(Overlays.Kind.CONFIRM, "\uD83D\uDDD1", "Remove " + k.name + "?",
-                "Their apps, limits and history are deleted. Apps themselves stay on the TV.", () -> profileMenu(id, 6),
-                new Overlays.Action("Cancel", () -> profileMenu(id, 6)),
+                "Their apps, limits and history are deleted. Apps themselves stay on the TV.", () -> profileMenu(id, 7),
+                new Overlays.Action("Cancel", () -> profileMenu(id, 7)),
                 new Overlays.Action("Remove", () -> {
                     profiles.delete(id);
                     if (id.equals(profiles.onWake())) profiles.setOnWake("ask");
@@ -588,6 +739,10 @@ public class GuardService extends AccessibilityService {
         items.add(new Overlays.Item("Back", null, () -> profilesMenu(0)));
         ui.menu(Overlays.Kind.MENU, k.name, "Press OK on Daily Limit or Bedtime to step through the choices. Bedtime ends at " + clock(k.bedEnd) + ".",
                 items, () -> profilesMenu(0), focus);
+    }
+
+    static String cornerLabel(String corner) {
+        return Profiles.CORNER_ALWAYS.equals(corner) ? "Always" : Profiles.CORNER_OFF.equals(corner) ? "Off" : "Last 5 Minutes";
     }
 
     /** Today only: give or take minutes, or end the profile's TV time now (Time's up at once). */
@@ -811,13 +966,11 @@ public class GuardService extends AccessibilityService {
 
     private void tick() {
         long nowEl = SystemClock.elapsedRealtime();
-        long elapsed = Math.min(nowEl - lastTick, 2 * TICK_MS);
         lastTick = nowEl;
+        account(true);   // screen time, by the second (2.9)
         if (!screenOn()) return;
         if (playbackLock()) { stopPlayback(); ToolsEngine.get(this).pauseForLock(); } else releaseFocus();
-        String active = profiles.activeId();
         Profiles.Kid kid = profiles.activeKid();
-        if (!isScreenLock() && watching()) profiles.addUsage(active, (int) (elapsed / 1000));
         updateTitle();
         capVolume();
         updateMini();
@@ -867,10 +1020,11 @@ public class GuardService extends AccessibilityService {
         if (ui.kind() == Overlays.Kind.TIMES_UP || ui.kind() == Overlays.Kind.BEDTIME || ui.kind() == Overlays.Kind.LOCKED) ui.hide();
         int toBed = kid.minutesToBedtime(m);
         String day = Profiles.today();
-        if (left > 0 && left <= 5 && warned.add(day + kid.id + "L" + (left <= 1 ? 1 : 5))) {
+        boolean notes = onScreen.on(OnScreen.WARNINGS);
+        if (notes && left > 0 && left <= 5 && warned.add(day + kid.id + "L" + (left <= 1 ? 1 : 5))) {
             ui.toast(left <= 1 ? "1 minute of TV left today" : left + " minutes of TV left today");
         }
-        if (toBed >= 0 && toBed <= 5 && warned.add(day + kid.id + "B" + (toBed <= 1 ? 1 : 5))) {
+        if (notes && toBed >= 0 && toBed <= 5 && warned.add(day + kid.id + "B" + (toBed <= 1 ? 1 : 5))) {
             ui.toast(toBed <= 1 ? "Bedtime in 1 minute" : "Bedtime in " + toBed + " minutes");
         }
     }
@@ -1011,7 +1165,8 @@ public class GuardService extends AccessibilityService {
     void updateMini() {
         if (ui == null) return;
         ToolsCore c = ToolsEngine.get(this).core;
-        boolean show = c.tool != ToolsCore.Tool.NONE && !c.finished && ToolActivity.visible == 0 && !ui.showing() && screenOn();
+        boolean show = c.tool != ToolsCore.Tool.NONE && !c.finished && ToolActivity.visible == 0 && !ui.showing() && screenOn()
+                && (onScreen == null || onScreen.on(OnScreen.TOOLS_CORNER));
         if (!show) { ui.hideMini(); return; }
         long now = ToolsEngine.now();
         String pause = c.running ? "" : "   ❚❚";
@@ -1033,6 +1188,28 @@ public class GuardService extends AccessibilityService {
                                 : p.kind.equals(Workout.SET_REST) ? 0xFFBF5AF2 : 0xFF0A84FF);
             }
         }
+    }
+
+    /**
+     * The time-left corner (2.9): "⏱ 12 min left" over any app, per profile Last 5 Minutes (default), Always
+     * or Off, and switched off for everyone in On-Screen Notes. Only while time is being counted.
+     */
+    void updateCorner() {
+        if (ui == null || time == null) return;
+        Profiles.Kid kid = profiles.activeKid();
+        int left = kid == null ? -1 : profiles.secondsLeft(kid);
+        boolean show = kid != null && left > 0 && onScreen.on(OnScreen.TIME_LEFT)
+                && !Profiles.CORNER_OFF.equals(kid.corner)
+                && (Profiles.CORNER_ALWAYS.equals(kid.corner) || left <= 5 * 60)
+                && time.counting() && !ui.showing();
+        if (!show) { ui.hideCorner(); return; }
+        ui.corner(cornerText(left), left <= 60 ? 0xFFFF453A : left <= 5 * 60 ? 0xFFFFB020 : 0xFF5B6CFF);
+    }
+
+    static String cornerText(int secondsLeft) {
+        int m = (secondsLeft + 59) / 60;
+        if (m < 60) return "\u23F1  " + m + " min left";
+        return "\u23F1  " + (m / 60) + " h " + (m % 60 == 0 ? "" : (m % 60) + " min ") + "left";
     }
 
     /** Brings a tool's screen forward (its timer ended), unless a lock screen or prompt is showing. */

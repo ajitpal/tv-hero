@@ -28,6 +28,7 @@ public class ClockDream extends DreamService {
         super.onDreamingStarted();
         dreaming = true;
         scene.start();
+        tellGuard();
     }
 
     @Override
@@ -35,6 +36,13 @@ public class ClockDream extends DreamService {
         dreaming = false;
         scene.stop();
         super.onDreamingStopped();
+        tellGuard();
+    }
+
+    /** Screen time stops and restarts at the exact moment (same process, main thread). */
+    private static void tellGuard() {
+        GuardService g = GuardService.instance;
+        if (g != null) g.account();
     }
 
     @Override

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Dashboard
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Lock
@@ -67,6 +68,7 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
     when (page) {
         "home" -> { HomeScreenPage(state) { page = null }; return }
         "quiet" -> { QuietPage(state) { page = null }; return }
+        "notes" -> { OnScreenPage(state) { page = null }; return }
         "remote" -> { RemoteAccessPage(state, gate) { page = null }; return }
         "phones" -> { PhonesPage(state, gate) { page = null }; return }
         "log" -> { LogPage(state) { page = null }; return }
@@ -88,6 +90,8 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
                 leading = { IconTile(Icons.Rounded.Dashboard, Color(0xFF007AFF)) }) { page = "home" }
             Row("Night Volume", subtitle = "Cap the volume at night", chevron = true,
                 leading = { IconTile(Icons.Rounded.VolumeDown, Color(0xFF5856D6)) }) { page = "quiet" }
+            Row("On-Screen Notes", subtitle = "Time-left corner, tools corner, info line, warnings", chevron = true,
+                leading = { IconTile(Icons.Rounded.Timer, Color(0xFFFF9500)) }) { page = "notes" }
         }
         section("access", "Security", "Every phone that can control this TV, and how it connects, is listed here. Removing one takes effect at once.") {
             val phones = state.phones.size
@@ -264,6 +268,38 @@ internal fun QuietPage(state: AppState, preview: JSONObject? = null, onBack: () 
     }
 }
 
+// ---------- On-Screen Notes (2.9) ----------
+
+/**
+ * Each extra tv-hero draws on the TV, on or off for everyone. Notes only: limits, bedtime and lock screens
+ * still apply, so no password. [preview] is for screenshot tests.
+ */
+@Composable
+internal fun OnScreenPage(state: AppState, preview: com.ajit.tvhero.remote.OnScreenNotes? = null, onBack: () -> Unit) {
+    var notes by remember { mutableStateOf(preview) }
+    var old by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { if (preview == null) state.run { notes = state.client!!.onScreen().also { if (it == null) old = true } } }
+    fun set(key: String, on: Boolean) = state.run { notes = state.client!!.setOnScreen(key, on) }
+    HigScreen("On-Screen Notes", onBack = onBack, backLabel = "Settings") {
+        val n = notes
+        if (old) { section("old", footer = "Update the TV app (Settings \u2192 About \u2192 TV App) to choose these.") { Row("This TV's app is older than 2.9") }; return@HigScreen }
+        if (n == null) { section("l") { Row("Loading…") }; return@HigScreen }
+        section("time", footer = "\u201c\u23F1 12 min left\u201d in the top-left corner over any app, for profiles with a daily limit. " +
+            "Each profile chooses Last 5 Minutes, Always or Off (Family \u2192 a profile).") {
+            ToggleRow("Time-Left Corner", n.timeLeft) { set("time_left", it) }
+        }
+        section("tools", footer = "The running Timer, Stopwatch or Workout in the top-right corner when you leave its screen.") {
+            ToggleRow("Tools Corner Status", n.toolsCorner) { set("tools_corner", it) }
+        }
+        section("info", footer = "On Home, the line above an app: what was watched there lately and the minutes today.") {
+            ToggleRow("Home Info Line", n.homeInfo) { set("home_info", it) }
+        }
+        section("warn", footer = "The short notes at 5 minutes and 1 minute before time's up and before bedtime. Time's up and Bedtime screens still show.") {
+            ToggleRow("Time and Bedtime Warnings", n.warnings) { set("warnings", it) }
+        }
+    }
+}
+
 // ---------- Remote Access ----------
 
 @Composable
@@ -411,6 +447,7 @@ internal fun LogPage(state: AppState, onBack: () -> Unit) {
                     "sleep" -> "TV went to standby"
                     "adb_on" -> "Debugging turned on"
                     "adb_off" -> "Debugging turned off"
+                    "onscreen" -> "On-screen notes: $p"
                     else -> e.optString("type") + " " + p
                 }
                 val by = e.optString("by")

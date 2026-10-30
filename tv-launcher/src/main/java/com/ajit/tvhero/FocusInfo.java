@@ -101,6 +101,7 @@ final class FocusInfo {
             below = true;
         }
         if (info == null) return;
+        if (!OnScreen.get(ctx).on(OnScreen.HOME_INFO)) return;   // switched off in On-Screen Notes (2.9)
         title.setText(info[0]);
         line1.setText(info[1]);
         line1.setVisibility(info[1].isEmpty() ? View.GONE : View.VISIBLE);

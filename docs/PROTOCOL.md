@@ -74,6 +74,7 @@ Changes that loosen protection also need `"password"` in the body.
 | `GET/POST /v1/home` | dock_apps, hidden_apps, columns, greeting_name, show_greeting | | |
 | `GET /v1/profiles`, `POST /v1/profiles/save`, `/delete`, `/activate`, `/extra`, `/on_wake` | | ✔ except activating a kid or `guest` | profiles (up to 10 kids), see `Profiles.java` |
 | (profile fields) | `quiz: {enabled, minutes, daily_max, level 1-3, topics: [maths, english, gk, hindi, puzzles]}`; read-only `quiz_earned_today`, `quiz_right_today` | | Earn Time. A save without `quiz` keeps what the TV has. |
+| (profile fields, 2.9) | `corner: last5 \| always \| off` | | the time-left corner over apps. A save without `corner` keeps what the TV has. |
 | (guest) | `GET /v1/profiles` → `guest: {daily_limit, used_today, extra_today, minutes_left}`. Set with `profiles/save {profile: {id: "guest", daily_limit}}`; `/extra` and requests accept `id: "guest"` | ✔ | Guest's daily allowance, shared by all guests that day |
 | `POST /v1/profiles/extra` | `{id, minutes: -240..240}` | ✔ to add | today only; taking minutes away needs no password |
 | `POST /v1/profiles/end` | `{id}` (a kid or `guest`) | | ends today's time now: Time's up at once if that profile is watching, even without a daily limit. Adding time reopens it. Profiles show `ended_today`. |
@@ -84,7 +85,8 @@ Changes that loosen protection also need `"password"` in the body.
 | `POST /v1/pin` | `{pin}` (empty clears) | ✔ | parent PIN typed on the TV |
 | `POST /v1/lock` | `{locked}` | ✔ to unlock | pause the TV |
 | `POST /v1/sleep`, `GET/POST /v1/quiet` | | | sleep timer, night volume cap |
-| `GET /v1/activity?since=` | | | watch sessions and minutes used today |
+| `GET /v1/activity?since=` | | | watch sessions and minutes used today (`usage_today`: minutes per profile). 2.9 adds `usage_apps_today: {profile: {package: seconds}}` and `usage_source: usage_stats \| windows` (whether the TV reads Android's app-usage record, granted at setup). |
+| `GET/POST /v1/onscreen` (2.9) | `{time_left, tools_corner, home_info, warnings}` (booleans; send only what changes) | | on-screen notes, each on or off for everyone. Notes only, never rules, so no password. An older TV answers 404. |
 | `GET /v1/devices` | | | `{devices: [{id, name, paired_at, last_seen, last_via, state, fingerprint, active}], you}` |
 | `POST /v1/devices/remove` | `{device_id}` (omit = this phone) | ✔ for another phone | revokes at once |
 | `GET /v1/internet` | | | `{enabled, since, by, pending, tailscale_ip}` |

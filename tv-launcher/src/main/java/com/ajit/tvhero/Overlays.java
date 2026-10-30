@@ -38,8 +38,10 @@ final class Overlays {
     private final WindowManager wm;
     private final Handler main = new Handler(Looper.getMainLooper());
     private View full, toast;
-    private TextView mini;
-    private GradientDrawable miniDot;
+    private TextView mini, corner;
+    private GradientDrawable miniDot, cornerDot;
+    /** Runs on the main thread whenever a full-screen overlay opens or closes (screen time stops under lock screens). */
+    Runnable onChange;
     private Kind kind = Kind.NONE;
 
     Overlays(Context ctx) {
@@ -363,6 +365,47 @@ final class Overlays {
         if (!text.contentEquals(mini.getText())) mini.setText(text);
     }
 
+    /**
+     * The time-left pill in the top-left corner over any app ("⏱ 12 min left", 2.9). Small and quiet, never
+     * takes the remote; the dot turns amber in the last 5 minutes and red in the last one.
+     */
+    void corner(String text, int color) {
+        if (corner == null) {
+            TextView t = text("", 17, Color.WHITE, true);
+            GradientDrawable bg = new GradientDrawable();
+            bg.setColor(Color.argb(200, 12, 14, 20));
+            bg.setCornerRadius(dp(22));
+            bg.setStroke(dp(1), Color.argb(50, 255, 255, 255));
+            t.setBackground(bg);
+            t.setPadding(dp(14), dp(8), dp(18), dp(8));
+            cornerDot = new GradientDrawable();
+            cornerDot.setShape(GradientDrawable.OVAL);
+            cornerDot.setSize(dp(10), dp(10));
+            t.setCompoundDrawablesRelativeWithIntrinsicBounds(cornerDot, null, null, null);
+            t.setCompoundDrawablePadding(dp(10));
+            WindowManager.LayoutParams lp = params(false);
+            lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            lp.gravity = Gravity.TOP | Gravity.START;
+            lp.x = dp(36);
+            lp.y = dp(28);
+            try { wm.addView(t, lp); corner = t; } catch (RuntimeException e) { return; }
+            t.setAlpha(0f);
+            t.animate().alpha(1f).setDuration(250).start();
+        }
+        cornerDot.setColor(color);
+        if (!text.contentEquals(corner.getText())) corner.setText(text);
+    }
+
+    void hideCorner() {
+        if (corner != null) {
+            try { wm.removeView(corner); } catch (RuntimeException ignored) { }
+            corner = null;
+        }
+    }
+
+    boolean cornerShowing() { return corner != null; }
+
     void hideMini() {
         if (mini != null) {
             try { wm.removeView(mini); } catch (RuntimeException ignored) { }
@@ -375,7 +418,9 @@ final class Overlays {
             try { wm.removeView(full); } catch (RuntimeException ignored) { }
             full = null;
         }
+        Kind was = kind;
         kind = Kind.NONE;
+        if (was != Kind.NONE && onChange != null) onChange.run();
     }
 
     private void hideToast() {
@@ -390,6 +435,7 @@ final class Overlays {
     private void showFull(Kind k, View content, Runnable onBack) {
         hide();
         hideMini();   // lock screens and prompts cover everything, the tool's corner status too
+        hideCorner();
         FrameLayout root = new FrameLayout(ctx) {
             @Override
             public boolean dispatchKeyEvent(KeyEvent e) {
@@ -412,6 +458,7 @@ final class Overlays {
         } catch (RuntimeException e) {
             android.util.Log.w(GuardService.TAG, "overlay failed: " + e.getMessage());
         }
+        if (onChange != null) onChange.run();
     }
 
     private WindowManager.LayoutParams params(boolean focusable) {

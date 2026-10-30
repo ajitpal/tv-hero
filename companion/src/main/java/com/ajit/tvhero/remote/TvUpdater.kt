@@ -119,6 +119,8 @@ class TvUpdater(private val ctx: Context, private val state: AppState) {
                         Steps.guardBound(c)
                     }
                     if (!bound) throw AdbClient.AdbException("tv-hero ${b.name} is installed, but the guard didn't start. Restart the TV once.")
+                    // 2.9: Android's app-usage record makes screen time exact; older installs never had it.
+                    withContext(Dispatchers.IO) { runCatching { Steps.grantUsageAccess(c) } }
                     result = "tv-hero ${b.name} is on the TV and the guard is running."
                 } else {
                     result = probe?.describe()

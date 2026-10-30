@@ -174,11 +174,14 @@ internal fun KidPage(state: AppState, gate: PasswordGate, kid: Kid, onBack: () -
             if (!watching) ButtonRow("Switch the TV to ${kid.name}") { state.run { state.family = state.client!!.activate(kid.id, null); state.refresh() } }
             Row("Name", value = kid.name, chevron = true) { sheet = "rename" }
         }
-        section("time", "Screen Time", "The limit counts time with an app open in ${kid.name}'s profile (not Home, the screensaver or Settings). The TV warns 5 minutes and 1 minute before, then shows a Time's up screen.") {
+        section("time", "Screen Time", "The limit counts time with an app open in ${kid.name}'s profile (not Home, the screensaver or Settings), by the second. " +
+            "The TV warns 5 minutes and 1 minute before, then shows a Time's up screen. The time-left corner is a small \u23F1 note over the app.") {
             Row("Today", value = minutesText(kid.usedToday))
             Row("Daily Limit", value = if (kid.dailyLimit == 0) "None" else minutesText(kid.dailyLimit), chevron = true) { sheet = "limit" }
             TimeToday(state, gate, kid) { sheet = "end" }
+            Row("Time-Left Corner", value = Kid.CORNERS[kid.corner] ?: "Last 5 Minutes", chevron = true) { sheet = "corner" }
         }
+        appByApp(state, kid.id, kid.name)
         section("bed", "Bedtime", "At bedtime the TV shows a good-night screen and goes to standby a minute later. A parent can allow one more hour with the PIN.") {
             ToggleRow("Bedtime", kid.bedtimeOn) { on -> save(kid.copy(bedtimeOn = on)) }
             if (kid.bedtimeOn) {
@@ -244,6 +247,15 @@ internal fun KidPage(state: AppState, gate: PasswordGate, kid: Kid, onBack: () -
                 LIMITS.forEach { m ->
                     Row(if (m == 0) "No Limit" else minutesText(m), trailing = { if (kid.dailyLimit == m) Icon(Icons.Rounded.Check, null, tint = c.tint) },
                         onClick = { sheet = null; save(kid.copy(dailyLimit = m)) })
+                }
+            }
+        }
+        "corner" -> HigSheet("Time-Left Corner", onCancel = { sheet = null }, done = null) {
+            section("c", footer = "A small \u201c\u23F1 12 min left\u201d in the corner of the TV, over any app, while ${kid.name} has a daily limit. " +
+                "Switch it off for everyone in Settings \u2192 On-Screen Notes.") {
+                Kid.CORNERS.forEach { (id, label) ->
+                    Row(label, trailing = { if (kid.corner == id) Icon(Icons.Rounded.Check, null, tint = c.tint) },
+                        onClick = { sheet = null; if (id != kid.corner) save(kid.copy(corner = id), "Change when ${kid.name}'s time-left corner shows.") })
                 }
             }
         }
@@ -350,6 +362,7 @@ internal fun GuestPage(state: AppState, gate: PasswordGate, onBack: () -> Unit) 
             Row("Daily Limit", value = if (g.dailyLimit == 0) "None" else minutesText(g.dailyLimit), chevron = true) { sheet = true }
             TimeToday(state, gate, g.asKid()) { ending = true }
         }
+        appByApp(state, "guest", "Guest")
     }
     if (sheet) HigSheet("Guest Daily Limit", onCancel = { sheet = false }, done = null) {
         section("l") {
@@ -360,6 +373,24 @@ internal fun GuestPage(state: AppState, gate: PasswordGate, onBack: () -> Unit) 
         }
     }
 }
+
+/**
+ * Today, app by app (2.9): where a profile's minutes went. Totals can differ from "Today" by a minute,
+ * because each app's seconds are rounded down on their own.
+ */
+internal fun androidx.compose.foundation.lazy.LazyListScope.appByApp(state: AppState, profile: String, name: String) {
+    val list = state.appTime[profile].orEmpty()
+    val how = if (state.usageSource == "usage_stats") "From Android's own app-usage record on the TV."
+        else "From the app windows the TV sees. Updating the TV app from this phone (Settings \u2192 About \u2192 TV App) lets it use Android's own usage record, which is more exact."
+    section("byapp", "Today, App by App", if (list.isEmpty()) how else "Counted by the second. $how") {
+        if (list.isEmpty()) Row("Nothing yet today", subtitle = "Minutes in each app $name opens show up here.")
+        list.forEach { a ->
+            Row(state.labels[a.pkg] ?: a.label, value = secondsText(a.seconds), leading = { AppIcon(state, a.pkg, 29) })
+        }
+    }
+}
+
+internal fun secondsText(s: Int) = if (s < 60) "< 1 min" else minutesText(s / 60)
 
 internal fun switchText(n: Int) = when {
     n < 0 -> "No Limit"

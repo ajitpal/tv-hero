@@ -43,6 +43,7 @@ printf '%s' "$START" | grep -qF 'Status: ok' || { echo "tv-hero did not start; H
 printf '%s\n' \
   "pm grant $PKG android.permission.ACCESS_FINE_LOCATION 2>/dev/null; echo location-granted" \
   "pm grant $PKG android.permission.WRITE_SECURE_SETTINGS && echo secure-settings-granted" \
+  "appops set $PKG GET_USAGE_STATS allow && echo usage-access-granted" \
   "cmd package compile -m speed -f $PKG" \
   | tv --batch
 [ "$STOCK" = none ] || tv "pm disable-user --user 0 $STOCK"

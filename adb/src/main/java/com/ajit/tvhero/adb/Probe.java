@@ -24,6 +24,7 @@ public final class Probe {
             {"gtv", "pm list packages " + GOOGLE_TV_HOME},
             {"tvhero", "dumpsys package " + TV_PACKAGE + " | grep -E 'versionName=|versionCode=|WRITE_SECURE_SETTINGS'"},
             {"a11y", "settings get secure enabled_accessibility_services"},
+            {"usage", "appops get " + TV_PACKAGE + " GET_USAGE_STATS"},
             {"saver", "settings get secure screensaver_components"},
             {"idle", "settings get system screen_off_timeout"},
             {"adb", "settings get global adb_enabled"},
@@ -53,6 +54,8 @@ public final class Probe {
         public String tvHeroVersion = "";      // empty: not installed
         public int tvHeroVersionCode;
         public boolean secureSettingsGranted, guardEnabled;
+        /** tv-hero may read Android's app-usage record (2.9 screen time); granted by Steps.grantUsageAccess. */
+        public boolean usageAccess;
         public String screensaver = "";
         public int idleMinutes = -1;
         public boolean adbEnabled;
@@ -74,10 +77,20 @@ public final class Probe {
 
         @Override public String toString() {
             return describe() + "\nlevel=" + level() + " home=" + home + " tv-hero=" + (tvHeroVersion.isEmpty() ? "no" : tvHeroVersion)
-                    + " guard=" + guardEnabled + " secureSettings=" + secureSettingsGranted + " screensaver=" + screensaver
+                    + " guard=" + guardEnabled + " secureSettings=" + secureSettingsGranted + " usageAccess=" + usageAccess
+                    + " screensaver=" + screensaver
                     + " idleMin=" + idleMinutes + " adb=" + adbEnabled + " ramMb=" + ramMb + (lowRam ? " (low-RAM)" : "")
                     + " freeMb=" + freeStorageMb + " abi=" + abi + " build=" + build;
         }
+    }
+
+    /** "GET_USAGE_STATS: allow" (newer Androids add "; time=..."), and not "default" or "ignore". */
+    static boolean usageAllowed(String appops) {
+        for (String line : appops.replace("\r", "").split("\n")) {
+            String t = line.trim();
+            if (t.startsWith("GET_USAGE_STATS:") && t.substring("GET_USAGE_STATS:".length()).trim().startsWith("allow")) return true;
+        }
+        return false;
     }
 
     public static Result parse(String out) {
@@ -116,6 +129,7 @@ public final class Probe {
         }
         String a11y = get(sec, "a11y").trim();
         r.guardEnabled = a11y.contains(GUARD) || a11y.contains(TV_PACKAGE + "/" + TV_PACKAGE + ".GuardService");
+        r.usageAccess = usageAllowed(get(sec, "usage"));
         r.screensaver = clean(get(sec, "saver"));
         int ms = parseInt(clean(get(sec, "idle")), -1);
         r.idleMinutes = ms < 0 ? -1 : ms / 60_000;

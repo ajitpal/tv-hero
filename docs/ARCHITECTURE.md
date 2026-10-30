@@ -37,7 +37,8 @@ tv-hero/
 - **Home screen** (`MainActivity`, `Config`): clock, greeting, a dock of up to 6 apps, an app library. No feeds, no ads. A kid profile shows only that kid's apps.
 - **GuardService** is an accessibility service and the only long-running piece. It:
   - reacts to window changes to block apps, hold new installs and enforce profiles, bedtime and time limits
-  - runs a 20-second tick for usage, the sleep timer and the night volume cap
+  - counts screen time by the second in `ScreenTime` (plain Java, replay-tested): only full-screen app windows (activities) change what's in front; every app, profile, screen, lock-screen or screensaver change closes the running stretch; Android's app-usage record (`GET_USAGE_STATS`, granted over ADB at setup) corrects the front app on each tick where granted
+  - runs a 20-second tick (5 seconds while the time-left corner shows) for the sleep timer, the night volume cap and flushing screen time
   - hosts both control ports and advertises the TV over mDNS
   - draws every prompt as an accessibility overlay. On this TV, starting an Activity from a service is delayed after Home; overlays aren't.
 - **Api** is the whole control surface (see `PROTOCOL.md`). It decides home vs internet (`protocol.Net`), checks that internet control is on, records who made each change, and asks the TV for confirmation where needed (pairing, internet on).

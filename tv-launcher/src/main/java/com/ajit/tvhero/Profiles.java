@@ -68,12 +68,14 @@ public final class Profiles {
         boolean quizOn = true;
         int quizMinutes = 5, quizCap = 15, quizLevel = 2;
         Set<String> quizTopics = new HashSet<>(Quiz.TOPICS);
+        /** Time-left corner over apps (2.9): "last5" (default), "always" or "off". */
+        String corner = CORNER_LAST5;
 
         JSONObject json() throws JSONException {
             return new JSONObject().put("id", id).put("name", name).put("color", color)
                     .put("allowed", new JSONArray(allowed)).put("daily_limit", dailyLimit)
                     .put("bedtime_on", bedtimeOn).put("bedtime_start", bedStart).put("bedtime_end", bedEnd)
-                    .put("quiz", quizJson());
+                    .put("quiz", quizJson()).put("corner", corner);
         }
 
         JSONObject quizJson() throws JSONException {
@@ -107,6 +109,7 @@ public final class Profiles {
             k.bedStart = clampMinute(o.optInt("bedtime_start", 21 * 60));
             k.bedEnd = clampMinute(o.optInt("bedtime_end", 7 * 60));
             k.readQuiz(o.optJSONObject("quiz"));
+            k.corner = corner(o.optString("corner", CORNER_LAST5));
             return k;
         }
 
@@ -122,6 +125,12 @@ public final class Profiles {
             int d = bedStart - minuteOfDay;
             return d < 0 ? d + 24 * 60 : d;
         }
+    }
+
+    static final String CORNER_LAST5 = "last5", CORNER_ALWAYS = "always", CORNER_OFF = "off";
+
+    static String corner(String v) {
+        return CORNER_ALWAYS.equals(v) || CORNER_OFF.equals(v) ? v : CORNER_LAST5;
     }
 
     static int clampMinute(int m) {
@@ -191,6 +200,7 @@ public final class Profiles {
                     k.quizOn = old.quizOn; k.quizMinutes = old.quizMinutes; k.quizCap = old.quizCap;
                     k.quizLevel = old.quizLevel; k.quizTopics = old.quizTopics;
                 }
+                if (!in.has("corner")) k.corner = list.get(i).corner;   // phones before 2.9 don't send it
                 list.set(i, k);
                 found = true;
             }
@@ -278,8 +288,13 @@ public final class Profiles {
 
     public synchronized boolean isGuest() { return GUEST.equals(activeId()); }
 
+    /** Told when the active profile changes, so screen time closes the running stretch at once. */
+    static volatile Runnable onActiveChanged;
+
     public synchronized void setActive(String id) {
         prefs.edit().putString("active", id == null ? PARENT : id).apply();
+        Runnable r = onActiveChanged;
+        if (r != null) r.run();
     }
 
     /** True the first time it's asked after each boot (Settings.Global.BOOT_COUNT), false after that. */
@@ -339,11 +354,34 @@ public final class Profiles {
         return c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE);
     }
 
-    /** Adds seconds of screen time for a profile today. */
-    public synchronized void addUsage(String profile, int seconds) {
-        JSONObject u = usageToday();
-        try { u.put(profile, u.optInt(profile, 0) + seconds); } catch (JSONException ignored) { }
-        prefs.edit().putString("usage", u.toString()).putString("usage_day", today()).apply();
+    /** Adds seconds of screen time for a profile today, and to that app's total for the profile. */
+    public synchronized void addUsage(String profile, String pkg, int seconds) {
+        if (seconds <= 0) return;
+        JSONObject u = usageToday(), apps = appUsageToday();
+        try {
+            u.put(profile, u.optInt(profile, 0) + seconds);
+            if (pkg != null && !pkg.isEmpty()) {
+                JSONObject mine = apps.optJSONObject(profile);
+                if (mine == null) { mine = new JSONObject(); apps.put(profile, mine); }
+                mine.put(pkg, mine.optInt(pkg, 0) + seconds);
+            }
+        } catch (JSONException ignored) { }
+        prefs.edit().putString("usage", u.toString()).putString("usage_apps", apps.toString())
+                .putString("usage_day", today()).apply();
+    }
+
+    /** Seconds used today, per profile and app: {"k1a2b": {"com.google.android.youtube.tv": 1260}}. */
+    public synchronized JSONObject appUsageJson() {
+        return appUsageToday();
+    }
+
+    private JSONObject appUsageToday() {
+        if (!today().equals(prefs.getString("usage_day", ""))) return new JSONObject();
+        try { return new JSONObject(prefs.getString("usage_apps", "{}")); } catch (JSONException e) { return new JSONObject(); }
+    }
+
+    public synchronized int usedSeconds(String profile) {
+        return usageToday().optInt(profile, 0);
     }
 
     public synchronized int usedMinutes(String profile) {
@@ -433,6 +471,15 @@ public final class Profiles {
         int limit = limitToday(k);
         if (limit < 0) return -1;
         return Math.max(0, limit + extraMinutes(k.id) - usedMinutes(k.id));
+    }
+
+    /** Seconds left today, for the time-left corner; -1 for no limit. */
+    public synchronized int secondsLeft(Kid k) {
+        if (k == null) return -1;
+        int limit = limitToday(k);
+        if (limit < 0) return -1;
+        if (minutesLeft(k) == 0) return 0;   // ended by a parent, or used up
+        return Math.max(0, (limit + extraMinutes(k.id)) * 60 - usedSeconds(k.id));
     }
 
     // ---------- earn time (quiz) ----------

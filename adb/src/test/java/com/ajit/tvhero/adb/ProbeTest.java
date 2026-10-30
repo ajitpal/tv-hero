@@ -56,6 +56,14 @@ public class ProbeTest {
         assertEquals(Probe.Level.FULL, r.level());
     }
 
+    @Test public void readsUsageAccess() {
+        assertFalse(Probe.parse(XIAOMI).usageAccess);   // no @@usage section: not granted
+        assertTrue(Probe.parse(XIAOMI + "@@usage\nGET_USAGE_STATS: allow\n").usageAccess);
+        assertTrue(Probe.parse(XIAOMI + "@@usage\nGET_USAGE_STATS: allow; time=+3m2s ago\n").usageAccess);
+        assertFalse(Probe.parse(XIAOMI + "@@usage\nGET_USAGE_STATS: default\n").usageAccess);
+        assertFalse(Probe.parse(XIAOMI + "@@usage\nGET_USAGE_STATS: ignore\n").usageAccess);
+    }
+
     @Test public void googleTvWithItsOwnHomeStartsAtGuardOnly() {
         String gtv = "@@props\n[ro.build.version.sdk]: [31]\n@@home\ncom.google.android.apps.tv.launcherx/.home.HomeActivity\n"
                 + "@@gtv\npackage:com.google.android.apps.tv.launcherx\n@@tvhero\n@@a11y\nnull\n";

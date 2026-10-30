@@ -10,7 +10,7 @@ What's coming to tv-hero, in the order we plan to build it. Each step ships as i
 
 | Release | Theme | Status |
 |---|---|---|
-| **2.9** | Fair time: accurate screen time, a time-left corner, overlay settings | **Next** |
+| **2.9** | Fair time: accurate screen time, a time-left corner, overlay settings | **Built**, being checked on a real TV |
 | **2.10** | Phone to TV: links, photos, text and search | Planned |
 | **2.11** | Live and free TV: weather, free channels | Planned |
 | **2.12** | Family extras: Scenes, rewards, weekly summary | Planned |
@@ -21,7 +21,7 @@ Rules every item keeps: nothing loosens a rule without the parent password; noth
 
 ---
 
-## 2.9: Fair time (next)
+## 2.9: Fair time (built)
 
 ### Accurate screen time (bug fix, top priority)
 Screen time sometimes counts less than was watched, and occasionally attributes time to the wrong moment. Causes found in the code:

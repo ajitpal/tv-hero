@@ -11,6 +11,10 @@
     <!-- tv-hero control server for the phone app (home network only; every request is signed). -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Screen time (2.9): Android's own app-usage record, when the phone grants it at setup
+         (appops set com.ajit.tvhero GET_USAGE_STATS allow). Without it the guard uses window changes. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
     <!-- Stops a blocked app that was sent back to Home. -->
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />

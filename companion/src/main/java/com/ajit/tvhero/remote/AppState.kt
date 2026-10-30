@@ -37,6 +37,9 @@ class AppState(context: Context) {
     var family by mutableStateOf<Family?>(null)
     var now by mutableStateOf<NowPlaying?>(null)
     var sessions by mutableStateOf<List<Session>>(emptyList())
+    /** Today's minutes per profile and app (2.9), and where the TV gets them from. */
+    var appTime by mutableStateOf<Map<String, List<AppTime>>>(emptyMap())
+    var usageSource by mutableStateOf("")
     var remote by mutableStateOf<RemoteAccess?>(null)
     var volume by mutableStateOf<Volume?>(null)
     /** The TV app's version, from its status. */
@@ -100,6 +103,7 @@ class AppState(context: Context) {
         tv = t
         client = TvClient(t.host, t.tvFingerprint, t.remoteHost)
         apps = emptyList(); home = null; family = null; now = null; sessions = emptyList(); remote = null
+        appTime = emptyMap(); usageSource = ""
         volume = null; phones = emptyList(); internet = null; requests = emptyList(); revoked = false
         icons.clear()
         refresh()
@@ -138,8 +142,10 @@ class AppState(context: Context) {
                 family = c.family()
                 now = c.now()
                 home = c.home()
-                val (s, _) = c.activity(System.currentTimeMillis() - 7L * 24 * 3600_000)
-                sessions = s
+                val act = c.activity(System.currentTimeMillis() - 7L * 24 * 3600_000)
+                sessions = act.sessions
+                appTime = act.apps
+                usageSource = act.source
                 volume = c.volume()
                 requests = c.requests()
                 phones = c.phones()

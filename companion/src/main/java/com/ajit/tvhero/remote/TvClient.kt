@@ -55,11 +55,13 @@ data class Kid(
     val quizRightToday: Int = 0,
     /** A parent ended today's time (End Now); adding time reopens it. */
     val endedToday: Boolean = false,
+    /** Time-left corner on the TV (2.9): "last5", "always" or "off". */
+    val corner: String = CORNER_LAST5,
 ) {
     fun json(): JSONObject = JSONObject().put("id", id).put("name", name).put("color", color)
         .put("allowed", JSONArray(allowed.toList())).put("daily_limit", dailyLimit)
         .put("bedtime_on", bedtimeOn).put("bedtime_start", bedStart).put("bedtime_end", bedEnd)
-        .put("quiz", quiz.json())
+        .put("quiz", quiz.json()).put("corner", corner)
 
     companion object {
         fun from(o: JSONObject) = Kid(
@@ -69,7 +71,32 @@ data class Kid(
             o.optInt("bedtime_end", 7 * 60), o.optInt("used_today"), o.optInt("extra_today"), o.optInt("minutes_left", -1),
             o.optJSONObject("quiz")?.let { QuizSettings.from(it) } ?: QuizSettings(),
             o.optInt("quiz_earned_today"), o.optInt("quiz_right_today"), o.optBoolean("ended_today"),
+            o.optString("corner", CORNER_LAST5).let { if (it in CORNERS) it else CORNER_LAST5 },
         )
+
+        const val CORNER_LAST5 = "last5"
+        /** Same ids as the TV's Profiles.java, in the order they're offered. */
+        val CORNERS = linkedMapOf(CORNER_LAST5 to "Last 5 Minutes", "always" to "Always", "off" to "Off")
+    }
+}
+
+/** Minutes [pkg] was used today in one profile (2.9 "Today, app by app"). */
+data class AppTime(val pkg: String, val label: String, val seconds: Int)
+
+/** Watch history plus today's minutes, per profile and per app. */
+data class Activity(
+    val sessions: List<Session>,
+    val usage: Map<String, Int>,
+    val apps: Map<String, List<AppTime>>,
+    /** "usage_stats" when the TV reads Android's app-usage record; "windows" otherwise (or an older TV). */
+    val source: String,
+)
+
+/** On-screen notes on the TV (2.9); each can be switched off for everyone. Same keys as the TV's OnScreen.java. */
+data class OnScreenNotes(val timeLeft: Boolean = true, val toolsCorner: Boolean = true, val homeInfo: Boolean = true, val warnings: Boolean = true) {
+    companion object {
+        fun from(o: JSONObject) = OnScreenNotes(o.optBoolean("time_left", true), o.optBoolean("tools_corner", true),
+            o.optBoolean("home_info", true), o.optBoolean("warnings", true))
     }
 }
 
@@ -384,7 +411,7 @@ class TvClient(
             o.optString("overlay"), o.optInt("minutes_left", -1), o.optBoolean("locked"), o.optLong("sleep_at"))
     }
 
-    suspend fun activity(sinceMs: Long): Pair<List<Session>, Map<String, Int>> {
+    suspend fun activity(sinceMs: Long): Activity {
         val o = request("GET", "/v1/activity?since=$sinceMs")
         val labels = o.optJSONObject("labels") ?: JSONObject()
         val a = o.getJSONArray("sessions")
@@ -394,8 +421,24 @@ class TvClient(
             Session(s.optString("profile"), pkg, labels.optString(pkg, pkg), s.optString("title"), s.optLong("start"), s.optLong("end"))
         }
         val usage = o.optJSONObject("usage_today") ?: JSONObject()
-        return list to usage.keys().asSequence().associateWith { usage.optInt(it) }
+        val byApp = o.optJSONObject("usage_apps_today") ?: JSONObject()   // TVs before 2.9 don't send it
+        val apps = byApp.keys().asSequence().associateWith { profile ->
+            val mine = byApp.optJSONObject(profile) ?: JSONObject()
+            mine.keys().asSequence().map { AppTime(it, labels.optString(it, it), mine.optInt(it)) }
+                .filter { it.seconds > 0 }.sortedByDescending { it.seconds }.toList()
+        }
+        return Activity(list, usage.keys().asSequence().associateWith { usage.optInt(it) }, apps, o.optString("usage_source", "windows"))
     }
+
+    /** Null from a TV before 2.9 (no such call). */
+    suspend fun onScreen(): OnScreenNotes? = try {
+        OnScreenNotes.from(request("GET", "/v1/onscreen"))
+    } catch (e: TvException) {
+        if (e.status == 404) null else throw e
+    }
+
+    suspend fun setOnScreen(key: String, on: Boolean): OnScreenNotes =
+        OnScreenNotes.from(request("POST", "/v1/onscreen", JSONObject().put(key, on)))
 
     suspend fun launch(pkg: String) { request("POST", "/v1/launch", JSONObject().put("package", pkg)) }
     // ---------- tools (Phase 3) ----------

@@ -39,6 +39,16 @@ public final class Steps {
         adb.shell("settings put secure accessibility_enabled 1");
     }
 
+    /**
+     * Lets tv-hero read Android's own app-usage record, the most accurate source for screen time (2.9).
+     * Reversible (appops set ... default); returns whether the TV now reports it allowed. A TV that refuses
+     * keeps working: the guard falls back to window changes.
+     */
+    public static boolean grantUsageAccess(AdbClient adb) throws IOException {
+        adb.shell("appops set " + Probe.TV_PACKAGE + " GET_USAGE_STATS allow");
+        return Probe.usageAllowed(adb.shell("appops get " + Probe.TV_PACKAGE + " GET_USAGE_STATS"));
+    }
+
     /** Debugging off with the normal switch (never the port property: LEARNINGS 2.3.0). Drops this connection. */
     public static void debuggingOff(AdbClient adb) {
         try {
@@ -85,6 +95,7 @@ public final class Steps {
         report.step("Giving tv-hero its permissions");
         adb.shell("pm grant " + Probe.TV_PACKAGE + " android.permission.WRITE_SECURE_SETTINGS");
         adb.shell("pm grant " + Probe.TV_PACKAGE + " android.permission.ACCESS_FINE_LOCATION");
+        grantUsageAccess(adb);
 
         if (probe.level() == Probe.Level.FULL && !probe.tvHeroIsHome()) {
             report.step("Making tv-hero the Home screen");
