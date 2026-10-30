@@ -119,6 +119,16 @@ final class ScreenTime {
         changed(now);
     }
 
+    /**
+     * When the guard should look again: its usual interval, or the second the time runs out if that comes
+     * sooner, so Time's up appears on time instead of up to 20 seconds late. Never sooner than a second.
+     */
+    static long nextCheckMs(long usualMs, boolean counting, int secondsLeft) {
+        long d = usualMs;
+        if (counting && secondsLeft > 0) d = Math.min(d, secondsLeft * 1000L + 250);
+        return Math.max(1000, d);
+    }
+
     // ---------- state ----------
 
     String front() { return front; }

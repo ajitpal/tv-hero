@@ -294,8 +294,9 @@ internal fun OnScreenPage(state: AppState, preview: com.ajit.tvhero.remote.OnScr
         section("info", footer = "On Home, the line above an app: what was watched there lately and the minutes today.") {
             ToggleRow("Home Info Line", n.homeInfo) { set("home_info", it) }
         }
-        section("warn", footer = "The short notes at 5 minutes and 1 minute before time's up and before bedtime. Time's up and Bedtime screens still show.") {
-            ToggleRow("Time and Bedtime Warnings", n.warnings) { set("warnings", it) }
+        section("warn", footer = "The short notes at 5 minutes and 1 minute before time's up. Off applies only to profiles whose time-left corner is set to Always, " +
+            "so nobody is left without a warning. Bedtime notes, Time's up and Bedtime screens always show.") {
+            ToggleRow("Time Warnings", n.warnings) { set("warnings", it) }
         }
     }
 }

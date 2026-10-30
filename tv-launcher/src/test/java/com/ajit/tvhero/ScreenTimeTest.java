@@ -157,4 +157,23 @@ public class ScreenTimeTest {
         play(s(10), s(70));
         assertEquals(60, sec("kid", YT));
     }
+
+    @Test
+    public void timesUpComesOnTheSecond() {
+        assertEquals(20_000, ScreenTime.nextCheckMs(20_000, true, -1));      // no limit
+        assertEquals(20_000, ScreenTime.nextCheckMs(20_000, true, 300));     // plenty left
+        assertEquals(7_250, ScreenTime.nextCheckMs(20_000, true, 7));        // runs out in 7 s
+        assertEquals(20_000, ScreenTime.nextCheckMs(20_000, false, 7));      // not counting: nothing runs out
+        assertEquals(20_000, ScreenTime.nextCheckMs(20_000, true, 0));       // already up: the usual check shows it
+        assertEquals(5_000, ScreenTime.nextCheckMs(5_000, true, 60));        // corner showing
+    }
+
+    @Test
+    public void timeWarningsOffOnlyWhereTheCornerAlwaysShows() {
+        assertTrue(OnScreen.timeWarnings(true, true, Profiles.CORNER_ALWAYS));
+        assertFalse(OnScreen.timeWarnings(false, true, Profiles.CORNER_ALWAYS));
+        assertTrue(OnScreen.timeWarnings(false, true, Profiles.CORNER_LAST5));
+        assertTrue(OnScreen.timeWarnings(false, true, Profiles.CORNER_OFF));
+        assertTrue(OnScreen.timeWarnings(false, false, Profiles.CORNER_ALWAYS));   // corner switched off for everyone
+    }
 }

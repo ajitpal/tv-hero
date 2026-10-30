@@ -117,7 +117,8 @@ public class GuardService extends AccessibilityService {
         public void run() {
             try { tick(); } catch (RuntimeException e) { Log.w(TAG, "tick", e); }
             // Every 20 s; every 5 s while the time-left corner shows, so its minutes stay right.
-            main.postDelayed(this, ui != null && ui.cornerShowing() ? 5_000 : TICK_MS);
+            // and at the second a limit runs out, so Time's up comes on time.
+            main.postDelayed(this, nextTickMs());
         }
     };
 
@@ -226,6 +227,13 @@ public class GuardService extends AccessibilityService {
         // corner notes don't (2.9: they used to stop the count while the video played on behind them).
         if (time.onWindow(SystemClock.elapsedRealtime(), pkg, windowKind(pkg, event.getClassName()))) frontChanged(pkg);
         check(pkg);
+    }
+
+    private long nextTickMs() {
+        long usual = ui != null && ui.cornerShowing() ? 5_000 : TICK_MS;
+        Profiles.Kid kid = profiles == null ? null : profiles.activeKid();
+        if (kid == null || time == null) return usual;
+        return ScreenTime.nextCheckMs(usual, time.counting(), profiles.secondsLeft(kid));
     }
 
     private void frontChanged(String pkg) {
@@ -606,7 +614,7 @@ public class GuardService extends AccessibilityService {
             }));
         }
         items.add(new Overlays.Item("Back", null, () -> parentMenu(backRow)));
-        ui.menu(Overlays.Kind.MENU, "On-Screen Notes", "Switch off a note for everyone. Limits, bedtime and lock screens still apply. "
+        ui.menu(Overlays.Kind.MENU, "On-Screen Notes", "Switch off a note for everyone. Limits, bedtime and lock screens still apply; time warnings go only where a profile's corner is Always. "
                 + "Each profile also chooses when its time-left corner shows (Profiles).", items, () -> parentMenu(backRow), focus);
     }
 
@@ -1020,11 +1028,11 @@ public class GuardService extends AccessibilityService {
         if (ui.kind() == Overlays.Kind.TIMES_UP || ui.kind() == Overlays.Kind.BEDTIME || ui.kind() == Overlays.Kind.LOCKED) ui.hide();
         int toBed = kid.minutesToBedtime(m);
         String day = Profiles.today();
-        boolean notes = onScreen.on(OnScreen.WARNINGS);
+        boolean notes = OnScreen.timeWarnings(onScreen.on(OnScreen.WARNINGS), onScreen.on(OnScreen.TIME_LEFT), kid.corner);
         if (notes && left > 0 && left <= 5 && warned.add(day + kid.id + "L" + (left <= 1 ? 1 : 5))) {
             ui.toast(left <= 1 ? "1 minute of TV left today" : left + " minutes of TV left today");
         }
-        if (notes && toBed >= 0 && toBed <= 5 && warned.add(day + kid.id + "B" + (toBed <= 1 ? 1 : 5))) {
+        if (toBed >= 0 && toBed <= 5 && warned.add(day + kid.id + "B" + (toBed <= 1 ? 1 : 5))) {
             ui.toast(toBed <= 1 ? "Bedtime in 1 minute" : "Bedtime in " + toBed + " minutes");
         }
     }

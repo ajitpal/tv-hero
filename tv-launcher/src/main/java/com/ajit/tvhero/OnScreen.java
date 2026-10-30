@@ -40,12 +40,20 @@ final class OnScreen {
         for (String k : KEYS) if (b.has(k)) set(k, b.optBoolean(k, true));
     }
 
+    /**
+     * The 5- and 1-minute notes can be switched off only for a profile whose time-left corner already shows
+     * all the time, so a child is never left without warning. Bedtime notes always show.
+     */
+    static boolean timeWarnings(boolean warningsOn, boolean cornerOn, String profileCorner) {
+        return warningsOn || !(cornerOn && Profiles.CORNER_ALWAYS.equals(profileCorner));
+    }
+
     static String label(String key) {
         switch (key) {
             case TIME_LEFT: return "Time-Left Corner";
             case TOOLS_CORNER: return "Tools Corner Status";
             case HOME_INFO: return "Home Info Line";
-            default: return "Time and Bedtime Warnings";
+            default: return "Time Warnings";
         }
     }
 }

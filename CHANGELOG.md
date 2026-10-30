@@ -9,7 +9,7 @@ Fair time.
 - **Screen time is exact.** The volume bar, the keyboard, a notification or tv-hero's own corner notes used to stop the count while the video played on behind them. Now only a full-screen app changes what's in front, time is counted by the second, and every app, profile, screen or lock-screen change closes the running total, so no seconds go to the wrong app or profile. Where the phone sets the TV up (Set Up a New TV, or updating the TV app from the phone), the TV also uses Android's own app-usage record to check what's in front.
 - **Today, app by app.** Each profile's page on the phone (and Guest's) shows where today's minutes went.
 - **Time-left corner.** A small "⏱ 12 min left" in the top-left corner over any app, for profiles with a daily limit: Last 5 Minutes (default), Always or Off per profile, on the phone or in the TV's Parent Menu.
-- **On-Screen Notes.** One place (phone → Settings → On-Screen Notes, or Parent Menu → On-Screen Notes) to switch off the time-left corner, the tools' corner status, the Home info line, or the 5- and 1-minute warnings. Limits, bedtime and lock screens always apply.
+- **On-Screen Notes.** One place (phone → Settings → On-Screen Notes, or Parent Menu → On-Screen Notes) to switch off the time-left corner, the tools' corner status, the Home info line, or the 5- and 1-minute warnings (only for profiles whose corner is set to Always, so nobody goes without a warning). Limits, bedtime and lock screens always apply.
 
 ## 2.8.1
 
