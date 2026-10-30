@@ -121,7 +121,7 @@ class ScreenshotTest {
             HigTheme {
                 Column(Modifier.fillMaxSize()) {
                     Box(Modifier.weight(1f)) { content() }
-                    TabBar(listOf(
+                    if (tab >= 0) TabBar(listOf(
                         TabItem("TV", Icons.Outlined.Tv, Icons.Rounded.Tv),
                         TabItem("Family", Icons.Outlined.FamilyRestroom, Icons.Rounded.FamilyRestroom),
                         TabItem("Apps", Icons.Outlined.Apps, Icons.Rounded.Apps, badge = 1),
@@ -142,6 +142,8 @@ class ScreenshotTest {
     @Test fun familyProfile() = shot("03-family-profile", 1) { KidPage(state, gate, state.family!!.kids[0]) {} }
     @Test fun kidProfile() = shot("04-kid-profile", 1) { KidPage(state, gate, state.family!!.kids[1]) {} }
     @Test fun guest() = shot("16-guest", 1) { GuestPage(state, gate) {} }
+    @Test fun welcome() = shot("17-welcome", -1) { com.ajit.tvhero.remote.ui.ConnectScreen(state) }
+    @Test fun setUpNewTv() = shot("18-set-up-new-tv", -1) { com.ajit.tvhero.remote.ui.SetupNewTvScreen(state) {} }
     @Test fun everyone() = shot("05-apps-for-everyone", 1) { CommonAppsPage(state, gate) {} }
     @Test fun apps() = shot("06-apps", 2) { AppsTab(state, gate) }
     @Test fun remote() = shot("07-remote", 3) { RemoteTab(state, compose.activity) }

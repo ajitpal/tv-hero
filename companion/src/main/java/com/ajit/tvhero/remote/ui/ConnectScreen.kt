@@ -1,6 +1,14 @@
 package com.ajit.tvhero.remote.ui
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import com.ajit.tvhero.remote.R
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -51,12 +59,15 @@ fun ConnectScreen(state: AppState) {
     var manual by remember { mutableStateOf("") }
     var pairing by remember { mutableStateOf<Pair<String, String>?>(null) }
     pairing?.let { (host, name) -> PairScreen(state, host, name) { pairing = null }; return }
+    var setUp by remember { mutableStateOf(false) }
+    if (setUp) { SetupNewTvScreen(state) { setUp = false }; return }
     val c = Hig.colors
 
     HigScreen("tv-hero") {
-        item("intro") {
-            Text("Control your TV from this phone: apps, kids' screen time, bedtime, the remote and a game controller.",
-                style = HigType.body, color = c.secondaryLabel, modifier = Modifier.padding(horizontal = 16.dp))
+        item("welcome") { Welcome() }
+        section("new", footer = "For a TV that doesn't have tv-hero yet. The phone installs it over your Wi-Fi.") {
+            Row("Set Up a New TV", subtitle = "Install tv-hero from this phone", chevron = true,
+                leading = { IconTile(Icons.Rounded.Tv, Color(0xFF5B6CFF)) }) { setUp = true }
         }
         if (paired.isNotEmpty()) section("paired", "Paired TVs") {
             paired.forEach { tv -> Row(tv.name.removePrefix("tv-hero · "), tv.host, leading = { IconTile(Icons.Rounded.Tv, c.tint) }, chevron = true) { state.select(tv) } }
@@ -66,9 +77,27 @@ fun ConnectScreen(state: AppState) {
             found.forEach { tv -> Row(tv.name, tv.host, leading = { IconTile(Icons.Rounded.Tv, c.tint) }, chevron = true) { pairing = tv.host to tv.name } }
         }
         section("manual", "Or Enter the TV's Address") {
-            FieldRow("Address", manual, { manual = it.trim() }, "192.168.1.50", keyboard = KeyboardType.Uri)
+            FieldRow("Address", manual, { manual = it.trim() }, "TV's IP address", keyboard = KeyboardType.Uri)
             ButtonRow("Pair", enabled = manual.isNotEmpty()) { pairing = manual to "TV" }
         }
+    }
+}
+
+/** The brand mark and three lines on what tv-hero is for (brand/BRAND.md). */
+@Composable
+private fun Welcome() {
+    val c = Hig.colors
+    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(88.dp).clip(RoundedCornerShape(22.dp))
+            .background(Brush.linearGradient(listOf(Color(0xFF5B6CFF), Color(0xFF4338CA), Color(0xFF1E1B4B)))),
+            contentAlignment = Alignment.Center) {
+            Image(painterResource(R.drawable.ic_launcher_fg), contentDescription = "tv-hero", modifier = Modifier.size(132.dp))
+        }
+        Text("A calm, safe TV for the whole family", style = HigType.title2, textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 14.dp))
+        Text("Each child gets their own apps, time and bedtime. When time's up, the TV really stops, and kids can earn " +
+            "a few more minutes by answering fun questions. You run it all from this phone.",
+            style = HigType.subhead, color = c.secondaryLabel, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
     }
 }
 

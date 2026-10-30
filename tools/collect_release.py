@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-RELEASES = "https://github.com/ajitpal/tv-hero-releases/releases"
+RELEASES = "https://github.com/ajitpal/tv-hero/releases"
 APPS = [
     # id, package, gradle file, built APK
     ("tv", "com.ajit.tvhero", "tv-launcher/build.gradle", "tv-launcher/build/outputs/apk/release/tv-launcher-release.apk"),

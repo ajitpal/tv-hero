@@ -1,0 +1,20 @@
+name: TV report
+description: How tv-hero works on your TV (new TVs are very welcome)
+labels: [tv-report]
+body:
+  - type: input
+    id: tv
+    attributes: { label: TV or box, description: "Brand and model, e.g. Xiaomi Mi TV 4A Pro, Chromecast with Google TV" }
+    validations: { required: true }
+  - type: input
+    id: android
+    attributes: { label: Android version, description: "Phone app → Settings → About → TV App → Check the TV shows it" }
+  - type: input
+    id: version
+    attributes: { label: tv-hero version }
+  - type: dropdown
+    id: level
+    attributes: { label: Setup level, options: [Full, Guard only, Remote only, "Setup didn't finish"] }
+  - type: textarea
+    id: notes
+    attributes: { label: What worked and what didn't, description: "No home addresses, names or passwords, please." }

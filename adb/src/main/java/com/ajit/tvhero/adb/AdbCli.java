@@ -15,7 +15,7 @@ import java.nio.file.Files;
 public final class AdbCli {
     public static void main(String[] a) throws Exception {
         if (a.length < 3) {
-            System.err.println("usage: <tv-ip> <adbkey> probe | install <apk>");
+            System.err.println("usage: <tv-ip> <adbkey> probe | install <apk> | setup <apk> | remove");
             System.exit(2);
         }
         AdbKeys.Signer key = AdbKeys.fromPem(new String(Files.readAllBytes(new File(a[1]).toPath()), StandardCharsets.US_ASCII));
@@ -41,6 +41,18 @@ public final class AdbCli {
                     System.out.println(Probe.run(adb));
                     break;
                 }
+                case "setup": {   // Set Up a New TV, as the phone does it
+                    File apk = new File(a[3]);
+                    try (InputStream in = new FileInputStream(apk)) {
+                        Steps.Result r = Steps.setUp(adb, Probe.run(adb), in, apk.length(), null, w -> System.out.println("- " + w));
+                        System.out.println("home=" + r.home + " guard=" + r.guard + " titles=" + r.mediaTitles + " disabled=" + r.disabledHome + " " + r.note);
+                    }
+                    break;
+                }
+                case "remove":   // Start Over: tv-hero off the TV, its own Home back
+                    Steps.remove(adb, w -> System.out.println("- " + w));
+                    System.out.println("removed");
+                    break;
                 default:
                     System.err.println("unknown command");
                     System.exit(2);

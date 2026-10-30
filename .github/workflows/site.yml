@@ -1,18 +1,24 @@
 name: Website
 
-# Republishes the public website (ajitpal/tv-hero-releases, gh-pages) when its pages change on main,
-# between releases. Needs RELEASES_TOKEN. Releases publish it too.
+# Republishes https://ajitpal.github.io/tv-hero/ when its pages change on main, between releases.
+# One-time setup: Settings → Pages → Source: GitHub Actions.
 on:
   push:
     branches: [ main ]
-    paths: [ 'site/**', 'CHANGELOG.md', 'docs/screenshots/phone/**', 'tools/build_site.py' ]
+    paths: [ 'site/**', 'brand/**', 'CHANGELOG.md', 'docs/screenshots/**', 'tools/build_site.py' ]
   workflow_dispatch:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
-  site:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,17 +30,19 @@ jobs:
           pip install markdown==3.7
           python3 tools/build_site.py _site
           python3 tools/check_public.py _site
-      - name: Skip without the token
-        id: token
+      - name: Keep the latest update.json on the site
         env:
-          T: ${{ secrets.RELEASES_TOKEN }}
-        run: if [ -z "$T" ]; then echo "::warning::RELEASES_TOKEN is not set; the site was built but not published."; echo "ok=false" >> "$GITHUB_OUTPUT"; else echo "ok=true" >> "$GITHUB_OUTPUT"; fi
-      - if: steps.token.outputs.ok == 'true'
-        uses: peaceiris/actions-gh-pages@v4
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download --repo "$GITHUB_REPOSITORY" --pattern update.json --dir _site 2>/dev/null || echo "no release yet"
+      - uses: actions/upload-pages-artifact@v3
         with:
-          personal_token: ${{ secrets.RELEASES_TOKEN }}
-          external_repository: ajitpal/tv-hero-releases
-          publish_branch: gh-pages
-          publish_dir: _site
-          keep_files: true
-          commit_message: "Website from ${{ github.sha }}"
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

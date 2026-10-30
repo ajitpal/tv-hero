@@ -1,133 +1,111 @@
-# tv-hero
+<p align="center">
+  <img src="brand/png/mark-192.png" width="96" alt="tv-hero">
+</p>
 
-A clean, kid-safe Android TV for one TV: a Xiaomi Mi TV 4A Pro (MiTV-AXSO0, Android TV 9), controlled from your phone.
+<h1 align="center">tv-hero</h1>
 
-| Part | Folder | What it does |
+<p align="center"><b>The TV your kids love. The rules you trust.</b><br>
+A calm, safe home screen and family controls for Android TV, run from your phone.</p>
+
+<p align="center">
+  <a href="https://github.com/ajitpal/tv-hero/releases/latest"><img alt="Download" src="https://img.shields.io/github/v/release/ajitpal/tv-hero?label=download&color=5B6CFF"></a>
+  <a href="https://github.com/ajitpal/tv-hero/actions/workflows/android.yml"><img alt="Build" src="https://github.com/ajitpal/tv-hero/actions/workflows/android.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-1E1B4B"></a>
+  <a href="https://ajitpal.github.io/tv-hero/"><img alt="Website" src="https://img.shields.io/badge/website-ajitpal.github.io%2Ftv--hero-4338CA"></a>
+</p>
+
+<p align="center"><img src="docs/screenshots/tv/01-home.png" width="760" alt="tv-hero's Home screen on a TV"></p>
+
+---
+
+## Why tv-hero
+
+Family TV time shouldn't be a daily negotiation. **tv-hero** turns an Android TV into a calm screen with real, fair rules. Each child gets their own apps, time and bedtime, and you stay in charge from your phone.
+
+No ads. No feeds. No accounts. No tracking. Free and open source.
+
+## For parents 👨‍👩‍👧
+
+- **A profile for every child.** Each sees only their own apps plus the ones for everyone, with their own daily limit and bedtime. Up to ten profiles, plus **Guest** with its own allowance.
+- **Time's up means stop.** The video pauses, the app closes and nothing opens behind the screen. The only ways on: ask you, earn time, or your PIN.
+- **Run it from your phone.** See what's on, give or take minutes, **end today's TV now**, pause the whole TV, set a sleep timer or a night volume cap, and approve requests as they arrive under *Needs You*.
+- **Apps you approve.** Newly installed apps wait for your OK. Settings and the Play Store are for parents only.
+- **Fair switching.** One free profile switch a day; after that, kids ask you. Moving to a profile without limits always needs a parent.
+- **Only real watching counts.** Screen time runs only while an app is open: not Home, the screensaver, Settings or the built-in tools.
+
+## For kids 🧒
+
+- **Earn more time with fun questions.** When the day's TV is used up, kids press **⭐ Earn Time** and answer questions on the big screen: ➗ Maths, 🔤 English words, 🌍 General knowledge, अ Hindi and 🧩 Puzzles, at Easy, Medium or Hard. Each right answer adds minutes, up to a daily maximum you choose. There's a cheer for every right answer, and "No minutes lost. Have another go!" for a wrong one.
+- **Timer, Stopwatch and Workout.** Big digits and progress rings for the whole room. HIIT presets like Tabata, with 3-2-1 beeps and a colour for each phase. Leave a workout running and open YouTube: a small timer stays in the corner.
+- **A watch screensaver.** An analogue watch with a smooth seconds hand, and the date, on a gradient that follows the time of day.
+
+<p align="center">
+  <img src="docs/screenshots/tv/02-watch-screensaver.png" width="380" alt="Watch screensaver">
+  <img src="docs/screenshots/tv/03-times-up.png" width="380" alt="Time's up after earning every bonus minute">
+</p>
+
+## On your phone 📱
+
+<p align="center">
+  <img src="docs/screenshots/phone/17-welcome.png" width="150" alt="Welcome">
+  <img src="docs/screenshots/phone/01-tv.png" width="150" alt="TV tab">
+  <img src="docs/screenshots/phone/02-family.png" width="150" alt="Family">
+  <img src="docs/screenshots/phone/04-kid-profile.png" width="150" alt="A child's profile">
+  <img src="docs/screenshots/phone/18-set-up-new-tv.png" width="150" alt="Set up a new TV">
+</p>
+
+What's on now, who's watching, time left, kids' requests, a **remote**, typing, and the phone as a **game controller**. It works over your home Wi-Fi, or over the internet when you switch that on.
+
+## Get started in about two minutes
+
+1. **Install the phone app**: `tv-hero-phone-<version>.apk` from the [latest release](https://github.com/ajitpal/tv-hero/releases/latest).
+2. **Switch on TV debugging** (the app shows you where). Then tap **Set Up a New TV**. The phone finds the TV, you press Allow, and it installs and sets up tv-hero.
+3. **Pair**: compare a six-digit code on both screens, press **Allow** on the TV, create a parent password and add your family.
+
+Full guide: **[ajitpal.github.io/tv-hero/install.html](https://ajitpal.github.io/tv-hero/install.html)**. Everything else, screen by screen: [docs/USER-GUIDE.md](docs/USER-GUIDE.md).
+
+## Built like it matters 🔒
+
+- **Encrypted and pinned.** Phone and TV talk over mutual TLS. Their keys live in the Android Keystore and can't leave either device.
+- **A person says yes.** Pairing shows the same code on both screens and needs **Allow on the TV**.
+- **Loosening needs the password.** Tightening never does.
+- **Internet control is off by default.** Every paired phone is listed and can be removed at once.
+- **Verified updates.** The phone checks each download's checksum, version and release signature before installing it on the phone or the TV.
+- **No tracking.** Watch history stays on the TV, for your eyes only.
+
+Details: [docs/SECURITY.md](docs/SECURITY.md) · [Privacy](site/privacy.md)
+
+## Works with
+
+Android TV and Google TV, **Android 9 and later**. It was built on, and is lightest on, a Xiaomi Mi TV 4A Pro with 1 GB of RAM. On Google TV devices that insist on their own Home screen, tv-hero runs as a guard: profiles, limits and lock screens still work. The phone app needs Android 9 or later.
+
+---
+
+## For developers
+
+| Part | Folder | What it is |
 |---|---|---|
-| **TV app** | `tv-launcher/` | Apple TV-style home screen (clock, greeting, one row of apps, no ads), plus the **guard**: blocks apps, holds every new install until a parent approves it, runs kids' profiles (up to 10), bedtime and time limits, and serves the phone app over an encrypted channel. Package `com.ajit.tvhero`. |
-| **Phone app** | `companion/` | Pair with the TV (compare a code, press Allow on the TV), power and volume, block/approve apps, kids' profiles and requests, home screen, who can control the TV, internet control, remote, typing, and **the phone as a game controller**. Fingerprint app lock. Package `com.ajit.tvhero.remote`. |
-| **Protocol** | `protocol/` | Plain Java shared by both apps: ports, paths, TLS settings, pairing maths, certificate pinning, with tests. |
-| **Tools** | `tools/` | ADB over Wi-Fi from a computer: connect, screenshots, debloat/restore, install the TV app, a test client for the TV's API. |
-| **Debloat lists** | `debloat/` | What was switched off on this TV (telemetry, ads, Xiaomi background services, unused apps), each list undoable. |
-| **Docs** | `docs/` | `ARCHITECTURE`, `SECURITY`, `PROTOCOL` (v2), `DESIGN`, `SPEC` (measured hardware), `PLAN`, `RESEARCH`, `TROUBLESHOOTING`. |
-
-## How it works
-
-```
- Phone (companion)                                 TV (tv-launcher, 1 GB RAM, Android 9)
- ┌───────────────────────────┐  mutual TLS :8766  ┌──────────────────────────────────────────┐
- │ TV, Family, Apps, Remote, │ ─────────────────▶ │ Guard (accessibility service)            │
- │ Settings                  │  both keys in the  │  • apps, approvals, profiles, bedtime     │
- │ Keystore key, pinned TV   │  Android Keystore, │  • prompts: Allow / Don't Allow           │
- │ certificate, app lock     │  pinned by SHA-256 │  • Keystore key, pinned phone certs       │
- │                           │  (home Wi-Fi, or   │ Pairing :8765 (home network only)         │
- │                           │  Tailscale if on)  │ Home screen (launcher)                    │
- │ Remote arrows, typing,    │  Bluetooth HID     │  sees the phone as keyboard + remote +    │
- │ GAME CONTROLLER           │ ─────────────────▶ │  game pad, like any Bluetooth device      │
- └───────────────────────────┘                    └──────────────────────────────────────────┘
-```
-
-- **Rules live on the TV.** They keep working when no phone is around.
-- **New apps are blocked by default.** Anything installed (Play Store or otherwise) is held until a parent approves it in the phone app. Turning this off needs the parent password.
-- **Pairing needs someone at the TV.** The phone and the TV show the same 6-digit code; a person checks it and presses **Allow** on the TV (focus starts on Don't Allow). Then the parent password.
-- **Parent password** is created by the first phone that pairs (at least 6 characters). It's needed for anything that loosens a rule: allowing or approving apps, switching to Parent, adding time, removing another phone, turning internet control on.
-- **Internet control is off by default.** Turning it on needs the password, a phone at home, and Allow on the TV. Off works at once from anywhere. Details: `docs/SECURITY.md`.
-- **Bluetooth part:** the phone registers as a Bluetooth HID device (keyboard + consumer control + game pad). Pair once from the TV (Settings → Remotes & Accessories → Add accessory). Then arrows, OK, volume, typing and the game controller work in every app and game, with nothing to install on the TV for it.
-
-## Releases and updates
-
-Pushing a tag `vX.Y.Z` builds, tests, signs and publishes both apps to the public [tv-hero-releases](https://github.com/ajitpal/tv-hero-releases) repo with `update.json`, and updates the website. The phone app updates itself and the TV from there. Setup and details: `docs/RELEASING.md`.
-
-## Build
-
-JDK 17+, Android SDK 34, one Gradle build. The release key is read from `keystore.properties` next to this README (never committed; see `.gitignore`).
+| **TV app** | `tv-launcher/` | Java/Views, built for a 1 GB TV: Home screen, the **guard** (an accessibility service for profiles, limits, lock screens and prompts), tools, the screensaver and the control server. `com.ajit.tvhero` |
+| **Phone app** | `companion/` | Kotlin + Compose in an Apple-HIG style: pairing, family, apps, remote, game controller, Set Up a New TV, updates. `com.ajit.tvhero.remote` |
+| **Protocol** | `protocol/` | Plain Java shared by both apps: ports, paths, TLS settings, pairing maths, pinning, with test vectors |
+| **ADB client** | `adb/` | Plain Java ADB over TCP with RSA auth, a capability probe and setup steps; the phone uses it to install and update the TV app |
+| **Tools** | `tools/` | Computer-side scripts: install, debloat and restore, a Python client for the TV's API, release and website builders |
+| **Brand** | `brand/` | Logo, wordmark, colours and guidelines ([BRAND.md](brand/BRAND.md)) |
+| **Website** | `site/` | Source of [ajitpal.github.io/tv-hero](https://ajitpal.github.io/tv-hero/) |
+| **Docs** | `docs/` | [ARCHITECTURE](docs/ARCHITECTURE.md), [SECURITY](docs/SECURITY.md), [PROTOCOL](docs/PROTOCOL.md), [DESIGN](docs/DESIGN.md), [PHASE3](docs/PHASE3.md), [RELEASING](docs/RELEASING.md), [TROUBLESHOOTING](docs/TROUBLESHOOTING.md) |
 
 ```bash
-./gradlew :protocol:test                                                    # shared protocol + mutual-TLS tests
-./gradlew :tv-launcher:assembleRelease :tv-launcher:testReleaseUnitTest    # tv-launcher/build/outputs/apk/release/
-./gradlew :companion:assembleRelease :companion:testReleaseUnitTest        # companion/build/outputs/apk/release/
+# JDK 17+, Android SDK 34
+./gradlew :protocol:test :adb:test \
+  :tv-launcher:assembleRelease :tv-launcher:testReleaseUnitTest :tv-launcher:lintRelease \
+  :companion:assembleRelease :companion:testReleaseUnitTest :companion:lintRelease
+./gradlew :companion:testDebugUnitTest -Pscreenshots=record   # phone screenshots → docs/screenshots/phone/
 ```
 
-`keystore.properties`:
-```
-storeFile=C:/Projects/app/TV-app/keys/tv-hero-release.jks
-storePassword=…
-keyAlias=tvhero
-keyPassword=…
-```
+Release builds without `keystore.properties` are signed with the debug key; only CI signs real releases. Pushing a tag `vX.Y.Z` builds, tests, signs and publishes both apps with `update.json`, and updates the website ([RELEASING](docs/RELEASING.md)).
 
-## Install
-
-**TV** (computer on the same Wi-Fi, USB debugging on in the TV's Developer options):
-```bash
-python3 -m venv tools/venv && tools/venv/bin/pip install -r tools/requirements.txt
-TV_HOST=192.168.1.50 tools/install-tv.sh
-```
-The script starts tv-hero first, then makes it Home, switches the stock launcher off only once that worked (and puts it back if not), and turns on the guard. After an update Android 9 may need one reboot to start the guard again; the script does it.
-
-**Phone:** install `companion/build/outputs/apk/release/companion-release.apk` (allow installs from your file manager), open **tv-hero**, pick the TV, check that the TV shows the same code as the phone, press **Allow** on the TV with the remote, then enter (or create) the parent password.
-
-**From a computer:** `python3 tools/tvhero_client.py <tv-ip> pair`, then `status`, `volume 30`, `devices`, `forget`.
-
-## Everyday use (on the TV)
-
-- **The TV starts in the Family profile**: YouTube, YouTube · Brave, JioHotstar, Xiaomi TV+, WhatsApp, Browser, Live TV, Miracast. Settings and the Play Store are for Parent.
-- **Info line on Home:** above a focused app tile, what this profile watched there lately (titles from the app), when, and the minutes today; under a top-bar button, what it does.
-- **Clock screensaver**: an analogue watch with the time and date on a gradient that follows the time of day. It's the TV's screensaver, starts after 5 idle minutes on Home, from the **watch button** next to the profile button, or from the phone (TV tab → Show the Clock Screensaver). Any key closes it.
-- **Tools** (stopwatch button on Home, or the "tv-hero Tools" app): **Timer** (big countdown, beeps at the end even after Back), **Stopwatch** with laps, **Workout** (HIIT presets: Tabata, 30/30, 45/15, EMOM, circuits; colours per phase, 3-2-1 beeps that turn any music down briefly). Play/Pause on the remote pauses them; a lock screen pauses them too. **Back asks:** keep it running (it stays as a small status in the corner over YouTube and other apps) or stop and close; Stop closes. The phone's TV tab → **Tools** starts and controls them and builds your own workouts.
-- **Profile button** (round letter, top right): *Who's watching?* with every profile, Guest, Parent (PIN, or the parent password while no PIN is set) and the **Parent Menu**.
-- **Parent Menu** (no phone needed):
-  - profiles (add, rename, apps, daily limit, bedtime, Earn Time, Time Today: add, take away, end now, remove)
-  - **Apps for Everyone** (on in every profile; out of the box: Browser, WhatsApp, YouTube · Brave)
-  - which profile the TV starts in
-  - Parent PIN
-  - who can control the TV
-  - internet control, debugging, Guest mode, **Guest Time** (a daily allowance shared by all guests)
-- **What counts as screen time:** only time with an app open (YouTube, Hotstar, Live TV, the browser…). Home, the clock screensaver and Settings don't count.
-- **Time's up, Bedtime and Paused lock the TV.** Whatever was playing is paused, the app is sent away and nothing else opens behind the screen. All a child can do there is switch profile (the PIN is needed to move to a profile with no daily limit), **Ask for Time** (it shows on the parents' phones under Needs You) or enter the Parent PIN.
-- **Profile switches:** a kid or Guest can change profile on the TV once a day (Family → Profile Switches on the phone, or Profile Switches in the Parent Menu). After that, and always for a profile with no daily limit, the TV offers **Ask a Parent** (Needs You on the phone) or the Parent PIN.
-- **Earn Time** (Time's up only): questions in Maths, English words, General knowledge, Hindi and Puzzles, at Easy, Medium or Hard. Each right answer adds 5 minutes, up to 15 minutes a day (both set per profile). A wrong answer costs nothing, but three wrong in a row means a 10-minute break, so guessing doesn't pay. The questions are built into the TV app: no internet, no tracking; the TV keeps only today's count.
-- **YouTube · Brave** opens m.youtube.com in Brave (ad and tracker blocking) and reuses one tab. Brave 1.80.124 is the last release for Android 9 (Chromium 138), so it no longer gets security updates: use it for YouTube, and the **Browser** (TV Bro, made for the remote) for everything else.
-- **WhatsApp** is the phone app. On first start, link it to your phone (⋮ → *Link as companion device*, scan the code with WhatsApp on your phone). Type with the phone's Bluetooth keyboard (Remote tab).
-- A blocked Settings or Play Store screen has **Switch to Parent**.
-
-## Everyday use (phone app)
-
-Screenshots of every screen: `docs/screenshots/phone/` (regenerate with `./gradlew :companion:testDebugUnitTest -Pscreenshots=record`).
-- **Family** tab: profiles (Family and kids), **Guest** (daily limit, extra time), **Apps for Everyone**, **Start-up Profile**, each profile's apps, limit, bedtime and **Earn Time** (on/off, minutes per right answer, most per day, level, topics, earned today).
-- **TV** tab, **Needs You**: kids' requests for an app, more time today, a later bedtime, or another profile switch.
-- **Time Today** (TV tab, each profile page, Guest page): −15 / +15 / +30 / +1 hr for today, and **End Today's Time Now**, which shows Time's up on the TV at once, even for a profile without a daily limit. Giving time needs the password; taking it away or ending it doesn't. Earn Time is still offered after End Now, up to the daily max; **Let … Earn Again Today** on the profile page clears today's count (password).
-
-| Tab | |
-|---|---|
-| **Apps** | Waiting for approval (Approve / Block), every app with an Allowed switch, "Hold new apps for approval". |
-| **Home screen** | Order of the home row, apps per row, greeting, apps hidden from Home. Saved straight to the TV. |
-| **Remote** | D-pad, OK, Back, Home, Menu, play/pause, volume, typing (Bluetooth); Home/Back and "Open on TV" also over Wi-Fi. |
-| **Controller** | Bluetooth set-up, then a game pad: D-pad, A B X Y, L1 R1, Select / Home / Start, two thumbsticks. |
-| **Settings** | About (phone and TV app versions; **TV App**: check the TV, update tv-hero on it from the phone; **Software Update**: new releases from GitHub for both apps), change password, phones paired with the TV (remove), recent activity (blocked attempts, installs), forget the TV. |
-
-## Debloat and privacy (already applied on this TV)
-
-28 packages disabled (not uninstalled): Xiaomi and Google telemetry, PatchWall and sponsored rows, partner auto-installers, TV Manager, update service (re-enable to check for firmware), unused apps; stock launcher replaced. Private DNS `family.adguard-dns.com` on the TV only (ads, trackers, adult sites; YouTube Restricted Mode). Details and undo commands: `debloat/README.md`.
-
-## Control from anywhere (Tailscale)
-
-Set up on 29 Oct 2026. The TV (Tailscale 1.104, address `100.x.y.z`) and the phone are in the same tailnet.
-- On the TV, Tailscale is the **always-on VPN** (`settings secure always_on_vpn_app=com.tailscale.ipn`, lockdown off) and is exempt from battery optimisation. After a reboot it reconnects by itself (verified: up 2 minutes after boot).
-- The TV app reports its Tailscale address (`GET /v1/remote`). The phone app stores it and uses it when the home address doesn't answer.
-- **Internet control stays off until you turn it on:** phone app → Settings → Internet Control → Allow Control From Anywhere, then the parent password, then **Allow** on the TV.
-- In the Tailscale admin console, **disable key expiry** for the TV, or it drops off the tailnet when its key expires (Tailscale's default is 180 days, as far as I know).
-- On the phone, set Tailscale as always-on VPN too (Android Settings → Network → VPN → Tailscale ⚙ → Always-on VPN; leave "Block connections without VPN" off).
-- When the TV is in deep standby its Wi-Fi may be off, so nothing can reach it until it wakes.
-
-## Security notes
-
-Full detail in `docs/SECURITY.md`. In short:
-- Commands travel only over **mutual TLS** (TLS 1.2 on the TV, forward-secret AES-GCM). Each device's key lives in its Android Keystore, and certificates are pinned by fingerprint.
-- **Who can control this TV** is listed on the phone and in the TV's Parent Menu, with last use and whether it was at home or over the internet. Removing a phone takes effect at the next connection.
-- ADB (port 5555) has no encryption on Android 9. Keep it off unless you're working on the TV; switch it off from the phone, the TV's Parent Menu, or check with `tools/adb-closed.py <tv ip>`.
-- Known limits: pairing relies on someone comparing six digits before pressing Allow; a child with the remote in the Parent profile could reach Accessibility settings.
+Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md). Found a security problem? Please report it privately ([SECURITY.md](SECURITY.md)).
 
 ## Licence
 
-MIT, see `LICENSE`. The Outfit font in the TV app is under the SIL Open Font License (`tv-launcher/FONT-LICENSE-OFL.txt`).
+MIT, see [LICENSE](LICENSE). The Outfit font is under the SIL Open Font License (`tv-launcher/FONT-LICENSE-OFL.txt`).

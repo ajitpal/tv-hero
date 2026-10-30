@@ -140,5 +140,104 @@ class TvUpdater(private val ctx: Context, private val state: AppState) {
         }
     }
 
+    /** Set Up a New TV: true once tv-hero is on the TV and pairing can start. */
+    var setUpDone by mutableStateOf(false); private set
+    var setUpNote by mutableStateOf(""); private set
+
+    /**
+     * Sets up a TV that doesn't have tv-hero yet, at [host], over the debugging connection a person switched
+     * on at the TV. Installs the TV app built into this phone app, makes it Home where the TV allows, switches
+     * on its guard, then switches debugging off. Pairing follows on the normal pairing screen.
+     */
+    fun setUpNew(host: String) {
+        if (running) return
+        val src = bundledSource() ?: run { error = "This phone app has no TV app inside it."; return }
+        running = true; error = null; result = null; progress = -1f; allowFingerprint = null; setUpDone = false; setUpNote = ""
+        steps.clear()
+        state.scope.launch {
+            var adb: AdbClient? = null
+            try {
+                step("Connecting to the TV")
+                adb = withContext(Dispatchers.IO) {
+                    AdbClient.connect(host, 5555, AdbIdentity.signer(), "tv-hero phone (" + state.store.deviceName + ")",
+                        { fp -> state.scope.launch { allowFingerprint = fp } }, 180_000)
+                }
+                allowFingerprint = null
+                val c = adb!!
+                step("Reading the TV")
+                val p = withContext(Dispatchers.IO) { Probe.run(c) }
+                probe = p
+                if (p.level() == Probe.Level.UNSUPPORTED) throw AdbClient.AdbException("This TV runs Android ${p.release}; tv-hero needs Android 9 or later.")
+                val r = withContext(Dispatchers.IO) {
+                    src.open().use { input ->
+                        Steps.setUp(c, p, input, src.length,
+                            { sent, total -> state.scope.launch { progress = sent.toFloat() / total } },
+                            { what -> state.scope.launch { progress = -1f; step(what) } })
+                    }
+                }
+                probe = withContext(Dispatchers.IO) { Probe.run(c) }
+                setUpNote = r.note
+                result = "tv-hero ${src.name} is on ${p.describe()}" + if (r.home) ", as its Home screen." else "."
+                setUpDone = true
+            } catch (e: Exception) {
+                error = e.message ?: "Something went wrong."
+            } finally {
+                val c = adb
+                if (c != null) {
+                    step("Switching TV debugging off")
+                    withContext(Dispatchers.IO) { Steps.debuggingOff(c); c.close() }
+                }
+                allowFingerprint = null
+                running = false
+            }
+        }
+    }
+
+    /** True after Start Over removed tv-hero from the TV. */
+    var removed by mutableStateOf(false); private set
+
+    /**
+     * Start Over: puts the TV's own Home back, switches the guard off and uninstalls tv-hero, with the parent
+     * password. Debugging is left on so the phone can set the TV up again at once (Set Up a New TV). The phone
+     * forgets this TV, because the TV forgets the phone.
+     */
+    fun startOver(password: String) {
+        val client = state.client ?: return
+        val host = state.tv?.host ?: return
+        if (running) return
+        running = true; error = null; result = null; progress = -1f; allowFingerprint = null; removed = false
+        steps.clear()
+        state.scope.launch {
+            var adb: AdbClient? = null
+            try {
+                if (state.connection != "home") throw AdbClient.AdbException("Connect this phone to the home Wi-Fi first.")
+                step("Switching TV debugging on")
+                if (!client.remoteAccess().adbEnabled) { client.setAdb(true, password); delay(2500) }
+                step("Connecting to the TV")
+                adb = withContext(Dispatchers.IO) {
+                    AdbClient.connect(host, 5555, AdbIdentity.signer(), "tv-hero phone (" + state.store.deviceName + ")",
+                        { fp -> state.scope.launch { allowFingerprint = fp } }, 120_000)
+                }
+                allowFingerprint = null
+                val c = adb!!
+                withContext(Dispatchers.IO) { Steps.remove(c) { what -> state.scope.launch { step(what) } } }
+                lastHost = host
+                result = "tv-hero is gone from the TV and its own Home screen is back. TV debugging is still on, so you can set it up again now."
+                removed = true
+            } catch (e: Exception) {
+                error = e.message ?: "Something went wrong."
+            } finally {
+                adb?.close()
+                allowFingerprint = null
+                running = false
+                if (removed) state.forgetTv()
+            }
+        }
+    }
+
+    /** The TV address Start Over used, offered by Set Up a New TV. */
+    var lastHost: String = ""
+        private set
+
     private fun step(s: String) { steps.add(s) }
 }

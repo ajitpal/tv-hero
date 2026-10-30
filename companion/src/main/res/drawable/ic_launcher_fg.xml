@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- tv-hero mark (brand/logo-mark.svg): the shield (a family's protection), play (the fun) and the spark (time earned). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="4"
-        android:pathData="M32,38h44a4,4 0,0 1,4 4v26a4,4 0,0 1,-4 4h-44a4,4 0,0 1,-4 -4v-26a4,4 0,0 1,4 -4z" />
-    <path android:fillColor="#FFFFFFFF" android:pathData="M48,46l14,9 -14,9z" />
-    <path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="4" android:strokeLineCap="round"
-        android:pathData="M44,80h20" />
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M54,22c9.5,4.6 19,6.8 28,7v22.5C82,70 70.5,81.6 54,88 37.5,81.6 26,70 26,51.5V29c9,-0.2 18.5,-2.4 28,-7z" />
+    <path android:fillColor="#FF4338CA"
+        android:pathData="M47.5,43.2c0,-2 2.2,-3.3 4,-2.2l15.6,9.6c1.6,1 1.6,3.4 0,4.4L51.5,64.6c-1.8,1.1 -4,-0.2 -4,-2.2z" />
+    <path android:fillColor="#FFFFB020"
+        android:pathData="M72,19.5l1.9,5L79,26.4l-5.1,1.9L72,33.3l-1.9,-5L65,26.4l5.1,-1.9z" />
 </vector>

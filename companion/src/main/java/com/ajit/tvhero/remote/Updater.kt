@@ -27,7 +27,7 @@ import java.security.MessageDigest
 /**
  * Software updates from GitHub (Phase 3), for the phone app and, through it, the TV app.
  *
- * - Reads `update.json` from the public releases repo's latest release (no API, no rate limit).
+ * - Reads `update.json` from the latest GitHub release of ajitpal/tv-hero (and the old releases repo), with no API and no rate limit.
  * - Downloads over HTTPS from GitHub's release hosts only; checks size and SHA-256.
  * - Before installing, the APK must be the expected package and versionCode and be signed with tv-hero's
  *   pinned release certificate (and, for the phone app, the same key as the installed app).
@@ -73,8 +73,16 @@ class Updater(private val ctx: Context, private val state: AppState) {
         checking = true; error = null
         state.scope.launch {
             try {
-                val text = withContext(Dispatchers.IO) { String(fetch(UpdateRules.MANIFEST, 128 * 1024).readBytes()) }
-                release = parse(JSONObject(text))
+                var found: Release? = null
+                var last: Exception? = null
+                for (url in UpdateRules.MANIFESTS) {
+                    try {
+                        val text = withContext(Dispatchers.IO) { String(fetch(url, 128 * 1024).readBytes()) }
+                        val r = parse(JSONObject(text))
+                        if (found == null || UpdateRules.compareVersions(r.version, found.version) > 0) found = r
+                    } catch (e: Exception) { last = e }
+                }
+                release = found ?: throw (last ?: IllegalStateException("no releases"))
                 lastChecked = System.currentTimeMillis()
                 prefs.edit().putLong("last_checked", lastChecked).apply()
             } catch (e: Exception) {

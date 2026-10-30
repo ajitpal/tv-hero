@@ -1,0 +1,70 @@
+name: Publish earlier versions
+
+# Run once by hand (Actions → Publish earlier versions → Run workflow) after the repo is public:
+# builds every earlier version tag from its own source, signed with the release key, and publishes it as
+# a GitHub release (never marked Latest). Tags that already have a release are skipped. A version whose old
+# build no longer works is reported and skipped; the others still publish.
+on:
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: 'Tags to publish, oldest first'
+        default: 'v2.0.0 v2.1.1 v2.1.3 v2.2.0 v2.2.1 v2.3.0 v2.3.1 v2.3.2 v2.4.0 v2.4.1 v2.5.0 v2.6.0 v2.7.0'
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build and publish each tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          TAGS: ${{ inputs.tags }}
+        run: |
+          set -u
+          [ -n "$KEYSTORE_BASE64" ] || { echo "::error::Signing secrets are missing."; exit 1; }
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          CHANGELOG="$PWD/CHANGELOG.md"
+          APKSIGNER=$(ls $ANDROID_HOME/build-tools/*/apksigner | tail -1)
+          for TAG in $TAGS; do
+            if gh release view "$TAG" >/dev/null 2>&1; then echo "$TAG already published"; continue; fi
+            git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || { echo "::warning::no tag $TAG"; continue; }
+            rm -rf "$RUNNER_TEMP/src" && git worktree add -f "$RUNNER_TEMP/src" "$TAG"
+            pushd "$RUNNER_TEMP/src" >/dev/null
+            printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$RUNNER_TEMP/release.jks" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
+            V="${TAG#v}"; mkdir -p "$RUNNER_TEMP/dist/$V"
+            if chmod +x gradlew && ./gradlew --no-daemon -q :tv-launcher:assembleRelease :companion:assembleRelease; then
+              for pair in "tv:tv-launcher/build/outputs/apk/release/tv-launcher-release.apk" "phone:companion/build/outputs/apk/release/companion-release.apk"; do
+                id="${pair%%:*}"; apk="${pair#*:}"
+                [ -f "$apk" ] || continue
+                $APKSIGNER verify --print-certs "$apk" | grep -q 309705ca333f547dfc8bb7d5d02cff8ca63b64cc49d5a533f45b6e06544c9124 || { echo "::warning::$TAG $id not release-signed"; continue; }
+                cp "$apk" "$RUNNER_TEMP/dist/$V/tv-hero-$id-$V.apk"
+              done
+              awk -v v="$V" '$0=="## "v{f=1;next} /^## /{f=0} f' "$CHANGELOG" > "$RUNNER_TEMP/dist/$V/NOTES.md"
+              [ -s "$RUNNER_TEMP/dist/$V/NOTES.md" ] || echo "Earlier release." > "$RUNNER_TEMP/dist/$V/NOTES.md"
+              printf '\n_Built later from the %s source by the Publish earlier versions workflow. For new installs use the latest release._\n' "$TAG" >> "$RUNNER_TEMP/dist/$V/NOTES.md"
+              ls "$RUNNER_TEMP/dist/$V"/*.apk >/dev/null 2>&1 && \
+                gh release create "$TAG" "$RUNNER_TEMP/dist/$V"/*.apk --title "tv-hero $TAG" --notes-file "$RUNNER_TEMP/dist/$V/NOTES.md" --latest=false \
+                || echo "::warning::$TAG: nothing to publish"
+            else
+              echo "::warning::$TAG did not build; skipped"
+            fi
+            rm -f keystore.properties
+            popd >/dev/null
+            git worktree remove --force "$RUNNER_TEMP/src"
+          done
+          rm -f "$RUNNER_TEMP/release.jks"

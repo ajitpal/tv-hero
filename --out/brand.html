@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brand · tv-hero</title><meta name="description" content="tv-hero: the calm, safe home screen for family TV.">
+<meta property="og:image" content="https://ajitpal.github.io/tv-hero/assets/social-preview.png">
+<link rel="icon" href="assets/mark-32.png"><link rel="stylesheet" href="assets/site.css"></head>
+<body>
+<nav><div class="wrap">
+  <a class="brand" href="index.html"><img src="assets/mark-64.png" alt="">tv-hero</a>
+  <a class="hide-s" href="install.html">Install</a><a class="hide-s" href="security.html">Security</a><a class="hide-s" href="privacy.html">Privacy</a>
+  <a href="https://github.com/ajitpal/tv-hero">GitHub</a><a class="cta" href="https://github.com/ajitpal/tv-hero/releases/latest">Download</a>
+</div></nav>
+<main class="page"><img src="assets/logo-wordmark.svg" alt="tv-hero" style="height:64px;margin-bottom:24px"><h1>tv-hero brand guidelines</h1>
+<p>tv-hero is the calm, safe home screen for family TV. The brand should feel like a good babysitter: <strong>warm, trustworthy and a little bit fun</strong>, never loud.</p>
+<h2>Name</h2>
+<ul>
+<li>Written <strong>tv-hero</strong>: all lower case, with a hyphen. Never "TVHero", "Tv Hero" or "TV-HERO".</li>
+<li>At the start of a sentence it stays lower case: "tv-hero keeps…".</li>
+<li>The apps are "tv-hero" on the TV and "tv-hero" on the phone. When you need to tell them apart: "the TV app", "the phone app".</li>
+</ul>
+<h2>The mark</h2>
+<p><img alt="mark" src="assets/mark-192.png" /></p>
+<table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Shield</strong></td>
+<td>Protection: profiles, limits, bedtime and a pinned, encrypted connection</td>
+</tr>
+<tr>
+<td><strong>Play</strong></td>
+<td>The fun part: it's still a TV, made for watching</td>
+</tr>
+<tr>
+<td><strong>Spark</strong> (amber star)</td>
+<td>Time earned: kids win minutes with questions; the small reward that makes rules feel fair</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Files: <code>logo-mark.svg</code> (app icon, avatar), <code>logo-wordmark.svg</code> (light backgrounds), <code>logo-wordmark-white.svg</code> (dark backgrounds), <code>social-preview.png</code> (1280 × 640), <code>tv-banner.svg</code> (the TV's launcher banner).</li>
+<li><strong>Clear space:</strong> at least the spark's width on every side.</li>
+<li><strong>Minimum size:</strong> 24 px for the mark, 96 px wide for the wordmark.</li>
+<li><strong>Don't:</strong> recolour the shield, rotate it, add effects or outlines, put the mark on a busy photo, or move the spark.</li>
+<li>The PNGs, the TV icons and the banner are generated from the SVG: <code>python3 tools/brand/make_brand.py</code>.</li>
+</ul>
+<h2>Colour</h2><div class="swatches"><div class="swatch"><div style="background:#5B6CFF"></div><span><b>Hero Indigo</b><br>#5B6CFF</span></div><div class="swatch"><div style="background:#4338CA"></div><span><b>Deep Violet</b><br>#4338CA</span></div><div class="swatch"><div style="background:#1E1B4B"></div><span><b>Midnight</b><br>#1E1B4B</span></div><div class="swatch"><div style="background:#FFB020"></div><span><b>Spark Amber</b><br>#FFB020</span></div><div class="swatch"><div style="background:#30D158"></div><span><b>Mint</b><br>#30D158</span></div><div class="swatch"><div style="background:#FF453A"></div><span><b>Alert Red</b><br>#FF453A</span></div></div>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Hex</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hero Indigo</td>
+<td><code>#5B6CFF</code></td>
+<td>Primary: links, buttons, focus, the start of the brand gradient</td>
+</tr>
+<tr>
+<td>Deep Violet</td>
+<td><code>#4338CA</code></td>
+<td>The middle of the gradient, the play triangle, pressed states</td>
+</tr>
+<tr>
+<td>Midnight</td>
+<td><code>#1E1B4B</code></td>
+<td>The end of the gradient; dark backgrounds with <code>#0B1026</code></td>
+</tr>
+<tr>
+<td>Spark Amber</td>
+<td><code>#FFB020</code></td>
+<td>Rewards and timers only: earned time, the spark, countdown accents</td>
+</tr>
+<tr>
+<td>Mint</td>
+<td><code>#30D158</code></td>
+<td>Success: allowed, done, rest phases</td>
+</tr>
+<tr>
+<td>Alert Red</td>
+<td><code>#FF453A</code></td>
+<td>Destructive actions and the last seconds of a timer</td>
+</tr>
+<tr>
+<td>Ink / Paper</td>
+<td><code>#1D1D1F</code> / <code>#FBFBFD</code></td>
+<td>Text and backgrounds on light pages</td>
+</tr>
+</tbody>
+</table>
+<p>The brand gradient runs <strong>Indigo → Violet → Midnight</strong>, top-left to bottom-right (315°). Amber is an accent: use it on less than a tenth of any screen.</p>
+<p>On the TV, screens that lock the TV (Time's up, Bedtime, Paused) are opaque and dark, so nothing behind them shows. Workout phases use colour to say what to do: blue get ready, red work, teal rest, purple set rest.</p>
+<h2>Type</h2>
+<ul>
+<li><strong>Outfit</strong> (open source, in the TV app) for display text: the wordmark, big clocks and timers, headlines. Weights: ExtraLight 200 for big digits, Regular 400, Medium 500, SemiBold 600 for the wordmark.</li>
+<li><strong>System font</strong> (SF Pro, Roboto, Segoe UI) for body text and the phone app, which follows Apple's Human Interface Guidelines.</li>
+<li>On the TV, text is read from the sofa: body at least 18 sp, buttons 20–24 sp, timers 84–170 sp.</li>
+</ul>
+<h2>Voice</h2>
+<ul>
+<li><strong>To parents:</strong> calm, plain and honest. Say what happens ("The TV shows Time's up and the app closes"), not how clever it is. Name limits openly.</li>
+<li><strong>To kids</strong> (on the TV): short, friendly and encouraging. "That's all the TV for today, Aarav", "No minutes lost. Have another go!", "Well done!". Never shaming.</li>
+<li>Title Case for buttons and menu items (Earn Time, Ask for Time). Sentence case for everything else.</li>
+<li>No exclamation marks except in cheers for kids. No jargon: say "home Wi-Fi", not "LAN"; "TV debugging", not "ADB".</li>
+</ul>
+<h2>Motion</h2>
+<p>Gentle and quick: 200–420 ms, decelerating. Screens rise softly as they open, focus scales tiles by about 10%, timer rings fill smoothly, and the last three seconds beat once each. Nothing flashes or bounces.</p>
+<h2>Layout and UI</h2>
+<ul>
+<li><strong>TV:</strong> D-pad first. Every action is reachable with arrows and OK, focus is always visible (white pill), and Back always means "leave" (asking first if something is running).</li>
+<li><strong>Phone:</strong> inset grouped lists, large titles, one primary action per screen, and the password asked for only when a rule is loosened.</li>
+<li><strong>Website:</strong> the dark hero with the indigo glow, white cards on light pages, rounded 22 px corners and generous space.</li>
+</ul></main>
+<footer><div class="wrap">
+  <span class="brand"><img src="assets/mark-64.png" alt="">tv-hero</span>
+  <a href="install.html">Install</a><a href="security.html">Security</a><a href="privacy.html">Privacy</a><a href="brand.html">Brand</a>
+  <a href="changelog.html">What's new</a><a href="https://github.com/ajitpal/tv-hero">GitHub</a>
+  <span style="width:100%">tv-hero 2.8.0 · MIT licence · no accounts, no tracking</span>
+</div></footer>
+</body></html>

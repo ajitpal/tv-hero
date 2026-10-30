@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5B6CFF"/>
+      <stop offset="0.55" stop-color="#4338CA"/>
+      <stop offset="1" stop-color="#1E1B4B"/>
+    </linearGradient>
+    <linearGradient id="play" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5B6CFF"/>
+      <stop offset="1" stop-color="#4338CA"/>
+    </linearGradient>
+  </defs>
+  <rect width="108" height="108" rx="24" fill="url(#bg)"/>
+  <!-- the shield: a family's protection -->
+  <path d="M54 22c9.5 4.6 19 6.8 28 7v22.5C82 70 70.5 81.6 54 88 37.5 81.6 26 70 26 51.5V29c9-.2 18.5-2.4 28-7z" fill="#FFFFFF"/>
+  <!-- play: the fun part -->
+  <path d="M47.5 43.2c0-2 2.2-3.3 4-2.2l15.6 9.6c1.6 1 1.6 3.4 0 4.4L51.5 64.6c-1.8 1.1-4-.2-4-2.2z" fill="url(#play)"/>
+  <!-- the spark: time earned -->
+  <path d="M75 15l2.2 5.8L83 23l-5.8 2.2L75 31l-2.2-5.8L67 23l5.8-2.2z" fill="#FFB020"/>
+</svg>

@@ -2,6 +2,15 @@
 
 Each release has a TV app and a phone app with the same version number. Notes for a release are the section under its heading.
 
+## 2.8.0
+
+- **Open source.** tv-hero's code, releases and website now live together at github.com/ajitpal/tv-hero, under the MIT licence.
+- **Set Up a New TV from the phone.** Switch on debugging at the TV, and the phone finds it, installs tv-hero, makes it Home where the TV allows, switches on its guard and media titles, switches debugging off and goes straight to pairing. No computer needed.
+- **Start Over.** Settings → About → TV App → Start Over on This TV removes tv-hero and puts the TV's own Home back, so the first-time setup can be tried again.
+- **A new look.** A logo (a shield for safety, play for fun, a spark for time earned), new app icons and TV banner, brand guidelines, and a redesigned website.
+- **A friendlier welcome** in the phone app: what tv-hero is for, and Set Up a New TV next to pairing.
+- **Updates from the project's own releases**, with the old releases repo as a fallback.
+
 ## 2.7.0
 
 - **Home tells you about what's focused.** Above an app tile: what this profile watched there lately (titles from the app itself), when it was last opened and the minutes today. Under a top-bar button: what it does.
@@ -26,17 +35,33 @@ Each release has a TV app and a phone app with the same version number. Notes fo
 
 - Watch screensaver: analogue watch with the time and date on a time-of-day gradient; the TV's screensaver, after 5 idle minutes on Home, a watch button on Home, and from the phone.
 
+## 2.3.2
+
+- Versions shown on the phone (Settings → About) and in the TV's Parent Menu.
+
+## 2.3.1
+
+- Earn Time questions are offered even after a parent ends the day's time; Let … Earn Again Today on the phone.
+
 ## 2.3.0
 
 - Time Today: give or take minutes, or end today's time now. One free profile switch a day, then Ask a Parent or the PIN. Questions can still earn time after End Now.
+
+## 2.2.1
+
+- Lock screens are fully opaque and always close the app behind them; the OK press that opens a screen can't also answer it.
 
 ## 2.2.0
 
 - Time's up, Bedtime and Paused lock the TV and stop playback. Earn Time: built-in questions (Maths, English, General knowledge, Hindi, Puzzles) earn minutes. Guest Time.
 
-## 2.1.0
+## 2.1.3
 
-- Family start-up profile, Apps for Everyone, Parent Menu on the TV, Browser, WhatsApp and YouTube in Brave.
+- Parent password and PIN can be reset only from a computer over the TV's debugging connection; the start-up profile is applied once per boot.
+
+## 2.1.1
+
+- Family start-up profile, Apps for Everyone, Parent Menu on the TV, Browser, WhatsApp and YouTube in Brave. Phone app 2.1: fixes for rows that acted on their own, Profiles, Apps for Everyone and Start-up Profile.
 
 ## 2.0.0
 

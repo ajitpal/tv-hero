@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What&#x27;s new · tv-hero</title><meta name="description" content="tv-hero: the calm, safe home screen for family TV.">
+<meta property="og:image" content="https://ajitpal.github.io/tv-hero/assets/social-preview.png">
+<link rel="icon" href="assets/mark-32.png"><link rel="stylesheet" href="assets/site.css"></head>
+<body>
+<nav><div class="wrap">
+  <a class="brand" href="index.html"><img src="assets/mark-64.png" alt="">tv-hero</a>
+  <a class="hide-s" href="install.html">Install</a><a class="hide-s" href="security.html">Security</a><a class="hide-s" href="privacy.html">Privacy</a>
+  <a href="https://github.com/ajitpal/tv-hero">GitHub</a><a class="cta" href="https://github.com/ajitpal/tv-hero/releases/latest">Download</a>
+</div></nav>
+<main class="page"><h1>Changelog</h1>
+<p>Each release has a TV app and a phone app with the same version number. Notes for a release are the section under its heading.</p>
+<h2>2.8.0</h2>
+<ul>
+<li><strong>Open source.</strong> tv-hero's code, releases and website now live together at github.com/ajitpal/tv-hero, under the MIT licence.</li>
+<li><strong>Set Up a New TV from the phone.</strong> Switch on debugging at the TV, and the phone finds it, installs tv-hero, makes it Home where the TV allows, switches on its guard and media titles, switches debugging off and goes straight to pairing. No computer needed.</li>
+<li><strong>Start Over.</strong> Settings → About → TV App → Start Over on This TV removes tv-hero and puts the TV's own Home back, so the first-time setup can be tried again.</li>
+<li><strong>A new look.</strong> A logo (a shield for safety, play for fun, a spark for time earned), new app icons and TV banner, brand guidelines, and a redesigned website.</li>
+<li><strong>A friendlier welcome</strong> in the phone app: what tv-hero is for, and Set Up a New TV next to pairing.</li>
+<li><strong>Updates from the project's own releases</strong>, with the old releases repo as a fallback.</li>
+</ul>
+<h2>2.7.0</h2>
+<ul>
+<li><strong>Home tells you about what's focused.</strong> Above an app tile: what this profile watched there lately (titles from the app itself), when it was last opened and the minutes today. Under a top-bar button: what it does.</li>
+<li><strong>Tools you can leave and come back to.</strong> Back asks: keep it running, or stop and close. Stop closes. A running timer, stopwatch or workout stays in the corner over other apps (YouTube, Hotstar…), with its phase colour, so a Tabata started before a video stays in view.</li>
+<li><strong>Premium timers.</strong> Progress rings, a beat on the last three seconds, colours that fade between workout phases; the watch screensaver's seconds hand sweeps smoothly.</li>
+<li><strong>Software updates from GitHub.</strong> Settings → About → Software Update on the phone checks tv-hero's releases once a day (can be switched off), updates the phone app and installs the TV app over the home Wi-Fi. Every download is checked: HTTPS from GitHub only, size, SHA-256, package, version and tv-hero's release signature.</li>
+<li><strong>Releases from CI.</strong> Pushing a version tag builds, tests, signs and publishes both apps with <code>update.json</code>, and updates the website.</li>
+</ul>
+<h2>2.6.0</h2>
+<ul>
+<li>Tools on the TV: Timer, Stopwatch and Workout (HIIT presets, beeps that turn music down briefly). Phone TV tab → Tools controls them and builds your own workouts.</li>
+</ul>
+<h2>2.5.0</h2>
+<ul>
+<li>Update the TV app from the phone (Settings → About → TV App), without a computer. ADB client and capability probe for setting up other TVs later.</li>
+</ul>
+<h2>2.4.1</h2>
+<ul>
+<li>Screen time counts only while an app is open: not Home, the screensaver or Settings.</li>
+</ul>
+<h2>2.4.0</h2>
+<ul>
+<li>Watch screensaver: analogue watch with the time and date on a time-of-day gradient; the TV's screensaver, after 5 idle minutes on Home, a watch button on Home, and from the phone.</li>
+</ul>
+<h2>2.3.2</h2>
+<ul>
+<li>Versions shown on the phone (Settings → About) and in the TV's Parent Menu.</li>
+</ul>
+<h2>2.3.1</h2>
+<ul>
+<li>Earn Time questions are offered even after a parent ends the day's time; Let … Earn Again Today on the phone.</li>
+</ul>
+<h2>2.3.0</h2>
+<ul>
+<li>Time Today: give or take minutes, or end today's time now. One free profile switch a day, then Ask a Parent or the PIN. Questions can still earn time after End Now.</li>
+</ul>
+<h2>2.2.1</h2>
+<ul>
+<li>Lock screens are fully opaque and always close the app behind them; the OK press that opens a screen can't also answer it.</li>
+</ul>
+<h2>2.2.0</h2>
+<ul>
+<li>Time's up, Bedtime and Paused lock the TV and stop playback. Earn Time: built-in questions (Maths, English, General knowledge, Hindi, Puzzles) earn minutes. Guest Time.</li>
+</ul>
+<h2>2.1.3</h2>
+<ul>
+<li>Parent password and PIN can be reset only from a computer over the TV's debugging connection; the start-up profile is applied once per boot.</li>
+</ul>
+<h2>2.1.1</h2>
+<ul>
+<li>Family start-up profile, Apps for Everyone, Parent Menu on the TV, Browser, WhatsApp and YouTube in Brave. Phone app 2.1: fixes for rows that acted on their own, Profiles, Apps for Everyone and Start-up Profile.</li>
+</ul>
+<h2>2.0.0</h2>
+<ul>
+<li>Protocol 2: mutual TLS with pinned keys, pairing by comparing codes and Allow on the TV, internet control off by default, revocation.</li>
+</ul></main>
+<footer><div class="wrap">
+  <span class="brand"><img src="assets/mark-64.png" alt="">tv-hero</span>
+  <a href="install.html">Install</a><a href="security.html">Security</a><a href="privacy.html">Privacy</a><a href="brand.html">Brand</a>
+  <a href="changelog.html">What's new</a><a href="https://github.com/ajitpal/tv-hero">GitHub</a>
+  <span style="width:100%">tv-hero 2.8.0 · MIT licence · no accounts, no tracking</span>
+</div></footer>
+</body></html>

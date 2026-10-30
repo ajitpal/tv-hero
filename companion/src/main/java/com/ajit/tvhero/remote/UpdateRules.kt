@@ -7,7 +7,10 @@ import java.net.URL
  * releases repo; the app trusts only its own pinned release certificate, never a value from the download.
  */
 object UpdateRules {
-    const val MANIFEST = "https://github.com/ajitpal/tv-hero-releases/releases/latest/download/update.json"
+    const val MANIFEST = "https://github.com/ajitpal/tv-hero/releases/latest/download/update.json"
+
+    /** Tried in order: the project's own releases, then the old releases repo (2.7.0 published there). */
+    val MANIFESTS = listOf(MANIFEST, "https://github.com/ajitpal/tv-hero-releases/releases/latest/download/update.json")
 
     /** SHA-256 of tv-hero's release signing certificate (both apps). An APK signed otherwise is refused. */
     const val RELEASE_CERT_SHA256 = "309705ca333f547dfc8bb7d5d02cff8ca63b64cc49d5a533f45b6e06544c9124"

@@ -7,6 +7,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ajit.tvhero.adb.Probe
@@ -25,6 +29,14 @@ internal fun TvAppPage(state: AppState, gate: PasswordGate, onBack: () -> Unit) 
     val c = Hig.colors
     val u = state.updater
     val p = u.probe
+    var confirmStartOver by remember { mutableStateOf(false) }
+    if (confirmStartOver) com.ajit.tvhero.remote.ui.hig.HigAlert("Remove tv-hero from the TV?",
+        "Profiles, limits, history and paired phones on the TV are deleted, and the TV's own Home screen comes back. " +
+            "TV debugging stays on so this phone can set it up again right away.", { confirmStartOver = false },
+        buttons = listOf("Cancel" to { confirmStartOver = false }, "Remove" to {
+            confirmStartOver = false
+            gate.ask("Switch on TV debugging to remove tv-hero from the TV.") { pw -> u.startOver(pw) }
+        }), destructiveIndex = 1)
     HigScreen("TV App", onBack = onBack, backLabel = "Settings") {
         section("versions", "Versions") {
             Row("On the TV", value = p?.tvHeroVersion?.ifBlank { "Not installed" } ?: state.tvVersion.ifBlank { "—" })
@@ -39,6 +51,9 @@ internal fun TvAppPage(state: AppState, gate: PasswordGate, onBack: () -> Unit) 
             ButtonRow("Check the TV", enabled = !u.running) {
                 gate.ask("Switch on TV debugging to read what the TV is (nothing is changed).") { pw -> u.check(pw) }
             }
+        }
+        section("over", footer = "To try the first-time setup again: removes tv-hero from the TV (its profiles, rules and pairings too) and puts the TV's own Home screen back. Then use Set Up a New TV.") {
+            ButtonRow("Start Over on This TV…", destructive = true, enabled = !u.running) { confirmStartOver = true }
         }
         u.allowFingerprint?.let { fp ->
             section("allow", "On the TV") {

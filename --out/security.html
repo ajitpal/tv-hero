@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security · tv-hero</title><meta name="description" content="tv-hero: the calm, safe home screen for family TV.">
+<meta property="og:image" content="https://ajitpal.github.io/tv-hero/assets/social-preview.png">
+<link rel="icon" href="assets/mark-32.png"><link rel="stylesheet" href="assets/site.css"></head>
+<body>
+<nav><div class="wrap">
+  <a class="brand" href="index.html"><img src="assets/mark-64.png" alt="">tv-hero</a>
+  <a class="hide-s" href="install.html">Install</a><a class="hide-s" href="security.html">Security</a><a class="hide-s" href="privacy.html">Privacy</a>
+  <a href="https://github.com/ajitpal/tv-hero">GitHub</a><a class="cta" href="https://github.com/ajitpal/tv-hero/releases/latest">Download</a>
+</div></nav>
+<main class="page"><h1>Security</h1>
+<p>tv-hero lets a phone control a family TV and its rules. The threats it guards against are domestic but real: a child who wants more screen time, a guest or neighbour on the Wi-Fi, a lost phone, and the internet once remote control is on.</p>
+<ul>
+<li><strong>Encrypted, pinned connection.</strong> Phone and TV each keep an EC P-256 key in the Android Keystore that can't be copied off the device. Commands use mutual TLS, and each side trusts only the certificate it pinned when pairing.</li>
+<li><strong>Pairing a person can check.</strong> The TV commits to its random value before seeing the phone's. Both screens then show the same six-digit code, and someone must press <strong>Allow on the TV</strong>. The prompt opens on <em>Don't Allow</em>.</li>
+<li><strong>Loosening needs the password.</strong> Allowing apps, adding time, resuming a paused TV, switching to Parent, removing another phone and turning internet control on all need the parent password. Tightening never does.</li>
+<li><strong>Internet control is off by default.</strong> Turning it on needs the password, the home network and Allow on the TV.</li>
+<li><strong>Visible and revocable.</strong> Every paired phone is listed with when it was last used and how it connects. Removing one takes effect at its next connection.</li>
+<li><strong>Updates are verified.</strong> The phone downloads only over HTTPS from GitHub's release hosts. It checks size and SHA-256, and the APK must be the right package and version and be signed with tv-hero's release key. The TV app is installed over a debugging connection that is used only on the home Wi-Fi, switched on with the password and always switched off at the end.</li>
+<li><strong>Honest limits.</strong> Android 9 TVs speak TLS 1.2, not 1.3. Pairing relies on a person comparing six digits. A child with physical access to TV Settings could switch the guard off; kid profiles block Settings.</li>
+</ul></main>
+<footer><div class="wrap">
+  <span class="brand"><img src="assets/mark-64.png" alt="">tv-hero</span>
+  <a href="install.html">Install</a><a href="security.html">Security</a><a href="privacy.html">Privacy</a><a href="brand.html">Brand</a>
+  <a href="changelog.html">What's new</a><a href="https://github.com/ajitpal/tv-hero">GitHub</a>
+  <span style="width:100%">tv-hero 2.8.0 · MIT licence · no accounts, no tracking</span>
+</div></footer>
+</body></html>
