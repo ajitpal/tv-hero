@@ -1,0 +1,24 @@
+name: Feature request
+description: Something tv-hero should do for your family
+labels: [idea]
+body:
+  - type: markdown
+    attributes: { value: "Thanks! Check the [roadmap](https://ajitpal.github.io/tv-hero/roadmap.html) and the [open requests](https://github.com/ajitpal/tv-hero/issues?q=is%3Aopen+label%3Aidea+sort%3Areactions-%2B1-desc) first. If yours is there, add a 👍: the most-wanted ideas move up." }
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Screen time and bedtime, Earn Time and rewards, The TV's Home screen, Phone app, Phone to TV (links, photos, search), Live and free TV, Tools and screensaver, Setup and other TVs, Safety and privacy, Something else]
+    validations: { required: true }
+  - type: textarea
+    id: need
+    attributes: { label: "What do you need?", description: "The situation at home, in your words. For example: 'My kids watch on two TVs and the time should add up.'" }
+    validations: { required: true }
+  - type: textarea
+    id: idea
+    attributes: { label: "How could tv-hero help?", description: "Optional: how you picture it working." }
+  - type: dropdown
+    id: who
+    attributes: { label: "Who is it for?", options: [Parents, Kids, Both, Everyone at home] }
+  - type: markdown
+    attributes: { value: "Please don't include names, addresses or photos of your family." }

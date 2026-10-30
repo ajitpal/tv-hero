@@ -122,6 +122,12 @@ def main():
     for md in sorted(SITE.glob("*.md")):
         title, body = md_page(md.read_text())
         page(md.stem + ".html", title, body, eyebrows.get(md.stem, "Guide"))
+    _, body = md_page((ROOT / "docs/ROADMAP.md").read_text())
+    body = ('<p class="center"><a class="btn primary" href="https://github.com/ajitpal/tv-hero/issues/new?template=feature.yml">Request a feature</a> '
+            '&nbsp; <a class="btn link" href="https://github.com/ajitpal/tv-hero/issues?q=is%3Aopen+label%3Aidea+sort%3Areactions-%2B1-desc">Vote on ideas ›</a></p>' + body)
+    page("roadmap.html", "Roadmap", body, "What's next",
+         description="What's coming to tv-hero: accurate screen time, a time-left corner, links and photos from the phone to the TV, "
+                     "weather and free TV, Scenes and rewards. Request a feature or vote on ideas.")
     _, body = md_page((ROOT / "CHANGELOG.md").read_text())
     page("changelog.html", "What's new", body, "Releases")
 
@@ -140,7 +146,7 @@ def main():
          description="Screenshots of tv-hero: the calm Android TV Home screen, Time's up and bedtime screens, the Earn Time quiz for kids, "
                      "the Parent Menu, tools like Timer and Tabata workout, and the parents' phone app.")
 
-    pages = ["", "gallery.html", "install.html", "security.html", "privacy.html", "changelog.html", "brand.html"]
+    pages = ["", "gallery.html", "roadmap.html", "install.html", "security.html", "privacy.html", "changelog.html", "brand.html"]
     urls = []
     for pg in pages:
         imgs = ""

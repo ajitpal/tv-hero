@@ -5,7 +5,7 @@ name: Website
 on:
   push:
     branches: [ main ]
-    paths: [ 'site/**', 'brand/**', 'CHANGELOG.md', 'docs/screenshots/**', 'tools/build_site.py', 'tools/gallery.py' ]
+    paths: [ 'site/**', 'brand/**', 'CHANGELOG.md', 'docs/screenshots/**', 'tools/build_site.py', 'tools/gallery.py', 'docs/ROADMAP.md' ]
   workflow_dispatch:
   workflow_run:
     workflows: [ Release ]

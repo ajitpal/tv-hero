@@ -95,6 +95,18 @@ Full guide: **[ajitpal.github.io/tv-hero/install.html](https://ajitpal.github.io
 
 Details: [docs/SECURITY.md](docs/SECURITY.md) · [Privacy](site/privacy.md)
 
+## What's next 🗺️
+
+| Release | Theme |
+|---|---|
+| **2.9** | **Fair time:** screen time exact to the second, an optional time-left corner, on-screen notes you can switch off |
+| **2.10** | **Phone to TV:** open links, show photos without saving them on the TV, search with a safe default per child |
+| **2.11** | **Live and free TV:** weather on Home and as a screensaver, a Free TV row of channels you choose |
+| **2.12** | **Family extras:** Scenes (Homework, Movie night), rewards for chores, a weekly summary |
+| Labs | Install apps on the TV from the phone (experimental, off by default) |
+
+Full plan: [docs/ROADMAP.md](docs/ROADMAP.md). **Tell us what your family needs:** [request a feature](https://github.com/ajitpal/tv-hero/issues/new?template=feature.yml), or 👍 the [ideas you want first](https://github.com/ajitpal/tv-hero/issues?q=is%3Aopen+label%3Aidea+sort%3Areactions-%2B1-desc).
+
 ## Works with
 
 Android TV and Google TV, **Android 9 and later**. It was built on, and is lightest on, a Xiaomi Mi TV 4A Pro with 1 GB of RAM. On Google TV devices that insist on their own Home screen, tv-hero runs as a guard: profiles, limits and lock screens still work. The phone app needs Android 9 or later.
@@ -112,7 +124,7 @@ Android TV and Google TV, **Android 9 and later**. It was built on, and is light
 | **Tools** | `tools/` | Computer-side scripts: install, debloat and restore, a Python client for the TV's API, release and website builders |
 | **Brand** | `brand/` | Logo, wordmark, colours and guidelines ([BRAND.md](brand/BRAND.md)) |
 | **Website** | `site/` | Source of [ajitpal.github.io/tv-hero](https://ajitpal.github.io/tv-hero/) |
-| **Docs** | `docs/` | [ARCHITECTURE](docs/ARCHITECTURE.md), [SECURITY](docs/SECURITY.md), [PROTOCOL](docs/PROTOCOL.md), [DESIGN](docs/DESIGN.md), [PHASE3](docs/PHASE3.md), [RELEASING](docs/RELEASING.md), [TROUBLESHOOTING](docs/TROUBLESHOOTING.md) |
+| **Docs** | `docs/` | [ROADMAP](docs/ROADMAP.md), [ARCHITECTURE](docs/ARCHITECTURE.md), [SECURITY](docs/SECURITY.md), [PROTOCOL](docs/PROTOCOL.md), [DESIGN](docs/DESIGN.md), [PHASE3](docs/PHASE3.md), [RELEASING](docs/RELEASING.md), [TROUBLESHOOTING](docs/TROUBLESHOOTING.md) |
 
 ```bash
 # JDK 17+, Android SDK 34

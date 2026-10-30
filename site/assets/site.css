@@ -199,7 +199,7 @@ ul.checks li::before { content: ""; position: absolute; left: 0; top: 3px; width
 /* steps */
 .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 54px; margin-bottom: 30px; }
 .step { background: var(--mist); border-radius: var(--r); padding: 30px 28px; }
-.step .num { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: #fff; font: 500 17px var(--display); margin-bottom: 20px; }
+.step .num { display: grid; place-items: center; min-width: 40px; width: max-content; padding: 0 10px; height: 40px; border-radius: 980px; background: var(--ink); color: #fff; font: 500 17px var(--display); margin-bottom: 20px; }
 .step p { margin: 6px 0 0; color: var(--ink2); font-size: 15px; }
 
 /* security */
@@ -372,3 +372,4 @@ section, header.hero { overflow-x: clip; }
   .g-tv { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .g-phone { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+.mist .step { background: var(--paper); box-shadow: 0 2px 4px rgba(0,0,0,.03), 0 18px 40px rgba(17,24,64,.06); }

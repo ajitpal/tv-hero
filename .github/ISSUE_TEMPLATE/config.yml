@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Roadmap
+    url: https://ajitpal.github.io/tv-hero/roadmap.html
+    about: What's coming next, release by release.
+  - name: Questions and ideas to talk through
+    url: https://github.com/ajitpal/tv-hero/discussions
+    about: Ask, share how you use tv-hero, or think out loud about an idea.
+  - name: Report a security problem privately
+    url: https://github.com/ajitpal/tv-hero/security/advisories/new
+    about: Please don't open a public issue for vulnerabilities.
