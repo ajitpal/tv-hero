@@ -124,6 +124,7 @@ final class Overlays {
     /** A number pad for the parent PIN. [onPin] returns false for a wrong PIN. */
     void pin(String title, java.util.function.Predicate<String> onPin, Runnable onCancel) {
         LinearLayout box = column();
+        box.setMinimumWidth(dp(640));   // titles like "Parent PIN: 1 more hour tonight" stay on one line, never cut
         box.addView(text(title, 30, Color.WHITE, true));
         TextView dots = text("○ ○ ○ ○", 34, Color.WHITE, false);
         dots.setLetterSpacing(0.2f);

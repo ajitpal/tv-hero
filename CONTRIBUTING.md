@@ -25,6 +25,6 @@ Thanks for helping make family TV calmer.
 python3 tools/check_release.py && python3 tools/tvhero_client.py --self-test
 ```
 
-If you changed a phone screen, re-record its screenshot (`./gradlew :companion:testDebugUnitTest -Pscreenshots=record`). CI runs the same checks on every pull request.
+If you changed a screen, re-record the screenshots (`./gradlew :companion:testDebugUnitTest :tv-launcher:testDebugUnitTest -Pscreenshots=record`); new screens go in `tools/gallery.py` with a title, description and tags, then `python3 tools/readme_gallery.py` updates the README. Sample data only: never a real family's names, addresses or devices. CI runs the same checks on every pull request.
 
 By contributing, you agree that your work is released under the MIT licence.

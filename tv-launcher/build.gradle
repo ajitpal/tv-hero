@@ -15,8 +15,8 @@ android {
         applicationId providers.gradleProperty('launcherApplicationId').getOrElse('com.ajit.tvhero')
         minSdk 26
         targetSdk 34
-        versionCode 18
-        versionName "2.8.0"
+        versionCode 19
+        versionName "2.8.1"
     }
 
     signingConfigs {
@@ -53,6 +53,19 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+            all {
+                // TV screenshots with sample data: ./gradlew :tv-launcher:testDebugUnitTest -Pscreenshots=record
+                // (writes docs/screenshots/tv/). Needs Robolectric's Android download, so only when asked.
+                if (project.findProperty('screenshots') != 'record') exclude '**/TvScreenshotTest*'
+                systemProperty 'screenshots', project.findProperty('screenshots') ?: 'off'
+                systemProperty 'screenshotDir', rootProject.file('docs/screenshots/tv').absolutePath
+            }
+        }
+    }
 }
 
 dependencies {
@@ -61,4 +74,5 @@ dependencies {
     implementation 'androidx.dynamicanimation:dynamicanimation:1.0.0'
     // Test only (never in the APK): plain JVM tests for the module card validators, src/test.
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.13'
 }

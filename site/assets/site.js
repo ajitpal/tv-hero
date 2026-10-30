@@ -68,3 +68,71 @@
   }
   loop();
 })();
+
+/* Gallery: filters, strip arrows, and a full-screen viewer (arrows, swipe, Esc). Links work without JavaScript. */
+(function () {
+  document.querySelectorAll('.filters').forEach(function (bar) {
+    var scope = bar.parentElement;
+    bar.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      bar.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); });
+      var f = b.getAttribute('data-filter');
+      scope.querySelectorAll('.shot').forEach(function (s) {
+        s.classList.toggle('hidden', f !== 'all' && (' ' + s.getAttribute('data-tags') + ' ').indexOf(' ' + f + ' ') < 0);
+      });
+      var strip = scope.querySelector('.strip'); if (strip) strip.scrollTo({ left: 0, behavior: 'smooth' });
+    });
+  });
+  document.querySelectorAll('.gallery-strip').forEach(function (g) {
+    var strip = g.querySelector('.strip');
+    g.querySelectorAll('.strip-nav button').forEach(function (b) {
+      b.addEventListener('click', function () { strip.scrollBy({ left: (b.classList.contains('next') ? 1 : -1) * strip.clientWidth * 0.8, behavior: 'smooth' }); });
+    });
+  });
+
+  var shots = document.querySelectorAll('.shot');
+  if (!shots.length) return;
+  var v = document.createElement('div');
+  v.className = 'viewer'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true'); v.setAttribute('aria-label', 'Screenshot');
+  v.innerHTML = '<span class="count"></span><button class="close" aria-label="Close">✕</button><button class="prev" aria-label="Previous">‹</button>' +
+    '<figure><img alt=""><figcaption><b></b><span></span><em></em></figcaption></figure><button class="next" aria-label="Next">›</button>';
+  document.body.appendChild(v);
+  var img = v.querySelector('img'), list = [], i = 0, opener = null;
+  function visible(scope) { return Array.prototype.filter.call(scope.querySelectorAll('.shot'), function (s) { return !s.classList.contains('hidden'); }); }
+  function show(n) {
+    i = (n + list.length) % list.length;
+    var s = list[i];
+    img.src = s.getAttribute('href');
+    img.className = s.classList.contains('s-phone') ? 'phone' : 'tv';
+    img.alt = s.querySelector('img').alt;
+    v.querySelector('b').textContent = s.getAttribute('data-title');
+    v.querySelector('figcaption span').textContent = s.getAttribute('data-desc');
+    v.querySelector('em').textContent = s.getAttribute('data-meta');
+    v.querySelector('.count').textContent = (i + 1) + ' / ' + list.length;
+    var next = list[(i + 1) % list.length]; if (next) { var pre = new Image(); pre.src = next.getAttribute('href'); }
+  }
+  function open(s) {
+    var scope = s.closest('[data-gallery], .page') || document;
+    list = visible(scope); opener = s;
+    v.classList.add('open'); document.body.style.overflow = 'hidden';
+    show(list.indexOf(s)); v.querySelector('.close').focus();
+  }
+  function close() { v.classList.remove('open'); document.body.style.overflow = ''; img.src = ''; if (opener) opener.focus(); }
+  shots.forEach(function (s) {
+    s.addEventListener('click', function (e) { if (e.metaKey || e.ctrlKey || e.shiftKey) return; e.preventDefault(); open(s); });
+  });
+  v.querySelector('.close').addEventListener('click', close);
+  v.querySelector('.prev').addEventListener('click', function () { show(i - 1); });
+  v.querySelector('.next').addEventListener('click', function () { show(i + 1); });
+  v.addEventListener('click', function (e) { if (e.target === v || e.target.tagName === 'FIGURE') close(); });
+  document.addEventListener('keydown', function (e) {
+    if (!v.classList.contains('open')) return;
+    if (e.key === 'Escape') close(); else if (e.key === 'ArrowRight') show(i + 1); else if (e.key === 'ArrowLeft') show(i - 1);
+  });
+  var x0 = null;
+  v.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+  v.addEventListener('touchend', function (e) {
+    if (x0 === null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null;
+    if (Math.abs(dx) > 50) show(i + (dx < 0 ? 1 : -1));
+  });
+})();

@@ -153,7 +153,7 @@ internal fun PairScreen(state: AppState, host: String, tvName: String, onCancel:
                         style = HigType.body, color = c.secondaryLabel, modifier = Modifier.padding(horizontal = 16.dp))
                 }
                 section("name", "This Phone", "This name appears on the TV and in the list of phones that can control it.") {
-                    FieldRow("Name", name, { name = it.take(40) }, "e.g. Ajit's phone")
+                    FieldRow("Name", name, { name = it.take(40) }, "e.g. Mum's phone")
                 }
                 item("go") {
                     HigButton("Show Code on TV", Modifier.fillMaxWidth().padding(16.dp), enabled = name.isNotBlank()) { start() }

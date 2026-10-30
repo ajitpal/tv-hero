@@ -24,11 +24,11 @@ jobs:
         run: python3 tools/check_release.py
       - name: The website builds and contains nothing private
         run: |
-          pip install markdown==3.7 cryptography
+          pip install markdown==3.7 pillow==11.0.0 cryptography
           python3 tools/build_site.py _site
           python3 tools/check_public.py _site
       - name: Python protocol client agrees with the Java test vectors
-        run: python3 tools/tvhero_client.py --self-test
+        run: python3 tools/tvhero_client.py --self-test && python3 tools/readme_gallery.py --check
 
   build:
     name: Build, unit tests, lint

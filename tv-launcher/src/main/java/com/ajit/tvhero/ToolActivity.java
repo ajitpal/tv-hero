@@ -41,6 +41,8 @@ abstract class ToolActivity extends Activity {
     };
     private final Runnable onChange = this::render;
     private String buttonKey = "";
+    /** How much the dial and digits shrink so title, dial, buttons and hint all fit the screen (TVs are ~540 dp tall). */
+    protected float fit = 1f;
 
     @Override
     protected void attachBaseContext(android.content.Context base) {
@@ -70,7 +72,11 @@ abstract class ToolActivity extends Activity {
         dial = new FrameLayout(this);
         ring = new RingView(this);
         ring.setVisibility(View.GONE);
-        dial.addView(ring, new FrameLayout.LayoutParams(dp(400), dp(400), Gravity.CENTER));
+        android.util.DisplayMetrics m = getResources().getDisplayMetrics();
+        int heightDp = Math.round(m.heightPixels / m.density);
+        int dialDp = Math.max(200, Math.min(400, heightDp - 290));
+        fit = dialDp / 400f;
+        dial.addView(ring, new FrameLayout.LayoutParams(dp(dialDp), dp(dialDp), Gravity.CENTER));
         dial.addView(digits, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
         column.addView(dial, gap(8));
         column.addView(sub, gap(4));
@@ -233,6 +239,9 @@ abstract class ToolActivity extends Activity {
         lp.topMargin = dp(top);
         return lp;
     }
+
+    /** Digits at [sp], scaled with the dial. */
+    protected void digitSize(float sp) { digits.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, sp * fit); }
 
     protected int dp(int v) { return Math.round(v * getResources().getDisplayMetrics().density); }
 

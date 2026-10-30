@@ -17,7 +17,7 @@ public class TimerActivity extends ToolActivity {
     protected void render() {
         ToolsCore c = engine.core;
         long now = ToolsEngine.now();
-        digits.setTextSize(TypedValue.COMPLEX_UNIT_SP, 112);
+        digitSize(112);
         ring.setVisibility(View.VISIBLE);
         if (c.tool != ToolsCore.Tool.TIMER) {
             title.setText("Timer");

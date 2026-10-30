@@ -11,7 +11,7 @@ public class StopwatchActivity extends ToolActivity {
     protected void render() {
         ToolsCore c = engine.core;
         title.setText("Stopwatch");
-        digits.setTextSize(TypedValue.COMPLEX_UNIT_SP, 84);
+        digitSize(84);
         ring.setVisibility(View.VISIBLE);
         ring.setColor(0xFF0A84FF);
         if (c.tool != ToolsCore.Tool.STOPWATCH) {

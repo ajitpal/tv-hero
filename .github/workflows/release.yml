@@ -62,7 +62,7 @@ jobs:
         run: python3 tools/collect_release.py "${GITHUB_REF_NAME#v}" dist
       - name: Build the website (checked here; deployed by the Website workflow)
         run: |
-          pip install markdown==3.7
+          pip install markdown==3.7 pillow==11.0.0
           python3 tools/build_site.py _site
       - name: Nothing private goes public
         run: python3 tools/check_public.py dist/NOTES.md dist/update.json _site

@@ -2,6 +2,13 @@
 
 Each release has a TV app and a phone app with the same version number. Notes for a release are the section under its heading.
 
+## 2.8.1
+
+- **Tools fit the screen.** On TVs about 540 dp tall (most of them, including 720p sets), Timer, Stopwatch and Workout pushed their buttons below the edge of the screen, so Pause and Stop couldn't be reached. The dial and digits now shrink to fit, and every button shows.
+- **PIN titles no longer cut off.** "Parent PIN: 30 more minutes" and similar titles stay on one line.
+- **No preset family name.** A new TV greets with just "Good evening" until you name your family under Settings → Home Screen.
+- **A gallery of every screen** on the website and in the README, with filters for kids, parents, time and bedtime, safety, tools and setup, and a full-size viewer.
+
 ## 2.8.0
 
 - **Open source.** tv-hero's code, releases and website now live together at github.com/ajitpal/tv-hero, under the MIT licence.

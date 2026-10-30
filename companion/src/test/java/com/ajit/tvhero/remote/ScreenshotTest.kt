@@ -62,6 +62,7 @@ class ScreenshotTest {
         val now = System.currentTimeMillis()
         state.preview(PairedTv("t", "tv-hero · MiTV-AXSO0", "192.168.1.50", "d", "fp", "100.101.12.7"))
         state.connection = "home"
+        state.store.deviceName = "Pixel 8"
         state.apps = listOf(
             TvApp("com.google.android.youtube.tv", "YouTube", "allowed", true, false),
             TvApp("com.brave.browser", "Brave", "allowed", false, false),
@@ -97,11 +98,11 @@ class ScreenshotTest {
             Session("k7", "in.startv.hotstar", "JioHotstar", "India vs Australia, 2nd ODI", now - 23 * 60_000, now),
         )
         state.home = HomeLayout(listOf("com.google.android.youtube.tv", "com.brave.browser", "in.startv.hotstar",
-            "com.mitv.tvhome.mitvplus", "com.whatsapp", "com.phlox.tvwebbrowser"), listOf(), 6, "Pal family", true)
+            "com.mitv.tvhome.mitvplus", "com.whatsapp", "com.phlox.tvwebbrowser"), listOf(), 6, "The Sharmas", true)
         state.remote = RemoteAccess(false, "", listOf("192.168.1.50"), false, "")
         state.internet = InternetControl(false, 0, "", false, "")
         state.phones = listOf(
-            PairedPhone("p1", "Ajit's phone", now - 86400_000, now - 30_000, "home", true, true),
+            PairedPhone("p1", "Mum's phone", now - 86400_000, now - 30_000, "home", true, true),
             PairedPhone("p2", "Setup computer", now - 3 * 3600_000, now - 2 * 3600_000, "home", false, false),
         )
         state.requests = listOf(KidRequest("r1", "k1", "Aarav", "com.whatsapp", "WhatsApp", now - 600_000),
@@ -151,7 +152,9 @@ class ScreenshotTest {
     @Test fun homeScreen() = shot("09-home-screen", 4) { HomeScreenPage(state) {} }
     @Test fun phones() = shot("10-who-can-control", 4) { PhonesPage(state, gate) {} }
     @Test fun internet() = shot("11-internet-control", 4) { RemoteAccessPage(state, gate) {} }
-    @Test fun quiet() = shot("12-night-volume", 4) { QuietPage(state) {} }
+    @Test fun quiet() = shot("12-night-volume", 4) {
+        QuietPage(state, org.json.JSONObject().put("enabled", true).put("start", 21 * 60 + 30).put("end", 7 * 60).put("cap_percent", 35)) {}
+    }
     @Test fun pair() = shot("13-pair", 4) { PairScreen(state, "192.168.1.50", "MiTV-AXSO0") {} }
 
     @Config(qualifiers = "w412dp-h915dp-night-xxhdpi")

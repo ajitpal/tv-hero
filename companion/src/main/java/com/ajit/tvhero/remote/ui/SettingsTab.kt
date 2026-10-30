@@ -210,7 +210,7 @@ internal fun HomeScreenPage(state: AppState, onBack: () -> Unit) {
         }
         section("greet", "Greeting", "Other profiles see their own name instead.") {
             ToggleRow("Show Greeting", showGreeting) { showGreeting = it }
-            if (showGreeting) FieldRow("Name", greeting, { greeting = it.take(40) }, "e.g. Pal family")
+            if (showGreeting) FieldRow("Name", greeting, { greeting = it.take(40) }, "e.g. The Sharmas")
         }
         section("hidden", "Show on Home", "Off hides an app from the TV's home screen. It still works, and profiles still decide who can open it.") {
             state.apps.filter { it.state == "allowed" && !it.protected }.forEach { a ->
@@ -232,10 +232,10 @@ internal fun HomeScreenPage(state: AppState, onBack: () -> Unit) {
 // ---------- Night Volume ----------
 
 @Composable
-internal fun QuietPage(state: AppState, onBack: () -> Unit) {
+internal fun QuietPage(state: AppState, preview: JSONObject? = null, onBack: () -> Unit) {
     val c = Hig.colors
-    var q by remember { mutableStateOf<JSONObject?>(null) }
-    LaunchedEffect(Unit) { state.run { q = state.client!!.quiet() } }
+    var q by remember { mutableStateOf(preview) }
+    LaunchedEffect(Unit) { if (preview == null) state.run { q = state.client!!.quiet() } }
     var editing by remember { mutableStateOf<String?>(null) }
     fun save(update: JSONObject) = state.run { q = state.client!!.setQuiet(update) }
     HigScreen("Night Volume", onBack = onBack, backLabel = "Settings") {

@@ -12,6 +12,7 @@
 <meta name="theme-color" content="#0B1026">
 <link rel="icon" href="assets/mark-32.png">
 <link rel="apple-touch-icon" href="assets/mark-180.png">
+<link rel="canonical" href="https://ajitpal.github.io/tv-hero/">
 <link rel="stylesheet" href="assets/site.css">
 </head>
 <body class="home">
@@ -37,7 +38,7 @@
 
 <nav class="top"><div class="wrap">
   <a class="brand" href="index.html"><img src="assets/mark-64.png" alt="">tv-hero</a>
-  <div class="links"><a href="#how">How it works</a><a href="#kids">Kids</a><a href="#parents">Parents</a><a href="#setup">Set up</a><a href="security.html">Security</a></div>
+  <div class="links"><a href="#how">How it works</a><a href="#kids">Kids</a><a href="#parents">Parents</a><a href="gallery.html">Gallery</a><a href="#setup">Set up</a><a href="security.html">Security</a></div>
   <a class="gh" href="https://github.com/ajitpal/tv-hero">GitHub</a>
   <a class="cta" href="https://github.com/ajitpal/tv-hero/releases/latest">Download</a>
 </div></nav>
@@ -197,13 +198,18 @@
   </div>
 </section>
 
-<!-- 8 · More screens -->
-<section class="mist" id="screens">
+<!-- 8 · Gallery -->
+<section class="mist" id="gallery">
   <div class="wrap center reveal">
-    <div class="eyebrow">On your phone</div>
-    <h2>Clear, calm screens.<br>Light and dark.</h2>
+    <div class="eyebrow">Gallery · Every screen</div>
+    <h2>See it on the TV.<br>And on your phone.</h2>
+    <p class="lead">Lock screens, Earn Time, the Parent Menu, tools and the parents' app. Tap any screen to see it full size.</p>
   </div>
-  <div class="strip reveal">{{phones}}</div>
+  <div class="gallery-strip reveal" data-gallery>
+    {{gallery_strip}}
+    <div class="strip-nav"><button type="button" class="prev" aria-label="Scroll back">‹</button><button type="button" class="next" aria-label="Scroll on">›</button></div>
+  </div>
+  <p class="center"><a class="more" href="gallery.html">Open the full gallery ›</a></p>
 </section>
 
 <!-- 9 · Set up -->
@@ -267,7 +273,7 @@
       <div class="eyebrow small">Works with</div>
       <div class="pills"><span>Android TV</span><span>Google TV</span><span>Android 9+</span></div>
     </div>
-    <div><div class="eyebrow small">Product</div><a href="#tv">Home</a><a href="#kids">Earn Time</a><a href="#parents">Parents' app</a><a href="#tools">Tools</a><a href="changelog.html">What's new</a></div>
+    <div><div class="eyebrow small">Product</div><a href="#tv">Home</a><a href="#kids">Earn Time</a><a href="#parents">Parents' app</a><a href="#tools">Tools</a><a href="gallery.html">Gallery</a><a href="changelog.html">What's new</a></div>
     <div><div class="eyebrow small">Get started</div><a href="https://github.com/ajitpal/tv-hero/releases/latest">Download</a><a href="install.html">Install guide</a><a href="https://github.com/ajitpal/tv-hero/blob/main/docs/USER-GUIDE.md">User guide</a></div>
     <div><div class="eyebrow small">Trust</div><a href="security.html">Security</a><a href="privacy.html">Privacy</a><a href="https://github.com/ajitpal/tv-hero/security">Report a problem</a></div>
     <div><div class="eyebrow small">Project</div><a href="https://github.com/ajitpal/tv-hero">GitHub</a><a href="https://github.com/ajitpal/tv-hero/blob/main/CONTRIBUTING.md">Contributing</a><a href="brand.html">Brand</a></div>

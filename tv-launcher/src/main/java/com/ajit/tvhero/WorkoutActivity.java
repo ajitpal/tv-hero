@@ -39,7 +39,7 @@ public class WorkoutActivity extends ToolActivity {
             background(0xFF05070C);
             title.setText("Workout");
             digits.setText(s.name);
-            digits.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 72);
+            digitSize(72);
             digits.setTextColor(0xFFFFFFFF);
             ring.setVisibility(android.view.View.GONE);
             int total = Workout.totalSeconds(Workout.plan(s));
@@ -52,7 +52,7 @@ public class WorkoutActivity extends ToolActivity {
                     new Btn("Start", () -> engine.startWorkout(presets.get(preset))));
             return;
         }
-        digits.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 170);
+        digitSize(170);
         ring.setVisibility(android.view.View.VISIBLE);
         ring.setColor(0xF2FFFFFF);
         bar.setVisibility(android.view.View.VISIBLE);
@@ -63,7 +63,7 @@ public class WorkoutActivity extends ToolActivity {
             background(0xFF0E3B2E);
             title.setText(c.label);
             digits.setText("Done!");
-            digits.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 110);
+            digitSize(110);
             digits.setTextColor(0xFFFFFFFF);
             sub.setText("Workout complete · " + clock(c.totalMs(), false));
             extra.setText("");
