@@ -4,17 +4,14 @@ name: Release
 #  1. build and test both apps, signed with the release key from repository secrets,
 #  2. check the signing certificate against the pinned one,
 #  3. publish the APKs, update.json and release notes as a GitHub release of this repo,
-#  4. publish the website (GitHub Pages, Source: GitHub Actions).
-# Secrets: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD. Optional RELEASES_TOKEN mirrors the
-# release to the old ajitpal/tv-hero-releases repo, where phone app 2.7.0 looks. See docs/RELEASING.md.
+# The Website workflow then republishes the site from main (GitHub Pages only accepts deployments from main).
+# Secrets: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD. See docs/RELEASING.md.
 on:
   push:
     tags: [ 'v*' ]
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: release
@@ -63,37 +60,17 @@ jobs:
           done
       - name: Collect the APKs, update.json and notes
         run: python3 tools/collect_release.py "${GITHUB_REF_NAME#v}" dist
-      - name: Build the website
+      - name: Build the website (checked here; deployed by the Website workflow)
         run: |
           pip install markdown==3.7
           python3 tools/build_site.py _site
-          cp dist/update.json _site/update.json
       - name: Nothing private goes public
         run: python3 tools/check_public.py dist/NOTES.md dist/update.json _site
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" dist/*.apk dist/update.json --title "tv-hero $GITHUB_REF_NAME" --notes-file dist/NOTES.md --latest
-      - name: Mirror to the old releases repo (for phone app 2.7.0)
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-        run: |
-          if [ -z "$GH_TOKEN" ]; then echo "No RELEASES_TOKEN: not mirrored."; exit 0; fi
-          gh release create "$GITHUB_REF_NAME" dist/*.apk dist/update.json --repo ajitpal/tv-hero-releases \
-            --title "tv-hero $GITHUB_REF_NAME (moved to ajitpal/tv-hero)" --notes-file dist/NOTES.md || echo "::warning::mirror failed"
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
       - name: Remove the key from the runner
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks" keystore.properties
 
-  pages:
-    needs: release
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4

@@ -11,16 +11,15 @@ Everything lives in one public repo, **`ajitpal/tv-hero`**: the code, the signed
    - `tv-hero-phone-X.Y.Z.apk`, `tv-hero-tv-X.Y.Z.apk`
    - `update.json` (versions, sizes, SHA-256)
    - release notes from the changelog
-5. The same run rebuilds and deploys the website.
+5. When it succeeds, the **Website** workflow rebuilds the site from `main` and deploys it. GitHub Pages only accepts deployments from `main`, so the site is never deployed from the tag.
 
-The phone app's **Software Update** reads `https://github.com/ajitpal/tv-hero/releases/latest/download/update.json` (falling back to the old `tv-hero-releases` repo for phones on 2.7.0). It updates itself, and installs the TV app over the home Wi-Fi, after checking each file's size, SHA-256, package, version and the pinned release certificate.
+The phone app's **Software Update** reads `https://github.com/ajitpal/tv-hero/releases/latest/download/update.json`. It updates itself, and installs the TV app over the home Wi-Fi, after checking each file's size, SHA-256, package, version and the pinned release certificate.
 
 ## One-time setup
 
 1. **Secrets** (Settings → Secrets and variables → Actions):
    - `KEYSTORE_BASE64`: `base64 -w0 tv-hero-release.jks`
    - `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`
-   - optional `RELEASES_TOKEN`: a fine-grained token with *Contents: Read and write* on `ajitpal/tv-hero-releases`. With it, each release is also mirrored there, so phones still on 2.7.0 see the update. Remove it once every phone runs 2.8.0 or later.
 2. **Website:** Settings → Pages → Source: **GitHub Actions**.
 3. **Private vulnerability reporting:** Settings → Code security → turn on *Private vulnerability reporting*.
 
@@ -40,6 +39,5 @@ Changes under `site/`, `brand/` or the screenshots redeploy the website on push 
 |---|---|
 | "versions don't match" | Run `tools/check_release.py vX.Y.Z` and fix the build files or changelog. |
 | "signing certificate isn't tv-hero's" | The keystore secret is wrong. Re-encode the real `.jks`. |
-| Pages deploy refused | Settings → Pages → Source must be **GitHub Actions**. |
-| Mirror step 403 | Renew `RELEASES_TOKEN`, or delete it to stop mirroring. |
+| Pages deploy refused ("not allowed to deploy to github-pages") | Settings → Pages → Source must be **GitHub Actions**, and the site deploys from `main` only: run **Actions → Website → Run workflow**. |
 | `check_public.py` fails | A home or Tailscale address or other private detail reached the site or notes. Remove it. |

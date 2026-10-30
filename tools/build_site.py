@@ -16,12 +16,15 @@ SITE = ROOT / "site"
 # Phone screens shown on the site, with captions. Setup screens with addresses stay out.
 PHONES = [
     ("17-welcome.png", "Welcome"),
-    ("01-tv.png", "What's on, and what needs you"),
-    ("02-family.png", "Profiles and Guest"),
-    ("04-kid-profile.png", "Limits, Time Today and bedtime"),
+    ("01-tv.png", "What's on"),
+    ("04-kid-profile.png", "A child's rules"),
+    ("16-guest.png", "Guest Time"),
+    ("14-tv-dark.png", "Dark mode"),
     ("18-set-up-new-tv.png", "Set up a new TV"),
-    ("07-remote.png", "Remote and game controller"),
+    ("07-remote.png", "Remote"),
+    ("15-family-dark.png", "Family"),
 ]
+EXTRA_PHONES = ["02-family.png"]  # used directly by index.html
 SWATCHES = [("Hero Indigo", "#5B6CFF"), ("Deep Violet", "#4338CA"), ("Midnight", "#1E1B4B"),
             ("Spark Amber", "#FFB020"), ("Mint", "#30D158"), ("Alert Red", "#FF453A")]
 
@@ -52,6 +55,8 @@ def main():
     for f in (ROOT / "docs/screenshots/tv").glob("*.png"):
         shutil.copyfile(f, out / "shots/tv" / f.name)
 
+    for name in EXTRA_PHONES:
+        shutil.copyfile(ROOT / "docs/screenshots/phone" / name, out / "shots/phone" / name)
     phones = []
     for name, caption in PHONES:
         shutil.copyfile(ROOT / "docs/screenshots/phone" / name, out / "shots/phone" / name)
@@ -63,22 +68,24 @@ def main():
 
     shell = (SITE / "_page.html").read_text()
 
-    def page(name, title, body):
+    def page(name, title, body, eyebrow):
+        body = re.sub(r"<h1>.*?</h1>", "", body, count=1, flags=re.S)  # the title is in the page header
         (out / name).write_text(shell.replace("{{title}}", html.escape(title)).replace("{{body}}", body)
-                                .replace("{{version}}", version))
+                                .replace("{{eyebrow}}", html.escape(eyebrow)).replace("{{version}}", version))
+
+    eyebrows = {"install": "Get started", "security": "Trust", "privacy": "Trust"}
 
     for md in sorted(SITE.glob("*.md")):
         title, body = md_page(md.read_text())
-        page(md.stem + ".html", title, body)
+        page(md.stem + ".html", title, body, eyebrows.get(md.stem, "Guide"))
     _, body = md_page((ROOT / "CHANGELOG.md").read_text())
-    page("changelog.html", "What's new", body)
+    page("changelog.html", "What's new", body, "Releases")
 
     brand = (ROOT / "brand/BRAND.md").read_text().replace("](png/", "](assets/")
     _, body = md_page(brand)
     sw = "".join(f'<div class="swatch"><div style="background:{h}"></div><span><b>{n}</b><br>{h}</span></div>' for n, h in SWATCHES)
     body = body.replace("<h2>Colour</h2>", '<h2>Colour</h2><div class="swatches">' + sw + "</div>", 1)
-    body = body.replace("<h1>", '<img src="assets/logo-wordmark.svg" alt="tv-hero" style="height:64px;margin-bottom:24px"><h1>', 1)
-    page("brand.html", "Brand", body)
+    page("brand.html", "Brand", '<img src="assets/logo-wordmark.svg" alt="tv-hero" style="height:64px">' + body, "Guidelines")
 
     (out / ".nojekyll").write_text("")
     print(f"site for {version}: {len(list(out.glob('*.html')))} pages")

@@ -24,6 +24,10 @@ tv-hero is the calm, safe home screen for family TV. The brand should feel like 
 - **Don't:** recolour the shield, rotate it, add effects or outlines, put the mark on a busy photo, or move the spark.
 - The PNGs, the TV icons and the banner are generated from the SVG: `python3 tools/brand/make_brand.py`.
 
+## Website
+
+The site follows an Apple-like rhythm: full-width sections alternating Night (#0B1026) and white or Mist (#F5F5F7), Outfit Light for big headlines, small spaced-out monospace labels above them, real TV and phone mockups, and one accent colour. Motion is slow and quiet (fade-up on scroll, a dotted wave behind the hero) and stops for people who prefer reduced motion.
+
 ## Colour
 
 | Name | Hex | Use |

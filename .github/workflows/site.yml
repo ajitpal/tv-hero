@@ -1,12 +1,15 @@
 name: Website
 
-# Republishes https://ajitpal.github.io/tv-hero/ when its pages change on main, between releases.
-# One-time setup: Settings → Pages → Source: GitHub Actions.
+# Publishes https://ajitpal.github.io/tv-hero/ from main: when its pages change, after every Release run,
+# or by hand (Actions → Website → Run workflow). One-time setup: Settings → Pages → Source: GitHub Actions.
 on:
   push:
     branches: [ main ]
     paths: [ 'site/**', 'brand/**', 'CHANGELOG.md', 'docs/screenshots/**', 'tools/build_site.py' ]
   workflow_dispatch:
+  workflow_run:
+    workflows: [ Release ]
+    types: [ completed ]
 
 permissions:
   contents: read
@@ -19,9 +22,12 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

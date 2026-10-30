@@ -9,175 +9,272 @@
 <meta property="og:description" content="Profiles, real screen-time limits and bedtime for Android TV, run from your phone. Kids earn extra minutes with fun questions. Free and open source.">
 <meta property="og:image" content="https://ajitpal.github.io/tv-hero/assets/social-preview.png">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B1026">
 <link rel="icon" href="assets/mark-32.png">
 <link rel="apple-touch-icon" href="assets/mark-180.png">
 <link rel="stylesheet" href="assets/site.css">
 </head>
-<body>
-<nav><div class="wrap">
+<body class="home">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.8-3.2 3-5 5.5-5s4.7 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.2c2.4.1 4.2 1.7 5 4.8"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-2.9-5.4 2.9 1.1-6L3.2 9.4l6.1-.8z"/></symbol>
+    <symbol id="i-check-apps" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M14 17.5l2.2 2.2L21 15"/></symbol>
+    <symbol id="i-guest" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-3.8 3.8-6 7-6s6 2.2 7 6"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></symbol>
+    <symbol id="i-remote" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="3"/><circle cx="12" cy="8" r="2"/><path d="M10 14h4M10 17h4"/></symbol>
+    <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4M9 2h6M19 5l1.5-1.5"/></symbol>
+    <symbol id="i-watch" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 9.5V12l1.6 1M9 6l1-4h4l1 4M9 18l1 4h4l1-4"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 6h4M11 18h2"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-tv" viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.5l8 3v6c0 5-3.4 8.8-8 10-4.6-1.2-8-5-8-10v-6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
+    <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.7 2.7L16 9.6"/></symbol>
+  </defs>
+</svg>
+
+<nav class="top"><div class="wrap">
   <a class="brand" href="index.html"><img src="assets/mark-64.png" alt="">tv-hero</a>
-  <a class="hide-s" href="#parents">Parents</a><a class="hide-s" href="#kids">Kids</a><a class="hide-s" href="#setup">Set up</a>
-  <a class="hide-s" href="security.html">Security</a><a href="https://github.com/ajitpal/tv-hero">GitHub</a>
+  <div class="links"><a href="#how">How it works</a><a href="#kids">Kids</a><a href="#parents">Parents</a><a href="#setup">Set up</a><a href="security.html">Security</a></div>
+  <a class="gh" href="https://github.com/ajitpal/tv-hero">GitHub</a>
   <a class="cta" href="https://github.com/ajitpal/tv-hero/releases/latest">Download</a>
 </div></nav>
 
-<header class="hero">
-  <div class="wrap">
-    <img class="mark" src="assets/mark-192.png" alt="tv-hero">
-    <h1>The TV your kids love.<br><em>The rules you trust.</em></h1>
-    <p class="lead">tv-hero turns an Android TV into a calm family TV. Every child gets their own apps, daily time and bedtime. When time's up, the TV really stops, and kids can earn a few more minutes by answering fun questions. You run it all from your phone.</p>
+<!-- 1 · Hero -->
+<header class="hero dark">
+  <canvas id="dots" aria-hidden="true"></canvas>
+  <div class="hub" aria-label="tv-hero's features">
+    <svg class="spokes" viewBox="0 0 1000 560" preserveAspectRatio="none" aria-hidden="true"></svg>
+    <div class="core"><img src="assets/mark-192.png" alt="tv-hero"></div>
+    <div class="mod" style="--x:30%;--y:7%"><svg><use href="#i-people"/></svg><b>Profiles</b><span>each child</span></div>
+    <div class="mod" style="--x:61%;--y:5%"><svg><use href="#i-clock"/></svg><b>Time Today</b><span>give or take</span></div>
+    <div class="mod" style="--x:46%;--y:18%"><svg><use href="#i-tv"/></svg><b>Home</b><span>calm screen</span></div>
+    <div class="mod" style="--x:22%;--y:32%"><svg><use href="#i-moon"/></svg><b>Bedtime</b><span>good night</span></div>
+    <div class="mod" style="--x:70%;--y:30%"><svg><use href="#i-star"/></svg><b>Earn Time</b><span>fun questions</span></div>
+    <div class="mod" style="--x:9%;--y:55%"><svg><use href="#i-check-apps"/></svg><b>Approve Apps</b><span>you decide</span></div>
+    <div class="mod" style="--x:83%;--y:52%"><svg><use href="#i-phone"/></svg><b>Parents' App</b><span>from the sofa</span></div>
+    <div class="mod" style="--x:22%;--y:74%"><svg><use href="#i-guest"/></svg><b>Guest</b><span>own allowance</span></div>
+    <div class="mod" style="--x:71%;--y:76%"><svg><use href="#i-timer"/></svg><b>Tools</b><span>timer · HIIT</span></div>
+    <div class="mod opt" style="--x:36%;--y:92%"><svg><use href="#i-pause"/></svg><b>Pause</b><span>one tap</span></div>
+    <div class="mod" style="--x:58%;--y:93%"><svg><use href="#i-watch"/></svg><b>Screensaver</b><span>a quiet watch</span></div>
+  </div>
+  <div class="wrap hero-copy reveal">
+    <div class="eyebrow">tv-hero · Family TV, calmer</div>
+    <h1>The TV your kids love.<br>The rules you trust.</h1>
+    <p class="lead">One calm screen for every child. Real limits and bedtime that hold, fun questions to earn a little more, and you in charge from your phone.</p>
     <div class="buttons">
-      <a class="btn primary" href="https://github.com/ajitpal/tv-hero/releases/latest">Download tv-hero {{version}}</a>
-      <a class="btn ghost" href="#parents">See how it works</a>
+      <a class="btn primary" href="https://github.com/ajitpal/tv-hero/releases/latest">Download {{version}}</a>
+      <a class="btn link" href="#how">See how it works ›</a>
     </div>
-    <div class="pills"><span class="pill">Android TV &amp; Google TV</span><span class="pill">Phone app for parents</span><span class="pill">Free &amp; open source</span><span class="pill">No ads · no accounts · no tracking</span></div>
-    <div class="stage"><div class="tvframe"><img src="shots/tv/01-home.png" alt="tv-hero's Home screen on a TV: a clock, a greeting and a dock of apps"></div></div>
+    <div class="chips"><span>Android TV &amp; Google TV</span><span>Free &amp; open source</span><span>No ads · no accounts · no tracking</span></div>
   </div>
 </header>
 
-<section class="first" id="parents">
-  <div class="wrap">
-    <div class="kicker">For parents</div>
-    <h2>Screen time that actually holds,<br>without the arguments.</h2>
-    <p class="lead">Rules live on the TV, so they work even when your phone is in another room. Loosening a rule always needs your password; tightening never does.</p>
-    <div class="grid">
-      <div class="card"><div class="icon i-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.8-3.2 3-5 5.5-5s4.7 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.2c2.4.1 4.2 1.7 5 4.8"/></svg></div>
-        <h3>A profile for every child</h3><p>Each sees only their own apps plus the ones for everyone, with their own daily limit and bedtime. Up to ten profiles, plus Guest.</p></div>
-      <div class="card"><div class="icon i-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg></div>
-        <h3>Time's up means stop</h3><p>The video pauses, the app closes and nothing opens behind the screen. The only ways on: ask you, earn time, or your PIN.</p></div>
-      <div class="card"><div class="icon i-violet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></div>
-        <h3>Bedtime</h3><p>A good-night screen, then standby a minute later. One more hour tonight? Allow it from your phone.</p></div>
-      <div class="card"><div class="icon i-mint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M14 17.5l2.2 2.2L21 15"/></svg></div>
-        <h3>Apps you approve</h3><p>Anything newly installed waits for your OK. Settings and the Play Store are for parents only.</p></div>
-      <div class="card"><div class="icon i-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 6h4M11 18h2"/></svg></div>
-        <h3>Time Today, from your phone</h3><p>Give 15 more minutes, take some away, or end today's TV now. Kids' requests appear under Needs You.</p></div>
-      <div class="card"><div class="icon i-sky"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h11l-3-3M20 17H9l3 3"/></svg></div>
-        <h3>Fair profile switching</h3><p>One free switch a day; after that, kids ask you. Moving to a profile without limits always needs a parent.</p></div>
-      <div class="card"><div class="icon i-indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></div>
-        <h3>Pause the whole TV</h3><p>Dinner time? One tap stops everything until you resume it. A sleep timer and a night volume cap too.</p></div>
-      <div class="card"><div class="icon i-mint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg></div>
-        <h3>Only real watching counts</h3><p>Time is counted only while an app is open: not Home, the screensaver, Settings or the built-in tools.</p></div>
-    </div>
+<!-- 2 · How it works -->
+<section class="mist" id="how">
+  <div class="wrap center reveal">
+    <div class="eyebrow">How it works · Phone, TV, family</div>
+    <h2>From your phone to the living room.<br>In three quiet steps.</h2>
+    <p class="lead">You set the rules. The TV keeps them, even when your phone is in another room.</p>
+  </div>
+  <div class="wrap trio">
+    <div class="tier reveal"><span class="tag">You</span><div class="tile g-indigo"><svg><use href="#i-phone"/></svg></div>
+      <div class="eyebrow small">Your phone</div><h3>The parents' app</h3><p class="accent">The remote for the rules.</p>
+      <p>Profiles, time, bedtime and requests, over your home Wi-Fi or the internet when you allow it.</p></div>
+    <div class="link-label" aria-hidden="true">encrypted · pinned</div>
+    <div class="tier reveal"><span class="tag">Living room</span><div class="tile g-violet"><svg><use href="#i-tv"/></svg></div>
+      <div class="eyebrow small">The TV</div><h3>The guard</h3><p class="accent">Where the rules live.</p>
+      <p>A calm Home screen and a guard that keeps limits, bedtime and approved apps, online or not.</p></div>
+    <div class="link-label" aria-hidden="true">works offline</div>
+    <div class="tier reveal"><span class="tag">Every child</span><div class="tile g-amber"><svg><use href="#i-people"/></svg></div>
+      <div class="eyebrow small">Your family</div><h3>Their own screen</h3><p class="accent">Fair, clear, and fun.</p>
+      <p>Their apps, their time, and a way to earn more by answering questions on the big screen.</p></div>
   </div>
 </section>
 
-<section class="alt kids" id="kids">
+<!-- 3 · Home -->
+<section class="dark" id="tv">
+  <div class="wrap center reveal">
+    <div class="eyebrow">01 · On the TV</div>
+    <h2 class="big">Home</h2>
+    <p class="tagline">Calm, and awake to your family.</p>
+    <p class="lead">No ads, no autoplay rows, no feeds. A clock, a greeting, your apps, and a line about what you're on: what you watched there lately, or what a button does.</p>
+  </div>
+  <div class="wrap">
+    <div class="tv reveal"><div class="screen"><img src="shots/tv/01-home.png" alt="tv-hero's Home screen on a TV: a clock, a greeting and a dock of apps"></div><div class="stand"></div></div>
+    <div class="eyebrow center small" style="margin-top:56px">Capabilities</div>
+    <ul class="checks cols3">
+      <li>Each child sees only their apps</li><li>Apps for Everyone, chosen by you</li><li>Recent titles under each app</li>
+      <li>Light enough for a 1 GB TV</li><li>Remote-friendly, predictable focus</li><li>Settings and Play Store for parents</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 4 · Earn Time -->
+<section class="paper" id="kids">
   <div class="wrap split">
-    <div>
-      <div class="kicker">For kids</div>
-      <h2>Out of time?<br>Earn some more.</h2>
-      <p class="lead">When the day's TV is used up, kids can press <b>Earn Time</b> and answer questions on the big screen. Every right answer adds minutes, up to a daily maximum you choose. A wrong answer costs nothing, but three in a row means a short break, so guessing doesn't pay.</p>
-      <div class="subjects"><span class="subject">➗ Maths</span><span class="subject">🔤 English words</span><span class="subject">🌍 General knowledge</span><span class="subject">अ Hindi</span><span class="subject">🧩 Puzzles</span></div>
-      <ul class="checks">
-        <li>Easy, Medium and Hard, set for each child</li>
-        <li>Built into the TV: works offline, nothing is tracked</li>
-        <li>Cheers for right answers, and kindness for wrong ones</li>
-      </ul>
+    <div class="reveal">
+      <div class="eyebrow">02 · For kids</div>
+      <h2 class="big">Earn Time</h2>
+      <p class="tagline">Out of time? Earn some more.</p>
+      <p class="lead">When the day's TV is used up, kids press <b>Earn Time</b> and answer questions on the big screen. Each right answer adds minutes, up to a daily maximum you choose. A wrong answer costs nothing, but three in a row means a short break, so guessing doesn't pay.</p>
+      <ul class="checks cols2"><li>Easy, Medium and Hard</li><li>Set for each child</li><li>Works offline</li><li>Nothing tracked</li><li>Cheers for right answers</li><li>Kind words for wrong ones</li></ul>
+      <hr><div class="eyebrow small">Subjects</div>
+      <div class="pills"><span>➗ Maths</span><span>🔤 English words</span><span>🌍 General knowledge</span><span>अ Hindi</span><span>🧩 Puzzles</span></div>
     </div>
-    <div class="quiz" aria-label="Illustration of an Earn Time question">
-      <div style="opacity:.7;font-size:14px;letter-spacing:.1em">🧩 PUZZLES · MEDIUM</div>
-      <div class="q">What comes next?<br>2, 4, 8, 16, ?</div>
-      <div class="opts"><div class="opt">24</div><div class="opt on">32</div><div class="opt">18</div><div class="opt">30</div></div>
-      <div class="star">⭐ 5 of 15 bonus minutes earned today</div>
-    </div>
+    <figure class="reveal">
+      <div class="tv small"><div class="screen quiz" role="img" aria-label="Illustration of an Earn Time question on the TV">
+        <div class="qhead">🧩 Puzzles · Medium</div>
+        <div class="q">What comes next?<br><span>2, 4, 8, 16, ?</span></div>
+        <div class="opts"><i>24</i><i class="on">32</i><i>18</i><i>30</i></div>
+        <div class="earned">⭐ 5 of 15 bonus minutes earned today</div>
+      </div><div class="stand"></div></div>
+      <figcaption>Illustration</figcaption>
+    </figure>
   </div>
 </section>
 
-<section id="tv">
-  <div class="wrap">
-    <div class="kicker">On the TV</div>
-    <h2>Calm by design.</h2>
-    <p class="lead">No ads, no autoplay rows, no feeds. A clock, your apps, and a line about what you're on: what you watched there lately, or what a button does.</p>
-    <div class="grid">
-      <div class="card"><div class="icon i-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4M9 2h6M19 5l1.5-1.5"/></svg></div>
-        <h3>Timer, Stopwatch, Workout</h3><p>Big digits and progress rings for the whole room. HIIT presets like Tabata, with beeps and a colour for each phase.</p></div>
-      <div class="card"><div class="icon i-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="13" rx="2"/><rect x="13" y="7" width="6" height="3" rx="1.5"/></svg></div>
-        <h3>Keeps going over YouTube</h3><p>Start a workout, open a video: a small timer stays in the corner so you never lose your place.</p></div>
-      <div class="card"><div class="icon i-violet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
-        <h3>A watch screensaver</h3><p>An analogue watch and the date on a gradient that follows the time of day. Burn-in safe.</p></div>
-    </div>
-    <div class="tvs">
-      <figure><div class="tvframe"><img src="shots/tv/02-watch-screensaver.png" alt="The watch screensaver" loading="lazy"></div><figcaption>The watch screensaver</figcaption></figure>
-      <figure><div class="tvframe"><img src="shots/tv/03-times-up.png" alt="Time's up screen after earning all bonus minutes" loading="lazy"></div><figcaption>Time's up, after earning every bonus minute</figcaption></figure>
-    </div>
-  </div>
-</section>
-
-<section class="alt" id="phone">
-  <div class="wrap">
-    <div class="kicker">On your phone</div>
-    <h2>Everything, from the sofa or the office.</h2>
-    <p class="lead">What's on now, who's watching, time left, kids' requests, a remote and a game controller. Over your home Wi-Fi, or over the internet when you switch that on.</p>
-    <div class="phones">{{phones}}</div>
-  </div>
-</section>
-
-<section id="setup">
-  <div class="wrap">
-    <div class="kicker">Set up</div>
-    <h2>A new TV in about two minutes.<br>No computer, no cables.</h2>
-    <div class="steps">
-      <div class="card step"><h3>Install the phone app</h3><p>Download tv-hero for your phone from the latest release.</p></div>
-      <div class="card step"><h3>Switch on TV debugging</h3><p>The app shows you where. Then it finds the TV, you press Allow, and it installs and sets up tv-hero for you.</p></div>
-      <div class="card step"><h3>Pair and add your family</h3><p>Compare a six-digit code on both screens, press Allow on the TV, and create profiles.</p></div>
-    </div>
-    <p style="margin-top:22px"><a href="install.html">Step-by-step guide →</a></p>
-  </div>
-</section>
-
-<section style="padding-top:0">
-  <div class="wrap">
-    <div class="band">
-      <div class="kicker" style="color:#A5B4FF">Security and privacy</div>
-      <h2>Built like it matters.<br>Because it's your family.</h2>
-      <p class="lead">Every way in is visible and can be revoked. Nothing about your family leaves your home.</p>
-      <div class="grid">
-        <div class="card"><h3>Encrypted and pinned</h3><p>Mutual TLS between phone and TV, with keys that can't leave either device.</p></div>
-        <div class="card"><h3>A person says yes</h3><p>Pairing shows the same code on both screens and needs Allow on the TV.</p></div>
-        <div class="card"><h3>Off by default</h3><p>Control over the internet is off until you turn it on at home, with Allow on the TV.</p></div>
-        <div class="card"><h3>No tracking</h3><p>No accounts, analytics or ads. Watch history stays on the TV for your eyes only.</p></div>
-      </div>
-      <p style="margin-top:22px"><a style="color:#fff" href="security.html">How tv-hero keeps your family safe →</a> &nbsp; <a style="color:#fff" href="privacy.html">Privacy →</a></p>
-    </div>
-  </div>
-</section>
-
-<section class="alt" id="open">
+<!-- 5 · Parents' app -->
+<section class="mist" id="parents">
   <div class="wrap split flip">
-    <div class="card" style="text-align:center;padding:40px">
-      <img src="assets/mark-192.png" alt="" style="width:96px;margin:0 auto 18px;border-radius:24px">
-      <div class="display" style="font-size:28px;font-weight:600">tv-hero {{version}}</div>
-      <p>TV app and phone app · MIT licence</p>
-      <div class="buttons" style="justify-content:center">
-        <a class="btn" style="background:var(--tint);color:#fff" href="https://github.com/ajitpal/tv-hero/releases/latest">Download</a>
-        <a class="btn" style="border:1px solid var(--line);color:var(--fg)" href="https://github.com/ajitpal/tv-hero">Source code</a>
+    <figure class="phone-wrap reveal"><div class="phone"><img src="shots/phone/02-family.png" alt="The phone app's Family tab: profiles and Guest" loading="lazy"></div></figure>
+    <div class="reveal">
+      <div class="eyebrow">03 · For parents</div>
+      <h2 class="big">The parents' app</h2>
+      <p class="tagline">Everything, from the sofa or the office.</p>
+      <p class="lead">What's on now, who's watching and how much time is left. Kids' requests arrive under <b>Needs You</b>; approve them with a tap.</p>
+      <ul class="checks cols2"><li>Profiles and Guest</li><li>Give or take minutes</li><li>End today's TV now</li><li>Pause the whole TV</li><li>Sleep timer, night volume</li><li>Remote and game pad</li></ul>
+      <hr><div class="eyebrow small">Works over</div>
+      <div class="pills"><span>Home Wi-Fi</span><span>Internet, when you allow it</span><span>Android 9+</span><span>Fingerprint lock</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · Time and bedtime -->
+<section class="paper" id="time">
+  <div class="wrap split">
+    <div class="reveal">
+      <div class="eyebrow">04 · Time &amp; bedtime</div>
+      <h2 class="big">Rules that hold</h2>
+      <p class="tagline">Time's up means stop.</p>
+      <p class="lead">The video pauses, the app closes and nothing opens behind the screen. The only ways on: ask you, earn time, or your PIN. At bedtime, a good-night screen, then standby.</p>
+      <ul class="checks cols2"><li>Daily limit per child</li><li>Bedtime per child</li><li>One free profile switch</li><li>Then kids ask you</li><li>Only real watching counts</li><li>Password to loosen, never to tighten</li></ul>
+    </div>
+    <figure class="panel reveal" role="img" aria-label="Illustration of Time Today for one child">
+      <div class="panel-head"><span class="eyebrow small">Time Today · Aanya</span><span class="ok">● Watching</span></div>
+      <div class="ring-row">
+        <svg class="ring" viewBox="0 0 120 120"><circle cx="60" cy="60" r="50"/><circle class="arc" cx="60" cy="60" r="50" pathLength="100" stroke-dasharray="62 100"/></svg>
+        <div><div class="ring-num">38<small> min left</small></div><div class="muted">of 1 h 30 min today</div></div>
       </div>
+      <div class="ctrls"><i>−15</i><i>+15</i><i>+30</i><i class="end">End Now</i></div>
+      <div class="stats">
+        <div><span class="eyebrow small">Bedtime</span><b>8:30</b><em>pm</em></div>
+        <div><span class="eyebrow small">Earn Time</span><b>15</b><em>min max</em></div>
+        <div><span class="eyebrow small">Switches</span><b>1</b><em>free / day</em></div>
+        <div><span class="eyebrow small">Guest</span><b>30</b><em>min / day</em></div>
+      </div>
+      <figcaption>Illustration</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- 7 · Tools and screensaver -->
+<section class="violet" id="tools">
+  <div class="wrap split flip">
+    <figure class="combo reveal">
+      <div class="tv"><div class="screen"><img src="shots/tv/02-watch-screensaver.png" alt="The watch screensaver" loading="lazy"></div><div class="stand"></div></div>
+      <div class="phone mini"><img src="shots/phone/07-remote.png" alt="The phone as a remote" loading="lazy"></div>
+    </figure>
+    <div class="reveal">
+      <div class="eyebrow">05 · Tools &amp; screensaver</div>
+      <h2 class="big">Tools</h2>
+      <p class="tagline">The living room, put to work.</p>
+      <p class="lead">Timer, Stopwatch and Workout with big digits and progress rings for the whole room. Start a Tabata, open YouTube, and a small timer stays in the corner.</p>
+      <ul class="checks cols2"><li>HIIT presets like Tabata</li><li>3-2-1 beeps, colour per phase</li><li>Corner timer over any app</li><li>Start them from the phone</li><li>A quiet watch screensaver</li><li>Never counted as screen time</li></ul>
     </div>
-    <div>
-      <div class="kicker">Free and open source</div>
-      <h2>Made by a parent, in the open.</h2>
+  </div>
+</section>
+
+<!-- 8 · More screens -->
+<section class="mist" id="screens">
+  <div class="wrap center reveal">
+    <div class="eyebrow">On your phone</div>
+    <h2>Clear, calm screens.<br>Light and dark.</h2>
+  </div>
+  <div class="strip reveal">{{phones}}</div>
+</section>
+
+<!-- 9 · Set up -->
+<section class="paper" id="setup">
+  <div class="wrap center reveal">
+    <div class="eyebrow">06 · Set up</div>
+    <h2>A new TV in about two minutes.<br>No computer, no cables.</h2>
+  </div>
+  <div class="wrap steps">
+    <div class="step reveal"><span class="num">1</span><h3>Install the phone app</h3><p>Download tv-hero for your phone from the latest release.</p></div>
+    <div class="step reveal"><span class="num">2</span><h3>Tap Set Up a New TV</h3><p>Switch on TV debugging (the app shows you where). The phone finds the TV, you press Allow, and it installs and sets up tv-hero.</p></div>
+    <div class="step reveal"><span class="num">3</span><h3>Pair and add your family</h3><p>Compare a six-digit code on both screens, press Allow on the TV, and create profiles.</p></div>
+  </div>
+  <p class="center"><a class="more" href="install.html">Step-by-step guide ›</a></p>
+</section>
+
+<!-- 10 · Security -->
+<section class="dark" id="security">
+  <div class="wrap center reveal">
+    <div class="eyebrow">Security &amp; privacy</div>
+    <h2>Every way in is visible.<br>And revocable.</h2>
+    <p class="lead">Nothing about your family leaves your home.</p>
+  </div>
+  <div class="wrap glass-grid">
+    <div class="glass reveal"><svg><use href="#i-lock"/></svg><h3>Encrypted and pinned</h3><p>Mutual TLS between phone and TV, with keys that can't leave either device.</p></div>
+    <div class="glass reveal"><svg><use href="#i-tv"/></svg><h3>A person says yes</h3><p>Pairing shows the same code on both screens and needs Allow on the TV.</p></div>
+    <div class="glass reveal"><svg><use href="#i-shield"/></svg><h3>Off by default</h3><p>Control over the internet stays off until you turn it on at home.</p></div>
+    <div class="glass reveal"><svg><use href="#i-ok"/></svg><h3>Verified updates</h3><p>Checksums, versions and the release signature are checked before anything installs.</p></div>
+  </div>
+  <div class="wrap center">
+    <div class="pills dark-pills"><span>Mutual TLS</span><span>Android Keystore</span><span>SHA-256 pinning</span><span>Signed releases</span><span>No analytics</span></div>
+    <p><a class="more on-dark" href="security.html">How tv-hero keeps your family safe ›</a></p>
+  </div>
+</section>
+
+<!-- 11 · Open source + FAQ -->
+<section class="paper" id="open">
+  <div class="wrap split">
+    <div class="reveal">
+      <div class="eyebrow">Free &amp; open source</div>
+      <h2>Made by a parent,<br>in the open.</h2>
       <p class="lead">tv-hero started as one dad's fix for one family TV. The code is public, so you can see exactly what runs in your living room, and every release is built and signed by its public pipeline.</p>
-      <ul class="checks"><li>Signed releases with checksums, published from CI</li><li>The phone app updates itself and your TV</li><li>Light enough for a 1 GB TV</li></ul>
+      <div class="buttons"><a class="btn primary" href="https://github.com/ajitpal/tv-hero/releases/latest">Download {{version}}</a><a class="btn link" href="https://github.com/ajitpal/tv-hero">Source code ›</a></div>
+    </div>
+    <div class="faq reveal">
+      <div class="eyebrow small">Questions</div>
+      <details><summary>Which TVs does it work on?</summary><p>Android TV and Google TV from Android 9 on. It was built on a Xiaomi Mi TV 4A Pro and is being tested on more. On Google TV devices that insist on their own Home screen, tv-hero runs as a guard: profiles, limits and lock screens still work.</p></details>
+      <details><summary>Do I need the phone all the time?</summary><p>No. The rules live on the TV and work without the phone. A Parent Menu on the TV, behind your PIN, does the essentials too.</p></details>
+      <details><summary>Can kids get around it?</summary><p>Settings and the Play Store are parent-only in kid profiles, new apps wait for approval, and switching to a profile without limits needs a parent. Someone with access to Settings in the Parent profile could switch the guard off, which is why Parent is behind a PIN.</p></details>
+      <details><summary>What does it collect?</summary><p>Nothing. No accounts, analytics or ads. The only outside connection is the phone app's update check to GitHub, which you can switch off.</p></details>
+      <details><summary>Is it free?</summary><p>Yes. Free and open source under the MIT licence.</p></details>
     </div>
   </div>
 </section>
 
-<section id="faq">
-  <div class="wrap" style="max-width:820px">
-    <h2>Questions</h2>
-    <details><summary>Which TVs does it work on?</summary><p>Android TV and Google TV from Android 9 on. It was built on a Xiaomi Mi TV 4A Pro and is being tested on more. On Google TV devices that insist on their own Home screen, tv-hero runs as a guard: profiles, limits and lock screens still work.</p></details>
-    <details><summary>Do I need the phone all the time?</summary><p>No. The rules live on the TV and work without the phone. A Parent Menu on the TV (with your PIN) does the essentials too.</p></details>
-    <details><summary>Can kids get around it?</summary><p>Settings and the Play Store are parent-only in kid profiles, new apps wait for approval, and switching to a profile without limits needs a parent. Someone with physical access to Settings in the Parent profile could switch the guard off; that's why Parent is behind a PIN.</p></details>
-    <details><summary>What does it collect?</summary><p>Nothing. There are no accounts, analytics or ads. The only outside connection is the phone app's update check to GitHub, which you can switch off.</p></details>
-    <details><summary>Is it free?</summary><p>Yes, free and open source under the MIT licence.</p></details>
+<footer class="foot"><div class="wrap">
+  <div class="foot-grid">
+    <div class="about">
+      <a class="brand" href="index.html"><img src="assets/mark-64.png" alt="">tv-hero</a>
+      <p>A calm, safe home screen and family controls for Android TV, run from your phone.</p>
+      <div class="eyebrow small">Works with</div>
+      <div class="pills"><span>Android TV</span><span>Google TV</span><span>Android 9+</span></div>
+    </div>
+    <div><div class="eyebrow small">Product</div><a href="#tv">Home</a><a href="#kids">Earn Time</a><a href="#parents">Parents' app</a><a href="#tools">Tools</a><a href="changelog.html">What's new</a></div>
+    <div><div class="eyebrow small">Get started</div><a href="https://github.com/ajitpal/tv-hero/releases/latest">Download</a><a href="install.html">Install guide</a><a href="https://github.com/ajitpal/tv-hero/blob/main/docs/USER-GUIDE.md">User guide</a></div>
+    <div><div class="eyebrow small">Trust</div><a href="security.html">Security</a><a href="privacy.html">Privacy</a><a href="https://github.com/ajitpal/tv-hero/security">Report a problem</a></div>
+    <div><div class="eyebrow small">Project</div><a href="https://github.com/ajitpal/tv-hero">GitHub</a><a href="https://github.com/ajitpal/tv-hero/blob/main/CONTRIBUTING.md">Contributing</a><a href="brand.html">Brand</a></div>
   </div>
-</section>
-
-<footer><div class="wrap">
-  <span class="brand"><img src="assets/mark-64.png" alt="">tv-hero</span>
-  <a href="install.html">Install</a><a href="security.html">Security</a><a href="privacy.html">Privacy</a><a href="brand.html">Brand</a>
-  <a href="changelog.html">What's new</a><a href="https://github.com/ajitpal/tv-hero">GitHub</a>
-  <span style="width:100%">tv-hero {{version}} · MIT licence · no accounts, no tracking</span>
+  <div class="foot-base"><span>tv-hero {{version}} · MIT licence</span><span class="eyebrow small">No accounts · no ads · no tracking</span></div>
 </div></footer>
+
+<script src="assets/site.js"></script>
 </body>
 </html>
