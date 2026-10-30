@@ -38,6 +38,8 @@ def md_page(md_text):
 
 
 def main():
+    if len(sys.argv) != 2 or sys.argv[1].startswith("-"):
+        sys.exit("usage: build_site.py <out-dir>")
     out = Path(sys.argv[1])
     if out.exists():
         shutil.rmtree(out)

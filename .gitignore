@@ -21,3 +21,7 @@ shots/
 
 # Photos of the TV with device identifiers stay local
 docs/device-about.jpg
+
+# website build output
+/_site/
+/--out/
