@@ -1,3 +1,4 @@
+# Linux CI runs gradlew: keep its line endings and executable bit intact when committing from Windows.
 gradlew text eol=lf
 *.sh text eol=lf
-*.bat text eol=crlf
+*.py text eol=lf

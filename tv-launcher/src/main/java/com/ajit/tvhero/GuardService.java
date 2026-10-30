@@ -128,6 +128,7 @@ public class GuardService extends AccessibilityService {
             setServiceInfo(info);
         }
         store.reconcile();
+        ToolsEngine.get(this).listen(this::updateMini);
         useClockScreensaver();
         // The TV starts in the start-up profile (Parent Menu > When the TV Turns On), not in whoever was last.
         // Once per boot only: Android also reconnects this service mid-session (uiautomator, crashes,
@@ -819,6 +820,7 @@ public class GuardService extends AccessibilityService {
         if (!isScreenLock() && watching()) profiles.addUsage(active, (int) (elapsed / 1000));
         updateTitle();
         capVolume();
+        updateMini();
 
         // Sleep timer
         long sleepAt = profiles.sleepAt();
@@ -1000,6 +1002,38 @@ public class GuardService extends AccessibilityService {
     // ---------- tools ----------
 
     void toolToast(String msg) { if (ui != null) ui.toast(msg); }
+
+    /**
+     * The running tool's small status in the corner over other apps (YouTube, Hotstar…), so a Tabata
+     * started before a video stays in view. Hidden on the tool's own screen, under lock screens and prompts,
+     * and once the tool ends.
+     */
+    void updateMini() {
+        if (ui == null) return;
+        ToolsCore c = ToolsEngine.get(this).core;
+        boolean show = c.tool != ToolsCore.Tool.NONE && !c.finished && ToolActivity.visible == 0 && !ui.showing() && screenOn();
+        if (!show) { ui.hideMini(); return; }
+        long now = ToolsEngine.now();
+        String pause = c.running ? "" : "   ❚❚";
+        switch (c.tool) {
+            case TIMER:
+                ui.mini((c.label.isEmpty() ? "Timer" : c.label) + "   " + ToolActivity.clock(ToolActivity.ceilSeconds(c.timerLeft(now)), false) + pause,
+                        c.timerLeft(now) <= 10_000 ? 0xFFFF453A : 0xFFFF9F0A);
+                break;
+            case STOPWATCH:
+                ui.mini("Stopwatch   " + ToolActivity.clock(c.elapsed(now), false) + pause, 0xFF0A84FF);
+                break;
+            default: {
+                int i = c.phaseIndex(now);
+                if (i >= c.phases.size()) { ui.hideMini(); return; }
+                Workout.Phase p = c.phases.get(i);
+                String where = p.kind.equals(Workout.PREPARE) ? c.label : p.round + "/" + p.rounds;
+                ui.mini(p.label + "   " + ToolActivity.ceilSeconds(c.phaseLeft(now)) / 1000 + "   ·   " + where + pause,
+                        p.kind.equals(Workout.WORK) ? 0xFFFF453A : p.kind.equals(Workout.REST) ? 0xFF30D158
+                                : p.kind.equals(Workout.SET_REST) ? 0xFFBF5AF2 : 0xFF0A84FF);
+            }
+        }
+    }
 
     /** Brings a tool's screen forward (its timer ended), unless a lock screen or prompt is showing. */
     void showTool(Class<?> screen) {

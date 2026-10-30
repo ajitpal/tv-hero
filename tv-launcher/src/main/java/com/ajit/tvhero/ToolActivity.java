@@ -27,6 +27,11 @@ abstract class ToolActivity extends Activity {
     protected FrameLayout root;
     protected LinearLayout column, buttons;
     protected TextView title, digits, sub, extra;
+    protected RingView ring;
+    protected FrameLayout dial;
+    /** How many tool screens are on screen; the guard hides the floating mini timer while any is. */
+    static int visible;
+    private long pulsedSecond = -1;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable redraw = new Runnable() {
         @Override public void run() {
@@ -62,13 +67,23 @@ abstract class ToolActivity extends Activity {
         buttons = new LinearLayout(this);
         buttons.setGravity(Gravity.CENTER);
         column.addView(title, gap(0));
-        column.addView(digits, gap(8));
+        dial = new FrameLayout(this);
+        ring = new RingView(this);
+        ring.setVisibility(View.GONE);
+        dial.addView(ring, new FrameLayout.LayoutParams(dp(400), dp(400), Gravity.CENTER));
+        dial.addView(digits, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+        column.addView(dial, gap(8));
         column.addView(sub, gap(4));
         column.addView(buttons, gap(40));
         column.addView(extra, gap(24));
         root.addView(column, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
         setContentView(root);
+        // Opening: the page rises in softly.
+        column.setAlpha(0f);
+        column.setTranslationY(dp(24));
+        column.animate().alpha(1f).translationY(0).setDuration(320)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
         getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
@@ -78,17 +93,67 @@ abstract class ToolActivity extends Activity {
         super.onResume();
         engine.listen(onChange);
         handler.post(redraw);
+        visible++;
+        GuardService g = GuardService.instance;
+        if (g != null) g.updateMini();
     }
 
     @Override
     protected void onPause() {
         handler.removeCallbacks(redraw);
         engine.unlisten(onChange);
+        visible = Math.max(0, visible - 1);
         super.onPause();
+        GuardService g = GuardService.instance;
+        if (g != null) g.updateMini();
     }
 
     /** Draws the current state; called ten times a second and on every change. */
     protected abstract void render();
+
+    /** The tool this screen shows (NONE for the Tools menu): Back asks before leaving it running. */
+    protected abstract ToolsCore.Tool tool();
+
+    /**
+     * Back: a running or paused tool asks whether to keep it running in the background (with the small
+     * timer over other apps) or to stop it and close. A finished or unused tool just closes.
+     */
+    @Override
+    public void onBackPressed() {
+        ToolsCore c = engine.core;
+        if (tool() == ToolsCore.Tool.NONE || c.tool != tool()) { super.onBackPressed(); return; }
+        if (c.finished) { engine.stop(); finish(); return; }
+        String name = c.label.isEmpty() ? (tool() == ToolsCore.Tool.TIMER ? "the timer" : "the stopwatch") : c.label;
+        android.app.AlertDialog d = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Leave " + name + "?")
+                .setMessage("Keep it running and it stays in the corner of the screen over other apps.")
+                .setPositiveButton("Keep Running", (x, w) -> finish())
+                .setNegativeButton("Stop and Close", (x, w) -> { engine.stop(); finish(); })
+                .setNeutralButton("Cancel", null)
+                .create();
+        d.show();
+        android.widget.Button keep = d.getButton(android.app.AlertDialog.BUTTON_POSITIVE);
+        if (keep != null) keep.requestFocus();
+    }
+
+    /** Stop: ends the tool and closes its screen. */
+    protected void stopAndClose() {
+        engine.stop();
+        finish();
+    }
+
+    /** A gentle beat on each of the last three seconds. */
+    protected void pulseOnLastSeconds(long leftMs) {
+        long second = (leftMs + 999) / 1000;
+        if (second == pulsedSecond) return;
+        pulsedSecond = second;
+        if (second < 1 || second > 3) return;
+        digits.animate().cancel();
+        digits.setScaleX(1.14f);
+        digits.setScaleY(1.14f);
+        digits.animate().scaleX(1f).scaleY(1f).setDuration(420)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+    }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {

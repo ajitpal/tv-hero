@@ -14,8 +14,8 @@ import java.util.Calendar;
 
 /**
  * The screensaver's analogue watch: a quiet dial with hour bars and minute ticks, slim white hour and
- * minute hands, an orange seconds hand that steps once a second, and a date window at 3 o'clock.
- * Plain Canvas drawing, redrawn once a second only while attached: cheap on a 1 GB TV.
+ * minute hands, an orange seconds hand that sweeps smoothly, and a date window at 3 o'clock.
+ * Plain Canvas drawing in a hardware layer, about 15 frames a second only while attached.
  */
 public class WatchFaceView extends View {
     private static final int ACCENT = 0xFFFF9F0A;
@@ -94,7 +94,8 @@ public class WatchFaceView extends View {
         }
 
         Calendar now = Calendar.getInstance();
-        int h = now.get(Calendar.HOUR), m = now.get(Calendar.MINUTE), s = now.get(Calendar.SECOND);
+        int h = now.get(Calendar.HOUR), m = now.get(Calendar.MINUTE);
+        float s = now.get(Calendar.SECOND) + now.get(Calendar.MILLISECOND) / 1000f;   // a smooth sweep, like a fine watch
 
         // Name and date window
         brand.setTextSize(r * 0.075f);
@@ -113,7 +114,7 @@ public class WatchFaceView extends View {
         c.drawCircle(cx, cy, r * 0.022f, seconds);
 
         if (running) {
-            postDelayed(next, 1000 - (System.currentTimeMillis() % 1000) + 5);
+            postDelayed(next, 66);   // ~15 frames a second: smooth on the TV, light on its 1 GB
         }
     }
 

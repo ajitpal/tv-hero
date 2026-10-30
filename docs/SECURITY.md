@@ -61,6 +61,15 @@ Settings → About → TV App → **Update the TV App** installs the TV app buil
 - **Same signer.** The APK inside the phone app is the release build signed with the same key as the installed TV app. Android refuses an update signed with any other key.
 - **Wireless debugging (Android 11+ pairing codes) isn't supported yet.** Such TVs report it clearly instead of falling back to anything weaker.
 
+## Software updates from GitHub
+
+The phone app's Software Update (Settings → About) reads `update.json` from the public releases repo once a day. This can be switched off; off means no checks at all.
+
+- **Downloads:** HTTPS only, from github.com and its release download hosts, following at most 5 redirects, each checked. The size must not exceed what `update.json` promised, and the SHA-256 must match.
+- **Before installing:** the APK must be the expected package and versionCode and be signed with tv-hero's **pinned** release certificate. The pin is compiled into the app; a value from the download is never trusted. For the phone app, its signer must also equal the installed app's.
+- **Installing:** the phone app goes through PackageInstaller, and Android asks the person to confirm. The TV app goes over the home-Wi-Fi debugging connection (above), with the parent password.
+- **Release builds:** CI signs only with the key from repository secrets, checks the certificate before publishing, and refuses to publish anything containing private network addresses or password-like text (`tools/check_public.py`). See `RELEASING.md`.
+
 ## Known limits (be honest about them)
 
 - **No PAKE.** Pairing's protection relies on a person comparing six digits and pressing Allow. A careless Allow on mismatched codes can let an attacker who is already on the Wi-Fi in. The wording on the TV pushes towards Don't Allow.

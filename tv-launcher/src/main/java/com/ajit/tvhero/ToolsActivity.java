@@ -4,6 +4,8 @@ import android.content.Intent;
 
 /** Tools: Timer, Stopwatch, Workout and the clock screensaver. Also the "tv-hero Tools" entry on TVs that keep their own home. */
 public class ToolsActivity extends ToolActivity {
+    @Override protected ToolsCore.Tool tool() { return ToolsCore.Tool.NONE; }
+
     @Override
     protected void render() {
         ToolsCore c = engine.core;

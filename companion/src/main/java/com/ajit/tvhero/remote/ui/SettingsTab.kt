@@ -71,6 +71,7 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
         "phones" -> { PhonesPage(state, gate) { page = null }; return }
         "log" -> { LogPage(state) { page = null }; return }
         "tvapp" -> { TvAppPage(state, gate) { page = null }; return }
+        "software" -> { SoftwareUpdatePage(state, gate) { page = null }; return }
     }
     val c = Hig.colors
     var alert by remember { mutableStateOf<String?>(null) }   // password | pin | forget | name
@@ -119,6 +120,9 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
             }
             Row("Phone App", value = app)
             Row("TV App", value = state.tvVersion.ifBlank { "—" }, chevron = true) { page = "tvapp" }
+            val sw = state.software
+            Row("Software Update", value = if (sw.phoneUpdate() != null || sw.tvUpdate() != null) "Update available" else "",
+                chevron = true) { page = "software" }
         }
     }
 

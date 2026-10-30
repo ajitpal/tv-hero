@@ -1,0 +1,58 @@
+name: Build and test
+
+# Every push to main and every pull request: release checks, both apps built, unit tests and lint, and a
+# check that the public website would contain nothing private. Release builds without the signing secrets
+# fall back to the debug key here; only release.yml signs with the release key.
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Versions, changelog, public site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Both apps share a version with a CHANGELOG section
+        run: python3 tools/check_release.py
+      - name: The website builds and contains nothing private
+        run: |
+          pip install markdown==3.7 cryptography
+          python3 tools/build_site.py _site
+          python3 tools/check_public.py _site
+      - name: Python protocol client agrees with the Java test vectors
+        run: python3 tools/tvhero_client.py --self-test
+
+  build:
+    name: Build, unit tests, lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      # Commits made on Windows can drop the executable bit on gradlew (LEARNINGS L67).
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+      - name: Build, test and lint every module
+        run: >
+          ./gradlew --no-daemon
+          :protocol:test :adb:test
+          :tv-launcher:assembleRelease :tv-launcher:testReleaseUnitTest :tv-launcher:lintRelease
+          :companion:assembleRelease :companion:testReleaseUnitTest :companion:lintRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apks-unsigned-preview
+          path: |
+            tv-launcher/build/outputs/apk/release/*.apk
+            companion/build/outputs/apk/release/*.apk
+          retention-days: 7

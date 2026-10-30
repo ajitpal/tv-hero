@@ -38,6 +38,8 @@ final class Overlays {
     private final WindowManager wm;
     private final Handler main = new Handler(Looper.getMainLooper());
     private View full, toast;
+    private TextView mini;
+    private GradientDrawable miniDot;
     private Kind kind = Kind.NONE;
 
     Overlays(Context ctx) {
@@ -328,6 +330,45 @@ final class Overlays {
         });
     }
 
+    /**
+     * The small floating status of a running tool (Timer, Stopwatch, Workout) in the top-right corner, over
+     * any app. It never takes the remote. [color] is the phase colour of its dot.
+     */
+    void mini(String text, int color) {
+        if (mini == null) {
+            TextView t = text("", 20, Color.WHITE, true);
+            GradientDrawable bg = new GradientDrawable();
+            bg.setColor(Color.argb(215, 12, 14, 20));
+            bg.setCornerRadius(dp(26));
+            bg.setStroke(dp(1), Color.argb(60, 255, 255, 255));
+            t.setBackground(bg);
+            t.setPadding(dp(18), dp(10), dp(22), dp(10));
+            miniDot = new GradientDrawable();
+            miniDot.setShape(GradientDrawable.OVAL);
+            miniDot.setSize(dp(14), dp(14));
+            t.setCompoundDrawablesRelativeWithIntrinsicBounds(miniDot, null, null, null);
+            t.setCompoundDrawablePadding(dp(12));
+            WindowManager.LayoutParams lp = params(false);
+            lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            lp.gravity = Gravity.TOP | Gravity.END;
+            lp.x = dp(36);
+            lp.y = dp(28);
+            try { wm.addView(t, lp); mini = t; } catch (RuntimeException e) { return; }
+            t.setAlpha(0f);
+            t.animate().alpha(1f).setDuration(250).start();
+        }
+        miniDot.setColor(color);
+        if (!text.contentEquals(mini.getText())) mini.setText(text);
+    }
+
+    void hideMini() {
+        if (mini != null) {
+            try { wm.removeView(mini); } catch (RuntimeException ignored) { }
+            mini = null;
+        }
+    }
+
     void hide() {
         if (full != null) {
             try { wm.removeView(full); } catch (RuntimeException ignored) { }
@@ -347,6 +388,7 @@ final class Overlays {
 
     private void showFull(Kind k, View content, Runnable onBack) {
         hide();
+        hideMini();   // lock screens and prompts cover everything, the tool's corner status too
         FrameLayout root = new FrameLayout(ctx) {
             @Override
             public boolean dispatchKeyEvent(KeyEvent e) {

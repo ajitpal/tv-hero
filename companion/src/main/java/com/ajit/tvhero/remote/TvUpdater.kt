@@ -31,6 +31,15 @@ import java.util.Properties
 class TvUpdater(private val ctx: Context, private val state: AppState) {
     data class Bundled(val code: Int, val name: String)
 
+    /** An APK to install on the TV: the copy inside this phone app, or one downloaded and checked by Updater. */
+    class Source(val code: Int, val name: String, val length: Long, val open: () -> java.io.InputStream)
+
+    private fun bundledSource(): Source? {
+        val b = bundled ?: return null
+        val length = ctx.assets.openFd("tv-hero-tv.apk").use { it.length }
+        return Source(b.code, b.name, length) { ctx.assets.open("tv-hero-tv.apk") }
+    }
+
     val bundled: Bundled? = runCatching {
         val p = Properties().apply { ctx.assets.open("tv-hero-tv.properties").use { load(it) } }
         Bundled(p.getProperty("versionCode").trim().toInt(), p.getProperty("versionName").trim())
@@ -51,12 +60,17 @@ class TvUpdater(private val ctx: Context, private val state: AppState) {
     }
 
     /** Reads what the TV is (read-only), then switches debugging off again. */
-    fun check(password: String) = go(password, install = false)
+    fun check(password: String) = go(password, null)
 
-    /** Installs this phone's TV app on the TV, makes sure the guard runs, switches debugging off. */
-    fun update(password: String) = go(password, install = true)
+    /** Installs [source] (default: the TV app inside this phone app), makes sure the guard runs, switches debugging off. */
+    fun update(password: String, source: Source? = null) {
+        val s = source ?: bundledSource()
+        if (s == null) { error = "This phone app has no TV app inside it."; return }
+        go(password, s)
+    }
 
-    private fun go(password: String, install: Boolean) {
+    private fun go(password: String, source: Source?) {
+        val install = source != null
         val client = state.client ?: return
         val host = state.tv?.host ?: return
         if (running) return
@@ -82,13 +96,11 @@ class TvUpdater(private val ctx: Context, private val state: AppState) {
                 step("Reading the TV")
                 probe = withContext(Dispatchers.IO) { Probe.run(c) }
                 if (install) {
-                    val b = bundled ?: throw AdbClient.AdbException("This phone app has no TV app inside it.")
+                    val b = source!!
                     step("Installing tv-hero ${b.name}")
                     val answer = withContext(Dispatchers.IO) {
-                        ctx.assets.openFd("tv-hero-tv.apk").use { fd ->
-                            fd.createInputStream().use { input ->
-                                c.install(input, fd.length) { sent, total -> state.scope.launch { progress = sent.toFloat() / total } }
-                            }
+                        b.open().use { input ->
+                            c.install(input, b.length) { sent, total -> state.scope.launch { progress = sent.toFloat() / total } }
                         }
                     }
                     progress = -1f

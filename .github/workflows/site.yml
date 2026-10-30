@@ -1,0 +1,40 @@
+name: Website
+
+# Republishes the public website (ajitpal/tv-hero-releases, gh-pages) when its pages change on main,
+# between releases. Needs RELEASES_TOKEN. Releases publish it too.
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'site/**', 'CHANGELOG.md', 'docs/screenshots/phone/**', 'tools/build_site.py' ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build and check
+        run: |
+          pip install markdown==3.7
+          python3 tools/build_site.py _site
+          python3 tools/check_public.py _site
+      - name: Skip without the token
+        id: token
+        env:
+          T: ${{ secrets.RELEASES_TOKEN }}
+        run: if [ -z "$T" ]; then echo "::warning::RELEASES_TOKEN is not set; the site was built but not published."; echo "ok=false" >> "$GITHUB_OUTPUT"; else echo "ok=true" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.token.outputs.ok == 'true'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_token: ${{ secrets.RELEASES_TOKEN }}
+          external_repository: ajitpal/tv-hero-releases
+          publish_branch: gh-pages
+          publish_dir: _site
+          keep_files: true
+          commit_message: "Website from ${{ github.sha }}"

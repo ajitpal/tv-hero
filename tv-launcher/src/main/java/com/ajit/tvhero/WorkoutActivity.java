@@ -10,6 +10,8 @@ import java.util.List;
  * in its own colour with a big countdown, the round and set, what's next, and a bar for the whole workout.
  */
 public class WorkoutActivity extends ToolActivity {
+    @Override protected ToolsCore.Tool tool() { return ToolsCore.Tool.WORKOUT; }
+
     private ProgressBar bar;
     private int preset;
     private final List<Workout.Spec> presets = Workout.presets();
@@ -39,6 +41,7 @@ public class WorkoutActivity extends ToolActivity {
             digits.setText(s.name);
             digits.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 72);
             digits.setTextColor(0xFFFFFFFF);
+            ring.setVisibility(android.view.View.GONE);
             int total = Workout.totalSeconds(Workout.plan(s));
             sub.setText(summary(s) + " · " + clock(total * 1000L, false));
             bar.setVisibility(android.view.View.GONE);
@@ -49,7 +52,9 @@ public class WorkoutActivity extends ToolActivity {
                     new Btn("Start", () -> engine.startWorkout(presets.get(preset))));
             return;
         }
-        digits.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 150);
+        digits.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 170);
+        ring.setVisibility(android.view.View.VISIBLE);
+        ring.setColor(0xF2FFFFFF);
         bar.setVisibility(android.view.View.VISIBLE);
         long total = Math.max(1, c.totalMs());
         bar.setProgress((int) Math.min(1000, c.elapsed(now) * 1000 / total));
@@ -62,13 +67,17 @@ public class WorkoutActivity extends ToolActivity {
             digits.setTextColor(0xFFFFFFFF);
             sub.setText("Workout complete · " + clock(c.totalMs(), false));
             extra.setText("");
-            setButtons(0, new Btn("Again", () -> engine.startWorkout(c.spec)), new Btn("Done", () -> { engine.stop(); finish(); }));
+            ring.setProgress(1f);
+            setButtons(0, new Btn("Again", () -> engine.startWorkout(c.spec)), new Btn("Close", this::stopAndClose));
             return;
         }
         Workout.Phase p = c.phases.get(i);
         background(color(p.kind));
         title.setText(p.label);
-        digits.setText(String.valueOf(ceilSeconds(c.phaseLeft(now)) / 1000));
+        long left = c.phaseLeft(now);
+        digits.setText(String.valueOf(ceilSeconds(left) / 1000));
+        ring.setProgress(p.seconds <= 0 ? 0 : left / (p.seconds * 1000f));
+        if (c.running) pulseOnLastSeconds(left);
         digits.setTextColor(c.running ? 0xFFFFFFFF : 0x99FFFFFF);
         String where = p.kind.equals(Workout.PREPARE) ? c.label
                 : "Round " + p.round + " of " + p.rounds + (p.sets > 1 ? " · Set " + p.set + " of " + p.sets : "");
@@ -77,7 +86,7 @@ public class WorkoutActivity extends ToolActivity {
         extra.setText((next == null ? "Last one!" : "Next: " + next.label + " " + next.seconds + " s")
                 + "   ·   " + clock(c.totalMs() - c.elapsed(now), false) + " left");
         setButtons(-1, new Btn(c.running ? "Pause" : "Resume", engine::toggle), new Btn("Skip", engine::skip),
-                new Btn("Stop", () -> { engine.stop(); render(); }));
+                new Btn("Stop", this::stopAndClose));
     }
 
     private static String summary(Workout.Spec s) {
@@ -94,12 +103,24 @@ public class WorkoutActivity extends ToolActivity {
         }
     }
 
+    private android.animation.ValueAnimator fade;
+
+    /** Each phase's colour fades in over half a second instead of switching. */
     private void background(int color) {
         if (color == lastBg) return;
+        int from = lastBg == 0 ? 0xFF05070C : lastBg;
         lastBg = color;
-        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{color, darker(color)});
+        if (fade != null) fade.cancel();
+        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{from, darker(from)});
         root.setBackground(g);
+        android.animation.ArgbEvaluator mix = new android.animation.ArgbEvaluator();
+        fade = android.animation.ValueAnimator.ofFloat(0f, 1f).setDuration(500);
+        fade.addUpdateListener(a -> {
+            float f = (float) a.getAnimatedValue();
+            int c = (int) mix.evaluate(f, from, color);
+            g.setColors(new int[]{c, darker(c)});
+        });
+        fade.start();
     }
 
     private static int darker(int c) {

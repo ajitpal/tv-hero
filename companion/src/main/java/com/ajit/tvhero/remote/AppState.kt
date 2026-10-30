@@ -23,6 +23,8 @@ class AppState(context: Context) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     /** Phase 3: checking and updating the TV app from the phone. */
     val updater by lazy { TvUpdater(app, this) }
+    /** Software updates from GitHub for this app and the TV app. */
+    val software by lazy { Updater(app, this) }
 
     var tv by mutableStateOf<PairedTv?>(store.last())
         private set

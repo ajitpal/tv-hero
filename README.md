@@ -34,6 +34,10 @@ A clean, kid-safe Android TV for one TV: a Xiaomi Mi TV 4A Pro (MiTV-AXSO0, Andr
 - **Internet control is off by default.** Turning it on needs the password, a phone at home, and Allow on the TV. Off works at once from anywhere. Details: `docs/SECURITY.md`.
 - **Bluetooth part:** the phone registers as a Bluetooth HID device (keyboard + consumer control + game pad). Pair once from the TV (Settings → Remotes & Accessories → Add accessory). Then arrows, OK, volume, typing and the game controller work in every app and game, with nothing to install on the TV for it.
 
+## Releases and updates
+
+Pushing a tag `vX.Y.Z` builds, tests, signs and publishes both apps to the public [tv-hero-releases](https://github.com/ajitpal/tv-hero-releases) repo with `update.json`, and updates the website. The phone app updates itself and the TV from there. Setup and details: `docs/RELEASING.md`.
+
 ## Build
 
 JDK 17+, Android SDK 34, one Gradle build. The release key is read from `keystore.properties` next to this README (never committed; see `.gitignore`).
@@ -68,8 +72,9 @@ The script starts tv-hero first, then makes it Home, switches the stock launcher
 ## Everyday use (on the TV)
 
 - **The TV starts in the Family profile**: YouTube, YouTube · Brave, JioHotstar, Xiaomi TV+, WhatsApp, Browser, Live TV, Miracast. Settings and the Play Store are for Parent.
+- **Info line on Home:** above a focused app tile, what this profile watched there lately (titles from the app), when, and the minutes today; under a top-bar button, what it does.
 - **Clock screensaver**: an analogue watch with the time and date on a gradient that follows the time of day. It's the TV's screensaver, starts after 5 idle minutes on Home, from the **watch button** next to the profile button, or from the phone (TV tab → Show the Clock Screensaver). Any key closes it.
-- **Tools** (stopwatch button on Home, or the "tv-hero Tools" app): **Timer** (big countdown, beeps at the end even after Back), **Stopwatch** with laps, **Workout** (HIIT presets: Tabata, 30/30, 45/15, EMOM, circuits; colours per phase, 3-2-1 beeps that turn any music down briefly). Play/Pause on the remote pauses them; a lock screen pauses them too. The phone's TV tab → **Tools** starts and controls them and builds your own workouts.
+- **Tools** (stopwatch button on Home, or the "tv-hero Tools" app): **Timer** (big countdown, beeps at the end even after Back), **Stopwatch** with laps, **Workout** (HIIT presets: Tabata, 30/30, 45/15, EMOM, circuits; colours per phase, 3-2-1 beeps that turn any music down briefly). Play/Pause on the remote pauses them; a lock screen pauses them too. **Back asks:** keep it running (it stays as a small status in the corner over YouTube and other apps) or stop and close; Stop closes. The phone's TV tab → **Tools** starts and controls them and builds your own workouts.
 - **Profile button** (round letter, top right): *Who's watching?* with every profile, Guest, Parent (PIN, or the parent password while no PIN is set) and the **Parent Menu**.
 - **Parent Menu** (no phone needed):
   - profiles (add, rename, apps, daily limit, bedtime, Earn Time, Time Today: add, take away, end now, remove)
@@ -99,7 +104,7 @@ Screenshots of every screen: `docs/screenshots/phone/` (regenerate with `./gradl
 | **Home screen** | Order of the home row, apps per row, greeting, apps hidden from Home. Saved straight to the TV. |
 | **Remote** | D-pad, OK, Back, Home, Menu, play/pause, volume, typing (Bluetooth); Home/Back and "Open on TV" also over Wi-Fi. |
 | **Controller** | Bluetooth set-up, then a game pad: D-pad, A B X Y, L1 R1, Select / Home / Start, two thumbsticks. |
-| **Settings** | About (phone and TV app versions; **TV App**: check the TV, update tv-hero on it from the phone), change password, phones paired with the TV (remove), recent activity (blocked attempts, installs), forget the TV. |
+| **Settings** | About (phone and TV app versions; **TV App**: check the TV, update tv-hero on it from the phone; **Software Update**: new releases from GitHub for both apps), change password, phones paired with the TV (remove), recent activity (blocked attempts, installs), forget the TV. |
 
 ## Debloat and privacy (already applied on this TV)
 

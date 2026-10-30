@@ -746,6 +746,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnLibraryTop.setVisibility(cfg.libraryButton && cfg.appLibrary ? View.VISIBLE : View.GONE);
         addTopBarApps(cfg.topBarApps, cfg.launchActions);
         addProfileButton();
+        FocusInfo.attach(this, findViewById(R.id.root), grid, adapter, findViewById(R.id.topButtons));
         weatherPill = WeatherPill.add(this, findViewById(R.id.topButtons), getString(R.string.weather_pill));
         if (weatherPill != null) topAppButtons.add(weatherPill.view());
         iconOnlyButtons = cfg.iconOnlyButtons;

@@ -27,6 +27,7 @@ class MainActivity : FragmentActivity() {
         state.discovery.start()
         state.refresh()
         state.startPolling()
+        state.software.checkIfDue()
     }
 
     fun unlock() = AppLock.prompt(this) { state.locked = false }

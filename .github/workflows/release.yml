@@ -1,0 +1,84 @@
+name: Release
+
+# Push a tag like v2.7.0 (matching both apps' versionName and a CHANGELOG section) to:
+#  1. build and test both apps, signed with the release key from repository secrets,
+#  2. check the signing certificate against the pinned one,
+#  3. publish the APKs, update.json and release notes to the PUBLIC repo ajitpal/tv-hero-releases
+#     (the code stays private; the phone app's updater reads update.json from there),
+#  4. publish the website to that repo's gh-pages branch.
+# Secrets: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD, RELEASES_TOKEN. See docs/RELEASING.md.
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Check the version and changelog
+        run: python3 tools/check_release.py "$GITHUB_REF_NAME"
+      - name: Restore the signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Signing secrets are missing. Updates must be signed with the release key, so nothing is published. See docs/RELEASING.md."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$RUNNER_TEMP/release.jks" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
+      - name: Build, test and lint (signed)
+        run: >
+          chmod +x gradlew && ./gradlew --no-daemon
+          :protocol:test :adb:test
+          :tv-launcher:assembleRelease :tv-launcher:testReleaseUnitTest :tv-launcher:lintRelease
+          :companion:assembleRelease :companion:testReleaseUnitTest :companion:lintRelease
+      - name: Verify the signing certificate
+        run: |
+          APKSIGNER=$(ls $ANDROID_HOME/build-tools/*/apksigner | tail -1)
+          for f in tv-launcher/build/outputs/apk/release/tv-launcher-release.apk companion/build/outputs/apk/release/companion-release.apk; do
+            $APKSIGNER verify --print-certs "$f" | grep -q 309705ca333f547dfc8bb7d5d02cff8ca63b64cc49d5a533f45b6e06544c9124 \
+              || { echo "::error::$f is not signed with the tv-hero release key"; exit 1; }
+          done
+      - name: Collect the APKs, update.json and notes
+        run: python3 tools/collect_release.py "${GITHUB_REF_NAME#v}" dist
+      - name: Build the website
+        run: |
+          pip install markdown==3.7
+          python3 tools/build_site.py _site
+          cp dist/update.json _site/update.json
+      - name: Nothing private goes public
+        run: python3 tools/check_public.py dist/NOTES.md dist/update.json _site
+      - name: Publish the release (public repo)
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "::error::RELEASES_TOKEN is missing. See docs/RELEASING.md."; exit 1; fi
+          gh release create "$GITHUB_REF_NAME" dist/*.apk dist/update.json \
+            --repo ajitpal/tv-hero-releases --title "tv-hero $GITHUB_REF_NAME" --notes-file dist/NOTES.md
+      - name: Publish the website (public repo, gh-pages)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_token: ${{ secrets.RELEASES_TOKEN }}
+          external_repository: ajitpal/tv-hero-releases
+          publish_branch: gh-pages
+          publish_dir: _site
+          commit_message: "Website for ${{ github.ref_name }}"
+      - name: Remove the key from the runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks" keystore.properties
