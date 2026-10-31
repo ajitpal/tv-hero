@@ -220,6 +220,8 @@ class AppState(context: Context) {
             } catch (e: TvException) {
                 message = e.message
                 if (e.status == 403 && e.message?.contains("password") == true) forgetPassword()
+                // The saved password no longer works (it was changed): forget it, so it's typed again (2.11).
+                if (e.status == 403 && e.message == "wrong password") tv?.id?.let { PasswordVault.forget(app, it) }
                 false
             } catch (e: Exception) {
                 message = e.message ?: "Something went wrong."

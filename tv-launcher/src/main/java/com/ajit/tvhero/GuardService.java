@@ -998,6 +998,7 @@ public class GuardService extends AccessibilityService {
         long nowEl = SystemClock.elapsedRealtime();
         lastTick = nowEl;
         account(true);   // screen time, by the second (2.9)
+        WeatherStore.get(this).maybeFetch(screenOn(), false);   // 2.11: hourly, only once a city is set
         if (!screenOn()) return;
         if (playbackLock()) { stopPlayback(); ToolsEngine.get(this).pauseForLock(); } else releaseFocus();
         Profiles.Kid kid = profiles.activeKid();

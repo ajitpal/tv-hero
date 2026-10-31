@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.WbSunny
+import androidx.compose.material.icons.rounded.LiveTv
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.Timer
@@ -55,6 +57,7 @@ import com.ajit.tvhero.remote.ui.hig.HigSheet
 import com.ajit.tvhero.remote.ui.hig.HigType
 import com.ajit.tvhero.remote.ui.hig.IconTile
 import com.ajit.tvhero.remote.ui.hig.Row
+import com.ajit.tvhero.remote.ui.hig.SectionScope
 import com.ajit.tvhero.remote.ui.hig.TimeWheels
 import com.ajit.tvhero.remote.ui.hig.ToggleRow
 import com.ajit.tvhero.remote.ui.hig.section
@@ -71,6 +74,8 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
         "quiet" -> { QuietPage(state) { page = null }; return }
         "notes" -> { OnScreenPage(state) { page = null }; return }
         "links" -> { LinksPage(state) { page = null }; return }
+        "weather" -> { WeatherPage(state) { page = null }; return }
+        "freetv" -> { FreeTvPage(state, gate) { page = null }; return }
         "remote" -> { RemoteAccessPage(state, gate) { page = null }; return }
         "phones" -> { PhonesPage(state, gate) { page = null }; return }
         "log" -> { LogPage(state) { page = null }; return }
@@ -94,6 +99,10 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
                 leading = { IconTile(Icons.Rounded.VolumeDown, Color(0xFF5856D6)) }) { page = "quiet" }
             Row("On-Screen Notes", subtitle = "Time-left corner, tools corner, info line, warnings", chevron = true,
                 leading = { IconTile(Icons.Rounded.Timer, Color(0xFFFF9500)) }) { page = "notes" }
+            Row("Weather & Festivals", subtitle = "A city for Home and the screensaver, the festival line", chevron = true,
+                leading = { IconTile(Icons.Rounded.WbSunny, Color(0xFFFF9500)) }) { page = "weather" }
+            Row("Free TV", subtitle = "Apps, YouTube channels and playlist channels you pick", chevron = true,
+                leading = { IconTile(Icons.Rounded.LiveTv, Color(0xFFFF3B30)) }) { page = "freetv" }
             Row("Links & Search", subtitle = "Browser for links, search engine per profile", chevron = true,
                 leading = { IconTile(Icons.Rounded.Search, Color(0xFF34C759)) }) { page = "links" }
         }
@@ -118,6 +127,7 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
             ToggleRow("Require Fingerprint", lock, subtitle = "Unlock this app with your fingerprint or screen lock") { on ->
                 state.store.appLock = on; lock = on
             }
+            FingerprintPasswordRow(state, gate)
             ButtonRow("Unpair This Phone", destructive = true) { alert = "forget" }
         }
         section("about", "About") {
@@ -145,7 +155,11 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
                 } },
                 buttons = listOf("Cancel" to { alert = null }, "Change" to {
                     alert = null
-                    state.run(onDone = { if (it) { state.passwordWorked(new); state.message = "Password changed" } }) { state.client!!.changePassword(old, new) }
+                    state.run(onDone = { if (it) {
+                        state.passwordWorked(new)
+                        state.tv?.id?.let { id -> com.ajit.tvhero.remote.PasswordVault.forget(state.app, id) }   // the saved one is old now
+                        state.message = "Password changed"
+                    } }) { state.client!!.changePassword(old, new) }
                 }), enabled = { it == 0 || (old.isNotEmpty() && new.length >= 6) })
         }
         "pin" -> {
@@ -460,6 +474,11 @@ internal fun LogPage(state: AppState, onBack: () -> Unit) {
                     "typing" -> "Typing from a phone"
                     "photos" -> "Photos shown from a phone"
                     "links" -> p
+                    "weather" -> p
+                    "festivals" -> p
+                    "freetv" -> "Free TV: $p"
+                    "freetv_list" -> "Free TV changed: $p"
+                    "freetv_ticks" -> "Free TV for $p"
                     else -> e.optString("type") + " " + p
                 }
                 val by = e.optString("by")
@@ -471,3 +490,50 @@ internal fun LogPage(state: AppState, onBack: () -> Unit) {
 }
 
 fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier = this.clickable(onClick = onClick)
+
+/**
+ * Fingerprint for the parent password (2.11): type it once, the TV checks it, and it's saved behind a
+ * strong fingerprint on this phone. After that every "Parent Password" prompt can be a fingerprint.
+ */
+@Composable
+private fun SectionScope.FingerprintPasswordRow(state: AppState, gate: PasswordGate) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val tv = state.tv?.id ?: return
+    if (!com.ajit.tvhero.remote.PasswordVault.available(ctx)) {
+        Row("Fingerprint for Parent Password", subtitle = "Set up a fingerprint in the phone's settings first", enabled = false)
+        return
+    }
+    var on by remember { mutableStateOf(com.ajit.tvhero.remote.PasswordVault.saved(ctx, tv)) }
+    var asking by remember { mutableStateOf(false) }
+    ToggleRow("Fingerprint for Parent Password", on, subtitle = "Use your fingerprint wherever the parent password is asked") { want ->
+        if (!want) { com.ajit.tvhero.remote.PasswordVault.forget(ctx, tv); on = false } else asking = true
+    }
+    if (asking) {
+        var pw by remember { mutableStateOf("") }
+        HigAlert(
+            title = "Parent Password",
+            message = "Type it once. The TV checks it, then your fingerprint keeps it on this phone.",
+            onDismiss = { asking = false },
+            content = { AlertField(pw, { pw = it }, "Password", secure = true, keyboard = androidx.compose.ui.text.input.KeyboardType.Password) },
+            buttons = listOf("Cancel" to { asking = false }, "Next" to {
+                asking = false
+                val typed = pw
+                state.run(onDone = { ok ->
+                    val a = gate.activity
+                    if (ok && a != null) com.ajit.tvhero.remote.PasswordVault.save(a, tv, typed) { saved ->
+                        on = saved
+                        state.passwordWorked(typed)
+                        state.message = if (saved) "Your fingerprint now works for the parent password." else "Not saved."
+                    }
+                }) {
+                    try { state.client!!.checkPassword(typed) }
+                    catch (e: com.ajit.tvhero.remote.TvException) {
+                        if (e.status == 404) throw com.ajit.tvhero.remote.TvException(404, "Update the TV app to 2.11 first (Settings → About → TV App).")
+                        throw e
+                    }
+                }
+            }),
+            enabled = { it == 0 || pw.isNotEmpty() },
+        )
+    }
+}

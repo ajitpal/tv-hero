@@ -60,10 +60,18 @@ import java.util.Calendar
  */
 class PasswordGate(private val state: AppState) {
     var request by mutableStateOf<Pair<String, (String) -> Unit>?>(null)
+    /** For the fingerprint prompt (2.11); null in previews and screenshots. */
+    var activity: androidx.fragment.app.FragmentActivity? = null
 
+    /** The password remembered for 5 minutes, else the fingerprint where it's set up (2.11), else typed. */
     fun ask(reason: String, action: (String) -> Unit) {
         val pw = state.rememberedPassword()
-        if (pw != null) action(pw) else request = reason to action
+        if (pw != null) { action(pw); return }
+        val a = activity
+        val tv = state.tv?.id
+        if (a != null && tv != null && com.ajit.tvhero.remote.PasswordVault.saved(a, tv)) {
+            com.ajit.tvhero.remote.PasswordVault.unlock(a, tv, reason, onPassword = action, onFallback = { request = reason to action })
+        } else request = reason to action
     }
 
     /** Runs [call] with the password, remembers it if the TV accepted it, then [after]. */
@@ -75,6 +83,7 @@ class PasswordGate(private val state: AppState) {
 @Composable
 fun Root(state: AppState, activity: Activity) {
     val gate = remember { PasswordGate(state) }
+    gate.activity = activity as? androidx.fragment.app.FragmentActivity
     if (state.locked) { LockScreen { (activity as? com.ajit.tvhero.remote.MainActivity)?.unlock() }; return }
     if (state.revoked && state.tv != null) { RevokedScreen(state); return }
     if (state.tv == null) {

@@ -15,8 +15,8 @@ android {
         applicationId providers.gradleProperty('launcherApplicationId').getOrElse('com.ajit.tvhero')
         minSdk 26
         targetSdk 34
-        versionCode 21
-        versionName "2.10.0"
+        versionCode 22
+        versionName "2.11.0"
     }
 
     signingConfigs {
@@ -74,5 +74,7 @@ dependencies {
     implementation 'androidx.dynamicanimation:dynamicanimation:1.0.0'
     // Test only (never in the APK): plain JVM tests for the module card validators, src/test.
     testImplementation 'junit:junit:4.13.2'
+    // Real org.json for plain JVM tests of JSON parsing (Android's copy is a stub there).
+    testImplementation 'org.json:json:20231013'
     testImplementation 'org.robolectric:robolectric:4.13'
 }

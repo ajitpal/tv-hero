@@ -287,6 +287,21 @@
                             android:letterSpacing="0.14"
                             android:textAllCaps="true"
                             android:visibility="gone" />
+
+                        <!-- 2.11: the day's festival ("Diwali in 8 days", "Happy Diwali"), India's list. -->
+                        <TextView
+                            android:id="@+id/festivalLine"
+                            android:gravity="left"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:singleLine="true"
+                            android:ellipsize="end"
+                            android:textColor="#FFFFC46B"
+                            android:textSize="15sp"
+                            android:fontFamily="@string/font_medium"
+                            android:letterSpacing="0.02"
+                            android:visibility="gone" />
                     </LinearLayout>
                 </LinearLayout>
 

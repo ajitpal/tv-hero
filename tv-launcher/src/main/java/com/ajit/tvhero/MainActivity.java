@@ -187,6 +187,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView shamsiDate;
     /** lunar_date: the lunisolar date under the date line, and the time zone it is computed for. */
     private TextView lunarDate;
+    /** 2.11: the day's festival under the date, when on (Settings → Festivals on the phone). */
+    private TextView festivalLine;
+    private boolean festivals;
     private boolean lunar;
     private int lunarOffset;
     private TextView stats;
@@ -417,6 +420,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         singleRow = cfg.singleRow;
         focusOvershoot = cfg.focusOvershoot;
         festival = cfg.festival;
+        // 2.11: a theme's festival wins; otherwise Diwali and Dussehra from the India list dress Home for the day.
+        if (!festival.active(LocalDate.now()) && Festivals.enabled(this)) {
+            String skin = Festivals.skin(LocalDate.now());
+            if (!skin.isEmpty()) festival = Festival.parse(skin, LocalDate.now().toString(), "", "");
+        }
         festive = festival.active(LocalDate.now());
         liveTvPkg = cfg.liveTvPackage;
         idleClockMs = cfg.homeIdleClockMinutes * MINUTE_MS;
@@ -510,6 +518,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         lunar = cfg.lunarDate;
         lunarOffset = Lunar.offsetFor(cfg.lunarUtcOffset, Locale.getDefault());
         if (lunar) lunarDate.setVisibility(View.VISIBLE);
+        festivalLine = findViewById(R.id.festivalLine);
+        festivals = Festivals.enabled(this);
         greetingName = cfg.greetingName;
         if (cfg.dateBelowClock) moveDateBelowClock();
         if (shamsi) {
@@ -748,6 +758,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         addProfileButton();
         FocusInfo.attach(this, findViewById(R.id.root), grid, adapter, findViewById(R.id.topButtons));
         weatherPill = WeatherPill.add(this, findViewById(R.id.topButtons), getString(R.string.weather_pill));
+        if (weatherPill == null) weatherPill = WeatherPill.builtIn(this, findViewById(R.id.topButtons));   // 2.11
+        weatherBuiltOn = WeatherStore.get(this).on();
         if (weatherPill != null) topAppButtons.add(weatherPill.view());
         iconOnlyButtons = cfg.iconOnlyButtons;
         topMenu = cfg.topMenu;
@@ -960,6 +972,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateClockVisibility();
         tileRefresh.onStart();
         if (weatherPill != null) weatherPill.onStart();
+        if (WeatherStore.get(this).on() != weatherBuiltOn) { recreate(); return; }
+        IntentFilter wf = new IntentFilter(WeatherStore.ACTION_WEATHER);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) registerReceiver(weatherReceiver, wf, Context.RECEIVER_NOT_EXPORTED);
+        else registerReceiver(weatherReceiver, wf);   // only redraws the pill
     }
 
     @Override
@@ -1202,6 +1218,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         stopped = true;
         tileRefresh.onStop();
         if (weatherPill != null) weatherPill.onStop();
+        try { unregisterReceiver(weatherReceiver); } catch (IllegalArgumentException ignored) { }
     }
 
     /**
@@ -2358,6 +2375,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private final List<View> topAppButtons = new ArrayList<>();
     /** config weather_pill, or null when it is off or the add-on is missing. */
     private WeatherPill weatherPill;
+    /** Was tv-hero's own weather on when Home was built? A change rebuilds Home (2.11). */
+    private boolean weatherBuiltOn;
+
+    private final android.content.BroadcastReceiver weatherReceiver = new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (WeatherStore.get(context).on() != weatherBuiltOn) { if (!isFinishing()) recreate(); return; }
+            if (weatherPill != null) weatherPill.refresh();
+        }
+    };
 
     /**
      * Puts each top_bar_apps app in the top bar as a round pill with the app's own logo, left of the network pill.
@@ -2414,6 +2441,22 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         tools.setOnClickListener(v -> open(new Intent(this, ToolsActivity.class)));
         bar.addView(tools, 2);
         topAppButtons.add(tools);
+
+        // Free TV (2.11): only when the phone put something there for this profile.
+        FreeTv freeTv = FreeTv.get(this);
+        if (!FreeTv.visible(freeTv.items(), id, freeTv.ticks(id)).isEmpty() || (Profiles.PARENT.equals(id) && !freeTv.items().isEmpty())) {
+            TextView live = (TextView) getLayoutInflater().inflate(R.layout.top_app_button, bar, false);
+            live.setId(View.generateViewId());
+            Drawable tv = getDrawable(R.drawable.ic_livetv);
+            if (tv != null) {
+                tv.setBounds(0, 0, size, size);
+                live.setCompoundDrawablesRelative(tv, null, null, null);
+            }
+            live.setContentDescription("Free TV: channels and apps your family picked");
+            live.setOnClickListener(v -> open(new Intent(this, FreeTvActivity.class)));
+            bar.addView(live, 3);
+            topAppButtons.add(live);
+        }
     }
 
     private void addTopBarApps(List<String> packages, Map<String, String> launchActions) {
@@ -2612,6 +2655,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (shamsi) shamsiDate.setText(Shamsi.today(getResources()));
         if (lunar) lunarDate.setText(Lunar.today(getResources(), lunarOffset));
+        String fl = festivals ? Festivals.line(LocalDate.now()) : "";
+        if (festivalLine != null) {
+            if (!fl.contentEquals(festivalLine.getText())) festivalLine.setText(fl);
+            festivalLine.setVisibility(fl.isEmpty() ? View.GONE : View.VISIBLE);
+        }
     }
 
     // ---- race-weekend panel (a theme's race_calendar) -----------------------------------------------

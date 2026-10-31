@@ -14,6 +14,7 @@
     tvhero_client.py <tv-ip> open <https://link>            (2.10, home Wi-Fi only)
     tvhero_client.py <tv-ip> search [--youtube] <words>
     tvhero_client.py <tv-ip> type <text>                     (types it into the TV's focused box, then Enter)
+    tvhero_client.py <tv-ip> weather | freetv                (2.11: what the TV shows)
     tvhero_client.py <tv-ip> devices
     tvhero_client.py <tv-ip> forget             # removes this computer from the TV (no password needed for yourself)
     tvhero_client.py <tv-ip> get <path>         # any GET over the encrypted channel, e.g. /v1/log
@@ -237,6 +238,10 @@ def main():
         tv.call("POST", "/v1/type/start", {})
         out = tv.call("POST", "/v1/type", {"text": " ".join(args), "enter": True})
         tv.call("POST", "/v1/type/stop", {})
+    elif cmd == "weather":   # 2.11
+        out = tv.call("GET", "/v1/weather")
+    elif cmd == "freetv":
+        out = tv.call("GET", "/v1/freetv")
     elif cmd == "get":
         out = tv.call("GET", args[0])
     elif cmd == "post":

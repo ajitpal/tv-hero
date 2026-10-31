@@ -11,8 +11,8 @@ What's coming to tv-hero, in the order we plan to build it. Each step ships as i
 | Release | Theme | Status |
 |---|---|---|
 | **2.9** | Fair time: accurate screen time, a time-left corner, overlay settings | Released |
-| **2.10** | Phone to TV: links, photos, text and search | **Built**, being checked on a real TV |
-| **2.11** | Live and free TV: weather, free channels | Planned |
+| **2.10** | Phone to TV: links, photos, text and search | Released |
+| **2.11** | Live and free TV: weather, free channels | **Built**, being checked on a real TV |
 | **2.12** | Family extras: Scenes, rewards, weekly summary | Planned |
 | **Labs** | Experimental: install apps from the phone | Planned, behind a switch |
 | Later | More TVs, more languages, more phones | Ideas |
@@ -66,8 +66,8 @@ Home Wi-Fi only; nothing here goes over the internet.
 
 ## 2.11: Live and free TV
 
-- **Weather.** On Home and as a weather screensaver: now, today and tomorrow for a city you set on the phone (no location tracking). From Open-Meteo: free for non-commercial use, no account, credited on screen.
-- **Free TV.** An optional "Free TV" row with:
+- **Weather.** On Home and as a weather screensaver: now, today and tomorrow for a city you set on the phone (no location tracking). From Open-Meteo: free for non-commercial use, no account, credited on screen. The TV fetches it about once an hour, its only internet connection, and only once a city is set.
+- **Free TV.** An optional Free TV screen, opened from Home's top bar (a screen of its own rather than a row in the app grid, so the remote stays predictable), with:
   - official free apps and channels a parent picks, for example the public broadcaster's own app (in India, Prasar Bharati's WAVES), news and kids' channels on YouTube;
   - **playlists a parent adds** (an M3U address), opened in a player installed on the TV.
   - tv-hero ships **no channel lists of its own** and never adds paid channels from unofficial sources. In a child's profile, each channel needs a parent's OK.

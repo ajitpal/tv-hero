@@ -134,6 +134,10 @@ final class Api implements ControlServer.Handler {
                 case "POST /v1/launch": return launch(b);
                 case "POST /v1/key": return key(b);
                 case "POST /v1/password": return changePassword(b);
+                case "POST /v1/password/check": {   // 2.11: the phone checks it before saving it for the fingerprint
+                    ControlServer.Response denied = needPassword(b);
+                    return denied != null ? denied : ok(new JSONObject().put("ok", true));
+                }
                 case "GET /v1/devices": return ok(new JSONObject().put("devices", store.devicesJson()).put("you", id));
                 case "POST /v1/devices/remove": return removeDevice(id, b);
                 case "GET /v1/internet": return internet();
@@ -165,6 +169,20 @@ final class Api implements ControlServer.Handler {
                 case "POST /v1/onscreen": return setOnScreen(b);
                 case "GET /v1/remote": return remote();
                 case "POST /v1/adb": return adb(b);
+                case "GET /v1/freetv": return ok(freeTvJson());
+                case "POST /v1/freetv": return setFreeTv(b);
+                case "POST /v1/freetv/ticks": return setFreeTvTicks(b);
+                case "GET /v1/festivals": return ok(festivalsJson());
+                case "POST /v1/festivals": {
+                    if (b.has("on")) {
+                        Festivals.setEnabled(ctx, b.optBoolean("on"));
+                        log("festivals", b.optBoolean("on") ? "Festival line on" : "Festival line off");
+                        sendChanged();
+                    }
+                    return ok(festivalsJson());
+                }
+                case "GET /v1/weather": return ok(WeatherStore.get(ctx).json());
+                case "POST /v1/weather": return setWeather(b);
                 case "GET /v1/links": return links();
                 case "POST /v1/links": return setLinks(b);
                 case "POST /v1/open": return openLink(b);
@@ -678,6 +696,102 @@ final class Api implements ControlServer.Handler {
         String action = b.optString("action");
         if (!actions.globalAction(action)) return error(400, "unknown or unavailable action");
         return ok(new JSONObject().put("done", action));
+    }
+
+    // ---------- Free TV (2.11) ----------
+
+    private JSONObject freeTvJson() throws JSONException {
+        FreeTv f = FreeTv.get(ctx);
+        JSONArray items = new JSONArray();
+        for (FreeTv.Item i : f.items()) items.put(i.json());
+        JSONArray players = new JSONArray();
+        for (String p : f.players()) players.put(new JSONObject().put("package", p).put("label", appName(p)));
+        String player = f.player();
+        return new JSONObject().put("items", items).put("ticks", f.ticksJson()).put("players", players)
+                .put("player", player == null ? "" : player).put("max", FreeTv.MAX_ITEMS);
+    }
+
+    /** {items: [...]} replaces the list (children still see only ticked items); {player} picks the video player. */
+    private ControlServer.Response setFreeTv(JSONObject b) throws JSONException {
+        FreeTv f = FreeTv.get(ctx);
+        if (b.has("items")) {
+            JSONArray a = b.optJSONArray("items");
+            if (a == null || a.length() > FreeTv.MAX_ITEMS) return error(400, "at most " + FreeTv.MAX_ITEMS + " items");
+            java.util.List<FreeTv.Item> list = new java.util.ArrayList<>();
+            java.util.Set<String> ids = new java.util.HashSet<>();
+            for (int i = 0; i < a.length(); i++) {
+                FreeTv.Item it = FreeTv.check(a.optJSONObject(i));
+                if (it == null) return error(400, "item " + (i + 1) + " isn't a valid app, YouTube channel or web stream");
+                if (ids.add(it.id)) list.add(it);
+            }
+            f.setItems(list);
+            log("freetv_list", list.size() + " items");
+        }
+        if (b.has("player")) {
+            if (!f.setPlayer(b.optString("player"))) return error(400, "that app can't play video streams");
+            log("freetv_list", "Channels play in " + appName(b.optString("player")));
+        }
+        sendChanged();
+        return ok(freeTvJson());
+    }
+
+    /** {profile, ids, password}: which items a child (or Guest) sees. Adding any needs the password. */
+    private ControlServer.Response setFreeTvTicks(JSONObject b) throws JSONException {
+        String prof = b.optString("profile");
+        if (!Profiles.GUEST.equals(prof) && profiles.kid(prof) == null) return error(404, "no such child profile");
+        FreeTv f = FreeTv.get(ctx);
+        java.util.Set<String> known = new java.util.HashSet<>();
+        for (FreeTv.Item i : f.items()) known.add(i.id);
+        java.util.Set<String> want = new java.util.LinkedHashSet<>();
+        JSONArray a = b.optJSONArray("ids");
+        for (int i = 0; a != null && i < a.length(); i++) if (known.contains(a.optString(i))) want.add(a.optString(i));
+        if (FreeTv.adds(f.ticks(prof), want)) {
+            ControlServer.Response denied = needPassword(b);
+            if (denied != null) return denied;
+        }
+        f.setTicks(prof, want);
+        log("freetv_ticks", profileName(prof) + ": " + want.size() + " Free TV items");
+        sendChanged();
+        return ok(freeTvJson());
+    }
+
+    // ---------- festivals (2.11) ----------
+
+    private JSONObject festivalsJson() throws JSONException {
+        java.time.LocalDate today = java.time.LocalDate.now();
+        return new JSONObject().put("on", Festivals.enabled(ctx)).put("today", Festivals.line(today))
+                .put("covered_until", Festivals.coveredUntil().toString()).put("source", "Government of India gazetted holidays (Delhi)");
+    }
+
+    /** Home redraws with the new setting. */
+    private void sendChanged() {
+        ctx.sendBroadcast(new Intent(GuardStore.ACTION_CHANGED).setPackage(ctx.getPackageName()));
+    }
+
+    // ---------- weather (2.11) ----------
+
+    /**
+     * {city: {name, lat, lon}} sets the city and starts hourly fetches from Open-Meteo, the TV's one outside
+     * connection; {on: false} stops them; {refresh: true} fetches now; {screensaver} shows it on the watch.
+     */
+    private ControlServer.Response setWeather(JSONObject b) throws JSONException {
+        WeatherStore w = WeatherStore.get(ctx);
+        JSONObject city = b.optJSONObject("city");
+        if (city != null) {
+            String name = clean(city.optString("name"));
+            double lat = city.optDouble("lat", Double.NaN), lon = city.optDouble("lon", Double.NaN);
+            if (name.isEmpty() || !Weather.validPosition(lat, lon)) return error(400, "a city needs a name, latitude and longitude");
+            w.setCity(name, lat, lon);
+            w.maybeFetch(true, true);
+            log("weather", "Weather for " + name + " from " + Weather.HOST);
+        }
+        if (b.has("screensaver")) w.setScreensaver(b.optBoolean("screensaver", true));
+        if (b.has("on") && !b.optBoolean("on", true)) {
+            w.turnOff();
+            log("weather", "Weather turned off");
+        }
+        if (b.optBoolean("refresh", false)) w.maybeFetch(true, true);
+        return ok(w.json());
     }
 
     // ---------- phone to TV (2.10): links, search, typing, photos ----------

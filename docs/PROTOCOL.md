@@ -103,6 +103,12 @@ Changes that loosen protection also need `"password"` in the body.
 | `POST /v1/type/start`, `/v1/type`, `/v1/type/stop` (2.10) | `/v1/type`: `{text, backspace, enter}` | | switches the TV to tv-hero Keyboard (back after stop, 2 min idle or standby) and types into the focused box; answers `{typing, ready}`, `ready: false` when no box has focus. The keyboard never reads the box. |
 | `POST /v1/photos/show`, `/v1/photos/stop` (2.10) | `{jpeg: base64, session, caption}` (up to 2 MB, this path only) | | shows one photo of a slideshow the phone runs; kept in memory only while on screen, never saved. The TV closes the slideshow 30 s after the last photo; after Back on the TV that session's photos get 410. |
 
+| `POST /v1/password/check` (2.11) | `{password}` | ✔ | 200 if right; the phone checks it before saving it for the fingerprint |
+| `GET/POST /v1/weather` (2.11) | `{city: {name, lat, lon}}` \| `{on: false}` \| `{refresh: true}` \| `{screensaver}` | | `{on, city, reading: {place, temp, code, day, today_max, today_min, tomorrow_max, tomorrow_min, tomorrow_code, text, tomorrow_text, fetched_at}, screensaver, host, credit, last_attempt, error}`. Setting a city starts hourly fetches from Open-Meteo by the TV. |
+| `GET/POST /v1/festivals` (2.11) | `{on}` | | `{on, today, covered_until, source}`: the festival line on Home |
+| `GET/POST /v1/freetv` (2.11) | `{items: [{id, kind: app\|youtube\|stream, title, package, url, group}]}` (replaces the list, max 120) \| `{player}` | | `{items, ticks: {profile: [id]}, players: [{package, label}], player, max}` |
+| `POST /v1/freetv/ticks` (2.11) | `{profile, ids, password?}` | ✔ when adding | what a child or Guest sees on Free TV |
+
 The 2.10 calls (`/v1/links`, `/v1/open`, `/v1/search`, `/v1/type*`, `/v1/photos*`) work only from the home network; over Remote Access they answer 403.
 
 **From outside the home network** (any address that isn't private; Tailscale's 100.64.0.0/10 counts as outside), every command answers 403 unless internet control is on. Each time a phone starts controlling over the internet, the TV shows a note, at most once every 10 minutes per phone.

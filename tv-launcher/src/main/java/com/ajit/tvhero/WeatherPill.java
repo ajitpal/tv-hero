@@ -22,6 +22,8 @@ final class WeatherPill {
     private final Activity activity;
     private final TextView button;
     private final Uri uri;
+    /** 2.11: tv-hero's own weather (WeatherStore) instead of an add-on's content provider. */
+    private final boolean builtIn;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ContentObserver observer;
     private boolean watching;
@@ -29,7 +31,8 @@ final class WeatherPill {
     private WeatherPill(Activity activity, TextView button, String pkg) {
         this.activity = activity;
         this.button = button;
-        this.uri = Uri.parse("content://" + pkg + ".now/now");
+        this.builtIn = pkg == null;
+        this.uri = builtIn ? null : Uri.parse("content://" + pkg + ".now/now");
         this.observer = new ContentObserver(main) {
             @Override public void onChange(boolean self) {
                 read();
@@ -52,11 +55,29 @@ final class WeatherPill {
         return new WeatherPill(activity, button, pkg);
     }
 
+    /**
+     * 2.11: the pill for tv-hero's own weather, when a parent set a city on the phone and no add-on pill is
+     * configured. Opening it shows nothing more: the info line above it has today and tomorrow.
+     */
+    static WeatherPill builtIn(Activity activity, ViewGroup bar) {
+        if (!WeatherStore.get(activity).on()) return null;
+        TextView button = (TextView) activity.getLayoutInflater().inflate(R.layout.top_weather_pill, bar, false);
+        button.setText(WeatherStore.get(activity).city());
+        bar.addView(button, 0);
+        return new WeatherPill(activity, button, null);
+    }
+
+    /** A new reading arrived (WeatherStore.ACTION_WEATHER). */
+    void refresh() {
+        read();
+    }
+
     View view() {
         return button;
     }
 
     void onStart() {
+        if (builtIn) { read(); return; }
         if (!watching) {
             try {
                 activity.getContentResolver().registerContentObserver(uri, false, observer);
@@ -69,13 +90,19 @@ final class WeatherPill {
     }
 
     void onStop() {
-        if (!watching) return;
+        if (builtIn || !watching) return;
         activity.getContentResolver().unregisterContentObserver(observer);
         watching = false;
     }
 
     /** Off the main thread: the first query starts the add-on's process. */
     private void read() {
+        if (builtIn) {
+            Weather.Reading w = WeatherStore.get(activity).reading();
+            if (w == null) show(WeatherStore.get(activity).city(), 0, -1, true);
+            else show(w.place, w.temp, w.code, w.day);
+            return;
+        }
         new Thread(() -> {
             String label = null;
             int temp = 0;

@@ -26,6 +26,8 @@ import com.ajit.tvhero.remote.ui.PhonesPage
 import com.ajit.tvhero.remote.ui.QuietPage
 import com.ajit.tvhero.remote.ui.OnScreenPage
 import com.ajit.tvhero.remote.ui.TypePage
+import com.ajit.tvhero.remote.ui.WeatherPage
+import com.ajit.tvhero.remote.ui.FreeTvPage
 import com.ajit.tvhero.remote.ui.LinksPage
 import com.ajit.tvhero.remote.ui.RemoteAccessPage
 import com.ajit.tvhero.remote.ui.FamilyTab
@@ -173,6 +175,18 @@ class ScreenshotTest {
         LinksPage(state, com.ajit.tvhero.remote.LinkSettings("com.phlox.tvwebbrowser",
             listOf("com.phlox.tvwebbrowser" to "TV Bro", "com.brave.browser" to "Brave"), true,
             mapOf("parent" to "duckduckgo"), listOf("duckduckgo" to "DuckDuckGo (safe search)", "google" to "Google (SafeSearch)", "bing" to "Bing (SafeSearch)"))) {}
+    }
+    @Test fun weather() = shot("22-weather", 4) {
+        WeatherPage(state, com.ajit.tvhero.remote.TvWeather(true, "New Delhi", true, "api.open-meteo.com", "Weather data by Open-Meteo.com",
+            "", 0L, 31, "Partly cloudy", "Today 32\u00b0 / 20\u00b0 \u00b7 Tomorrow 30\u00b0 / 18\u00b0, rain", 1793430000000L), true to "Diwali in 8 days") {}
+    }
+    @Test fun freeTv() = shot("23-free-tv", 4) {
+        FreeTvPage(state, gate, com.ajit.tvhero.remote.FreeTvState(listOf(
+            com.ajit.tvhero.remote.FreeTvItem("a1", "app", "Public Broadcaster", pkg = "com.example.broadcaster"),
+            com.ajit.tvhero.remote.FreeTvItem("y1", "youtube", "Science for Kids", url = "https://www.youtube.com/@example", group = "YouTube"),
+            com.ajit.tvhero.remote.FreeTvItem("s1", "stream", "Public News", url = "https://example.org/news.m3u8", group = "News"),
+            com.ajit.tvhero.remote.FreeTvItem("s2", "stream", "Nature Live", url = "https://example.org/nature.m3u8", group = "Nature")),
+            mapOf("k1" to setOf("y1", "s2")), listOf("org.videolan.vlc" to "VLC"), "org.videolan.vlc", 120)) {}
     }
     @Test fun pair() = shot("13-pair", 4) { PairScreen(state, "192.168.1.50", "MiTV-AXSO0") {} }
 

@@ -58,6 +58,9 @@ final class ClockScene {
     private final Random random = new Random();
     private final View content;
     private final ImageView ambient;
+    /** 2.11: the weather line under the date and its credit, or null in a layout without them. */
+    private final android.widget.TextView weatherLine, weatherCredit;
+    private Weather.Sky weatherSky;
     private final GradientDrawable glow;
     private int[] skyColors;
     /** clock_wallpaper or clock_glow false: something else (a picture, or plain black) replaced the coloured glow. */
@@ -79,6 +82,7 @@ final class ClockScene {
     private final Runnable tick = new Runnable() {
         @Override
         public void run() {
+            updateWeather();
             moveClock();
             shiftGlow();
             advanceWallpaper();
@@ -90,9 +94,12 @@ final class ClockScene {
     ClockScene(View root) {
         content = root.findViewById(R.id.dreamContent);
         ambient = root.findViewById(R.id.dreamAmbient);
+        weatherLine = root.findViewById(R.id.dreamWeather);
+        weatherCredit = root.findViewById(R.id.dreamWeatherCredit);
         glow = new GradientDrawable(GradientDrawable.Orientation.TL_BR, SKIES[0]);
         ambient.setBackground(glow);
-        setSky(SKIES[skyFor(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY))].clone());
+        updateWeather();
+        setSky(currentSky());
     }
 
     void start() {
@@ -255,7 +262,7 @@ final class ClockScene {
     private void shiftGlow() {
         if (wallpaperShown) return;
         int[] from = skyColors.clone();
-        int[] to = SKIES[skyFor(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY))];
+        int[] to = currentSky();
         if (java.util.Arrays.equals(from, to)) return;
         ArgbEvaluator mix = new ArgbEvaluator();
         for (int i = 1; i <= GLOW_STEPS; i++) {
@@ -266,6 +273,58 @@ final class ClockScene {
                 setSky(c);
             }, i * GLOW_STEP_MS * 4);
         }
+    }
+
+    /** This hour's sky, greyed for the weather outside where tv-hero's weather is on (2.11). */
+    private int[] currentSky() {
+        return skyWith(SKIES[skyFor(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY))], weatherSky);
+    }
+
+    /** 2.11: "31° · Partly cloudy   Tomorrow 29° / 22°" under the date, from the last reading. */
+    private void updateWeather() {
+        if (weatherLine == null) return;
+        android.content.Context ctx = weatherLine.getContext();
+        WeatherStore store = WeatherStore.get(ctx);
+        Weather.Reading w = store.screensaver() ? store.reading() : null;
+        weatherSky = w == null ? null : Weather.sky(w.code);
+        if (w == null) {
+            weatherLine.setVisibility(View.GONE);
+            weatherCredit.setVisibility(View.GONE);
+            return;
+        }
+        weatherLine.setText(w.temp + "\u00b0  \u00b7  " + Weather.describe(w.code) + "      Tomorrow " + w.tomorrowMax + "\u00b0 / "
+                + w.tomorrowMin + "\u00b0, " + Weather.describe(w.tomorrowCode).toLowerCase(java.util.Locale.ROOT));
+        weatherLine.setVisibility(View.VISIBLE);
+        weatherCredit.setText(w.place + "  \u00b7  " + Weather.CREDIT);
+        weatherCredit.setVisibility(View.VISIBLE);
+    }
+
+    /**
+     * The time-of-day sky with the weather in it: clouds, fog, rain and storms grey it (storms darker), snow
+     * cools it; clear skies leave it as it is. Plain arithmetic, so it's tested without Android.
+     */
+    static int[] skyWith(int[] base, Weather.Sky sky) {
+        int[] out = base.clone();
+        if (sky == null) return out;
+        int toward;
+        float f;
+        switch (sky) {
+            case CLOUDY: toward = 0xFF1C2129; f = 0.40f; break;
+            case FOG: toward = 0xFF262A30; f = 0.55f; break;
+            case DRIZZLE: case RAIN: toward = 0xFF141B26; f = 0.50f; break;
+            case STORM: toward = 0xFF07090F; f = 0.65f; break;
+            case SNOW: toward = 0xFF2A3644; f = 0.45f; break;
+            default: return out;   // CLEAR, PARTLY
+        }
+        for (int i = 0; i < out.length; i++) out[i] = mix(out[i], toward, f);
+        return out;
+    }
+
+    static int mix(int a, int b, float f) {
+        int r = Math.round(((a >> 16) & 0xFF) * (1 - f) + ((b >> 16) & 0xFF) * f);
+        int g = Math.round(((a >> 8) & 0xFF) * (1 - f) + ((b >> 8) & 0xFF) * f);
+        int bl = Math.round((a & 0xFF) * (1 - f) + (b & 0xFF) * f);
+        return 0xFF000000 | (r << 16) | (g << 8) | bl;
     }
 
     private void setSky(int[] colors) {

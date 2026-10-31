@@ -441,6 +441,47 @@ class TvClient(
         OnScreenNotes.from(request("POST", "/v1/onscreen", JSONObject().put(key, on)))
 
     suspend fun launch(pkg: String) { request("POST", "/v1/launch", JSONObject().put("package", pkg)) }
+    // ---------- Free TV (2.11) ----------
+
+    /** Null from a TV before 2.11. */
+    suspend fun freeTv(): FreeTvState? = try { FreeTvState.from(request("GET", "/v1/freetv")) }
+        catch (e: TvException) { if (e.status == 404) null else throw e }
+
+    suspend fun setFreeTvItems(items: List<FreeTvItem>): FreeTvState =
+        FreeTvState.from(request("POST", "/v1/freetv", JSONObject().put("items", org.json.JSONArray(items.map { it.json() }))))
+
+    suspend fun setFreeTvPlayer(pkg: String): FreeTvState = FreeTvState.from(request("POST", "/v1/freetv", JSONObject().put("player", pkg)))
+
+    /** Which items [profile] sees; adding any needs [password]. */
+    suspend fun setFreeTvTicks(profile: String, ids: Set<String>, password: String?): FreeTvState {
+        val b = JSONObject().put("profile", profile).put("ids", org.json.JSONArray(ids.toList()))
+        if (password != null) b.put("password", password)
+        return FreeTvState.from(request("POST", "/v1/freetv/ticks", b))
+    }
+
+    // ---------- weather and festivals (2.11) ----------
+
+    /** Null from a TV before 2.11. */
+    suspend fun weather(): TvWeather? = try { TvWeather.from(request("GET", "/v1/weather")) }
+        catch (e: TvException) { if (e.status == 404) null else throw e }
+
+    suspend fun setCity(c: Geocoding.City): TvWeather = TvWeather.from(request("POST", "/v1/weather",
+        JSONObject().put("city", JSONObject().put("name", c.name).put("lat", c.lat).put("lon", c.lon))))
+
+    suspend fun weatherOff(): TvWeather = TvWeather.from(request("POST", "/v1/weather", JSONObject().put("on", false)))
+
+    suspend fun setWeatherScreensaver(on: Boolean): TvWeather =
+        TvWeather.from(request("POST", "/v1/weather", JSONObject().put("screensaver", on)))
+
+    suspend fun refreshWeather(): TvWeather = TvWeather.from(request("POST", "/v1/weather", JSONObject().put("refresh", true)))
+
+    suspend fun festivals(): Pair<Boolean, String>? = try {
+        request("GET", "/v1/festivals").let { it.optBoolean("on") to it.optString("today") }
+    } catch (e: TvException) { if (e.status == 404) null else throw e }
+
+    suspend fun setFestivals(on: Boolean): Pair<Boolean, String> =
+        request("POST", "/v1/festivals", JSONObject().put("on", on)).let { it.optBoolean("on") to it.optString("today") }
+
     // ---------- phone to TV (2.10): links, search, typing, photos; home Wi-Fi only ----------
 
     /** Null from a TV before 2.10 (no such call). */
@@ -512,6 +553,11 @@ class TvClient(
     suspend fun key(action: String) { request("POST", "/v1/key", JSONObject().put("action", action)) }
 
     // ---------- account and remote access ----------
+
+    /** 2.11: is this the parent password? Throws "wrong password" (403); 404 from an older TV. */
+    suspend fun checkPassword(password: String) {
+        request("POST", "/v1/password/check", JSONObject().put("password", password))
+    }
 
     suspend fun changePassword(old: String, new: String) {
         request("POST", "/v1/password", JSONObject().put("password", old).put("new_password", new))
@@ -680,5 +726,21 @@ data class LinkSettings(
 data class Opened(val pkg: String, val label: String, val once: Boolean) {
     companion object {
         fun from(o: JSONObject) = Opened(o.optString("opened"), o.optString("label"), o.optBoolean("once"))
+    }
+}
+
+// ---------- weather (2.11) ----------
+
+data class TvWeather(val on: Boolean, val city: String, val screensaver: Boolean, val host: String, val credit: String,
+                     val error: String, val lastAttempt: Long, val temp: Int?, val text: String, val outlook: String, val fetchedAt: Long) {
+    companion object {
+        fun from(o: JSONObject): TvWeather {
+            val r = o.optJSONObject("reading")
+            val outlook = r?.let { "Today ${it.optInt("today_max")}\u00b0 / ${it.optInt("today_min")}\u00b0 \u00b7 Tomorrow " +
+                "${it.optInt("tomorrow_max")}\u00b0 / ${it.optInt("tomorrow_min")}\u00b0, ${it.optString("tomorrow_text").lowercase()}" } ?: ""
+            return TvWeather(o.optBoolean("on"), o.optJSONObject("city")?.optString("name").orEmpty(), o.optBoolean("screensaver", true),
+                o.optString("host"), o.optString("credit"), o.optString("error"), o.optLong("last_attempt"),
+                r?.optInt("temp"), r?.optString("text").orEmpty(), outlook, r?.optLong("fetched_at") ?: 0L)
+        }
     }
 }

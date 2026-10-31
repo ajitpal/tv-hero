@@ -92,6 +92,29 @@
                 android:fontFamily="@string/font_regular"
                 android:letterSpacing="0.16"
                 android:textAllCaps="true" />
+
+            <!-- 2.11: now and tomorrow from tv-hero's weather, when a city is set; gone otherwise. -->
+            <TextView
+                android:id="@+id/dreamWeather"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_marginTop="18dp"
+                android:textColor="#D9FFFFFF"
+                android:textSize="20sp"
+                android:fontFamily="@string/font_regular"
+                android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>
+
+    <!-- Open-Meteo's data is CC BY 4.0: credited while it shows. -->
+    <TextView
+        android:id="@+id/dreamWeatherCredit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="24dp"
+        android:textColor="#66FFFFFF"
+        android:textSize="12sp"
+        android:visibility="gone" />
 </FrameLayout>

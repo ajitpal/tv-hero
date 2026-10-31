@@ -186,6 +186,7 @@ final class FocusInfo {
             String name = d.substring(8, d.indexOf('.') > 0 ? d.indexOf('.') : d.length()).trim();
             return new String[]{name + " is watching", "Switch profile, Guest or Parent", "The Parent Menu is here too"};
         }
+        if (d.startsWith("Free TV")) return new String[]{"Free TV", "Channels and apps your family picked", "Set on the phone: Settings \u2192 Free TV"};
         if (d.startsWith("Clock screensaver")) return new String[]{"Clock", "The watch screensaver", "Any key brings you back"};
         if (d.startsWith("Tools")) {
             String running = c.tool == ToolsCore.Tool.NONE ? "Timer, Stopwatch and Workout"
@@ -193,6 +194,12 @@ final class FocusInfo {
             return new String[]{"Tools", running, "Also from the phone: TV tab → Tools"};
         }
         if (id == R.id.btnInputs) return new String[]{"Inputs", "Live TV, HDMI and other sources", ""};
+        if (id == R.id.btnWeather) {   // 2.11: today and tomorrow, with Open-Meteo's credit
+            Weather.Reading w = WeatherStore.get(ctx).reading();
+            if (w != null) return new String[]{w.place + "  \u00b7  " + w.temp + "\u00b0, " + Weather.describe(w.code).toLowerCase(java.util.Locale.ROOT),
+                    w.outlook(), Weather.CREDIT};
+            return new String[]{"Weather", WeatherStore.get(ctx).on() ? "Waiting for the first reading" : "Opens the weather app", ""};
+        }
         if (id == R.id.btnWifi) return new String[]{"Network", d.isEmpty() ? "Wi-Fi settings" : d, "Hold for Wi-Fi settings"};
         if (id == R.id.btnSettings) return new String[]{"Settings", "TV settings", Profiles.get(ctx).activeKid() != null ? "Parent only" : ""};
         if (id == R.id.btnLibraryTop) return new String[]{"All Apps", "Everything this profile can open", ""};
