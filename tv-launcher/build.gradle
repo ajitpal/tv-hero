@@ -15,8 +15,8 @@ android {
         applicationId providers.gradleProperty('launcherApplicationId').getOrElse('com.ajit.tvhero')
         minSdk 26
         targetSdk 34
-        versionCode 22
-        versionName "2.11.0"
+        versionCode 23
+        versionName "2.11.1"
     }
 
     signingConfigs {

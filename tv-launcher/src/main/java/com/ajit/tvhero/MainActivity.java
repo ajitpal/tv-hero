@@ -975,7 +975,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (WeatherStore.get(this).on() != weatherBuiltOn) { recreate(); return; }
         IntentFilter wf = new IntentFilter(WeatherStore.ACTION_WEATHER);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) registerReceiver(weatherReceiver, wf, Context.RECEIVER_NOT_EXPORTED);
-        else registerReceiver(weatherReceiver, wf);   // only redraws the pill
+        else {
+            // Before Android 13 there is no flag. The only effect of an outside broadcast is a redraw of the pill.
+            //noinspection UnspecifiedRegisterReceiverFlag
+            registerReceiver(weatherReceiver, wf);
+        }
     }
 
     @Override

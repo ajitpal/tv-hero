@@ -2,14 +2,14 @@
 
 Each release has a TV app and a phone app with the same version number. Notes for a release are the section under its heading.
 
-## 2.11.0
+## 2.11.1
 
-Live and free TV.
+Live and free TV. (2.11.0's release build stopped at two checks and was never published; 2.11.1 is the same release with those fixed.)
 
 - **Weather on Home and the screensaver.** Choose a city on the phone (Settings → Weather & Festivals). Home's top bar shows "Delhi · 31°", with today and tomorrow above it; the screensaver shows now and tomorrow under the watch, on a sky that greys for clouds and rain. From Open-Meteo, credited on screen. The TV sends only the city's position, about once an hour, and it's the TV's only internet connection; Turn Off Weather stops it.
 - **The day's festival.** Under the date: "Diwali in 8 days", then "Happy Diwali", from India's official list of gazetted holidays for 2026 and 2027. Diwali and Dussehra dress up Home for the day. On by default on TVs set to India's time; switch it off on the phone.
 - **Free TV.** A Free TV button in Home's top bar opens what you picked on the phone: apps on the TV, YouTube channels and channels from a playlist (M3U) you have the right to watch. The phone reads the playlist and sends only the channels you tick; they play in a video player on the TV such as VLC. Children and Guest see only what you tick for them. tv-hero comes with no channels.
-- **Fingerprint for the parent password.** Settings → This Phone → Fingerprint for Parent Password: type it once, then your fingerprint works wherever the password is asked. It's kept on the phone behind the fingerprint, and forgotten if a new fingerprint is added or the password changes.
+- **Fingerprint for the parent password.** Turn on Settings → This Phone → Fingerprint for Parent Password and type the password once. After that your fingerprint works wherever the password is asked. It's kept on the phone behind the fingerprint, and forgotten if a new fingerprint is added or the password changes.
 
 ## 2.10.0
 

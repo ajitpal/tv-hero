@@ -41,8 +41,8 @@ android {
         // 28: Bluetooth HID device profile (remote and game controller) arrived in Android 9.
         minSdk 28
         targetSdk 34
-        versionCode 17
-        versionName '2.11.0'
+        versionCode 18
+        versionName '2.11.1'
     }
 
     signingConfigs {
