@@ -2,6 +2,16 @@
 
 Each release has a TV app and a phone app with the same version number. Notes for a release are the section under its heading.
 
+## 2.10.0
+
+Phone to TV. Everything here works on the home Wi-Fi only.
+
+- **Open a link on the TV.** Share any link to tv-hero (Share → Open on TV), or paste one on the TV tab. YouTube links open in YouTube, other links in the TV's browser (Settings → Links & Search). In a child's profile a link opens only in an app on their list; a parent can **allow it once** with the password, and the list doesn't change. Only web links are opened, and each one is in the TV's event log.
+- **Search from the phone.** YouTube, or the web with each profile's search engine: DuckDuckGo by default, with safe search strict for children and Guest and moderate for Parent. Google and Bing are there too, always with SafeSearch.
+- **Type on TV over Wi-Fi.** Open a text box on the TV and type on the phone: it appears as you type, Hindi and emoji too, with Enter and Paste. No Bluetooth needed. While the page is open the TV uses tv-hero Keyboard, which only types and never reads the box; the TV's own keyboard comes back when you leave.
+- **Photos on the TV, streamed.** Pick photos on the phone and they show on the TV one by one, sized for the screen, without their location data. Nothing is saved on the TV: it holds only the photo on screen and goes back to what was on 30 seconds after the last one, at Back on the remote, or at standby. Pause, Previous, Next and 5–30 seconds per photo.
+- **Casting** stays with the TV's own Chromecast built-in and Miracast (user guide).
+
 ## 2.9.0
 
 Fair time.

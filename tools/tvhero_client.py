@@ -11,6 +11,9 @@
     tvhero_client.py <tv-ip> unblock <package>  # asks for the parent password
     tvhero_client.py <tv-ip> launch <package>
     tvhero_client.py <tv-ip> key home|back|...
+    tvhero_client.py <tv-ip> open <https://link>            (2.10, home Wi-Fi only)
+    tvhero_client.py <tv-ip> search [--youtube] <words>
+    tvhero_client.py <tv-ip> type <text>                     (types it into the TV's focused box, then Enter)
     tvhero_client.py <tv-ip> devices
     tvhero_client.py <tv-ip> forget             # removes this computer from the TV (no password needed for yourself)
     tvhero_client.py <tv-ip> get <path>         # any GET over the encrypted channel, e.g. /v1/log
@@ -225,6 +228,15 @@ def main():
     elif cmd == "forget":
         out = tv.call("POST", "/v1/devices/remove", {})
         os.remove(tv.state_file)
+    elif cmd == "open":   # 2.10, home Wi-Fi only
+        out = tv.call("POST", "/v1/open", {"url": args[0]})
+    elif cmd == "search":
+        yt = args[:1] == ["--youtube"]
+        out = tv.call("POST", "/v1/search", {"query": " ".join(args[1:] if yt else args), "where": "youtube" if yt else "web"})
+    elif cmd == "type":
+        tv.call("POST", "/v1/type/start", {})
+        out = tv.call("POST", "/v1/type", {"text": " ".join(args), "enter": True})
+        tv.call("POST", "/v1/type/stop", {})
     elif cmd == "get":
         out = tv.call("GET", args[0])
     elif cmd == "post":

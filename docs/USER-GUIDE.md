@@ -30,6 +30,11 @@ Everything tv-hero does, screen by screen. For installing, see [the website](htt
 
 Screenshots of every screen: `docs/screenshots/phone/` (regenerate with `./gradlew :companion:testDebugUnitTest -Pscreenshots=record`).
 - **Family** tab: profiles (Family and kids), **Guest** (daily limit, extra time), **Apps for Everyone**, **Start-up Profile**, each profile's apps, limit, bedtime and **Earn Time** (on/off, minutes per right answer, most per day, level, topics, earned today).
+- **TV** tab, **Send to TV** (2.10, home Wi-Fi only):
+  - **Open a Link**, or **Share → Open on TV** from any app: YouTube links open in YouTube, other links in the TV's browser (Settings → **Links & Search**). In a child's profile, only into an app on their list; a parent can allow it once with the password.
+  - **Search**: YouTube, or the web with each profile's search engine (DuckDuckGo by default; safe search strict for children and Guest, moderate for Parent).
+  - **Type on TV**: open a text box on the TV, type on the phone, and it appears as you type (Hindi and emoji too). The TV uses tv-hero Keyboard only while this page is open.
+  - **Show Photos**: pick photos; they're streamed one by one and never saved on the TV. Keep the app open; Back on the TV remote stops the slideshow. Casting: Chromecast built-in and Miracast are the TV's own; use them for videos and screen mirroring.
 - **TV** tab, **Needs You**: kids' requests for an app, more time today, a later bedtime, or another profile switch.
 - **Time Today** (TV tab, each profile page, Guest page): −15 / +15 / +30 / +1 hr for today, and **End Today's Time Now**, which shows Time's up on the TV at once, even for a profile without a daily limit. Giving time needs the password; taking it away or ending it doesn't. Earn Time is still offered after End Now, up to the daily max; **Let … Earn Again Today** on the profile page clears today's count (password).
 

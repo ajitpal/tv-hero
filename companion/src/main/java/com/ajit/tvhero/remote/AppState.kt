@@ -25,6 +25,10 @@ class AppState(context: Context) {
     val updater by lazy { TvUpdater(app, this) }
     /** Software updates from GitHub for this app and the TV app. */
     val software by lazy { Updater(app, this) }
+    /** Photos streamed to the TV (2.10). */
+    val photos by lazy { PhotoSlideshow(this) }
+    /** A link shared to tv-hero from another app (2.10), waiting for "Open on TV". */
+    var sharedLink by mutableStateOf<String?>(null)
 
     var tv by mutableStateOf<PairedTv?>(store.last())
         private set

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.Timer
@@ -69,6 +70,7 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
         "home" -> { HomeScreenPage(state) { page = null }; return }
         "quiet" -> { QuietPage(state) { page = null }; return }
         "notes" -> { OnScreenPage(state) { page = null }; return }
+        "links" -> { LinksPage(state) { page = null }; return }
         "remote" -> { RemoteAccessPage(state, gate) { page = null }; return }
         "phones" -> { PhonesPage(state, gate) { page = null }; return }
         "log" -> { LogPage(state) { page = null }; return }
@@ -92,6 +94,8 @@ fun SettingsTab(state: AppState, gate: PasswordGate) {
                 leading = { IconTile(Icons.Rounded.VolumeDown, Color(0xFF5856D6)) }) { page = "quiet" }
             Row("On-Screen Notes", subtitle = "Time-left corner, tools corner, info line, warnings", chevron = true,
                 leading = { IconTile(Icons.Rounded.Timer, Color(0xFFFF9500)) }) { page = "notes" }
+            Row("Links & Search", subtitle = "Browser for links, search engine per profile", chevron = true,
+                leading = { IconTile(Icons.Rounded.Search, Color(0xFF34C759)) }) { page = "links" }
         }
         section("access", "Security", "Every phone that can control this TV, and how it connects, is listed here. Removing one takes effect at once.") {
             val phones = state.phones.size
@@ -449,6 +453,13 @@ internal fun LogPage(state: AppState, onBack: () -> Unit) {
                     "adb_on" -> "Debugging turned on"
                     "adb_off" -> "Debugging turned off"
                     "onscreen" -> "On-screen notes: $p"
+                    "link" -> "Link opened: $p"
+                    "link_once" -> "Link allowed once: $p"
+                    "search" -> "Search: $p"
+                    "search_once" -> "Search allowed once: $p"
+                    "typing" -> "Typing from a phone"
+                    "photos" -> "Photos shown from a phone"
+                    "links" -> p
                     else -> e.optString("type") + " " + p
                 }
                 val by = e.optString("by")

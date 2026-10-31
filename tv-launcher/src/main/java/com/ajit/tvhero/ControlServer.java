@@ -25,6 +25,8 @@ import java.util.concurrent.Executors;
 final class ControlServer {
     static final String TAG = "TvHeroServer";
     private static final int MAX_BODY = 64 * 1024;
+    /** A photo resized on the phone to 1280x720 is ~300 KB, ~400 KB as base64. */
+    private static final int MAX_PHOTO_BODY = 2 * 1024 * 1024;
 
     interface Handler {
         Response handle(Request req);
@@ -153,7 +155,9 @@ final class ControlServer {
             }
             int len = 0;
             try { len = Integer.parseInt(req.headers.getOrDefault("content-length", "0")); } catch (NumberFormatException ignored) { }
-            if (len < 0 || len > MAX_BODY) { write(sock.getOutputStream(), Response.json(413, "{\"error\":\"too large\"}")); return; }
+            // A photo from the phone (2.10) is the one larger body, and only on the encrypted channel.
+            int max = req.peer != null && "/v1/photos/show".equals(req.path) ? MAX_PHOTO_BODY : MAX_BODY;
+            if (len < 0 || len > max) { write(sock.getOutputStream(), Response.json(413, "{\"error\":\"too large\"}")); return; }
             byte[] body = new byte[len];
             int n = 0, r;
             while (n < len && (r = in.read(body, n, len - n)) > 0) n += r;

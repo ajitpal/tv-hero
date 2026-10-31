@@ -41,6 +41,7 @@ tv-hero/
   - runs a 20-second tick (5 seconds while the time-left corner shows) for the sleep timer, the night volume cap and flushing screen time
   - hosts both control ports and advertises the TV over mDNS
   - draws every prompt as an accessibility overlay. On this TV, starting an Activity from a service is delayed after Home; overlays aren't.
+- **Phone to TV (2.10)**, home Wi-Fi only: `LinkRules` (plain Java, tested: web links only, YouTube detection, safe-search addresses) and `Links` (the default browser, each profile's engine) back `/v1/open` and `/v1/search`; "allow once" is a 30-second pass in the guard (`GuardService.allowOnce`). `PhoneKeyboard` is an input method that only commits text; `PhoneTyping` switches the TV to it with `WRITE_SECURE_SETTINGS` while the phone types and back afterwards (also after a crash). `PhotoActivity` shows photos the phone streams, holding only the one on screen (and the next during the fade) as `RGB_565` bitmaps; nothing is written.
 - **Api** is the whole control surface (see `PROTOCOL.md`). It decides home vs internet (`protocol.Net`), checks that internet control is on, records who made each change, and asks the TV for confirmation where needed (pairing, internet on).
 - **State:**
   - `GuardStore`: apps, devices with pinned fingerprints, internet control, event log, kids' requests, password hash

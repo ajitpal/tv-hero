@@ -114,6 +114,7 @@ final class Api implements ControlServer.Handler {
             if (store.devicePending(id)) {
                 return "POST /v1/pair/complete".equals(key) ? pairComplete(id, name, b) : error(401, "finish pairing first");
             }
+            if (!home && PHONE_TO_TV.contains(key)) return error(403, "links, search, typing and photos work only on the home Wi-Fi");
             switch (key) {
                 case "GET /v1/info": return info();
                 case "GET /v1/status": return status();
@@ -164,6 +165,15 @@ final class Api implements ControlServer.Handler {
                 case "POST /v1/onscreen": return setOnScreen(b);
                 case "GET /v1/remote": return remote();
                 case "POST /v1/adb": return adb(b);
+                case "GET /v1/links": return links();
+                case "POST /v1/links": return setLinks(b);
+                case "POST /v1/open": return openLink(b);
+                case "POST /v1/search": return search(b);
+                case "POST /v1/type/start": return typeStart(name);
+                case "POST /v1/type": return type(b);
+                case "POST /v1/type/stop": PhoneTyping.stop(ctx); return ok(new JSONObject().put("typing", false));
+                case "POST /v1/photos/show": return photo(b);
+                case "POST /v1/photos/stop": PhotoActivity.stop(); return ok(new JSONObject().put("showing", false));
                 default: return error(404, "no such endpoint");
             }
         } catch (JSONException e) {
@@ -172,6 +182,10 @@ final class Api implements ControlServer.Handler {
             who.remove();
         }
     }
+
+    /** Phone to TV (2.10): only from the home Wi-Fi, never over Remote Access. */
+    static final Set<String> PHONE_TO_TV = Set.of("GET /v1/links", "POST /v1/links", "POST /v1/open", "POST /v1/search",
+            "POST /v1/type/start", "POST /v1/type", "POST /v1/type/stop", "POST /v1/photos/show", "POST /v1/photos/stop");
 
     private void log(String type, String detail) {
         store.log(type, detail, who.get());
@@ -664,6 +678,148 @@ final class Api implements ControlServer.Handler {
         String action = b.optString("action");
         if (!actions.globalAction(action)) return error(400, "unknown or unavailable action");
         return ok(new JSONObject().put("done", action));
+    }
+
+    // ---------- phone to TV (2.10): links, search, typing, photos ----------
+
+    private ControlServer.Response links() throws JSONException {
+        return ok(Links.get(ctx).json(profiles));
+    }
+
+    /** The default browser and each profile's search engine. Every engine keeps safe search on: no password. */
+    private ControlServer.Response setLinks(JSONObject b) throws JSONException {
+        Links l = Links.get(ctx);
+        if (b.has("default_browser")) {
+            String p = b.optString("default_browser");
+            if (!l.setBrowser(p)) return error(400, "that isn't a web browser on this TV");
+            log("links", "Links open in " + appName(p));
+        }
+        JSONObject e = b.optJSONObject("engine");
+        if (e != null) {
+            String prof = e.optString("profile"), en = e.optString("engine");
+            if (!Profiles.PARENT.equals(prof) && !Profiles.GUEST.equals(prof) && profiles.kid(prof) == null) return error(404, "no such profile");
+            if (!l.setEngine(prof, en)) return error(400, "unknown search engine");
+            log("links", profileName(prof) + " searches with " + LinkRules.label(en));
+        }
+        return links();
+    }
+
+    private String profileName(String id) {
+        if (Profiles.PARENT.equals(id)) return "Parent";
+        if (Profiles.GUEST.equals(id)) return "Guest";
+        Profiles.Kid k = profiles.kid(id);
+        return k == null ? id : k.name;
+    }
+
+    private String appName(String pkg) {
+        PackageManager pm = ctx.getPackageManager();
+        try { return pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString(); }
+        catch (PackageManager.NameNotFoundException e) { return pkg; }
+    }
+
+    private ControlServer.Response openLink(JSONObject b) throws JSONException {
+        String url = LinkRules.webLink(b.optString("url"));
+        if (url == null) return error(400, "only web links (http or https) can be opened on the TV");
+        return openOnTv(url, b.optString("app", ""), b, "link", url.length() > 120 ? url.substring(0, 120) + "\u2026" : url);
+    }
+
+    /** A search from the phone, in YouTube or on the web with the active profile's engine (safe search on). */
+    private ControlServer.Response search(JSONObject b) throws JSONException {
+        String q = LinkRules.trimQuery(b.optString("query"));
+        if (q.isEmpty()) return error(400, "type something to search for");
+        boolean yt = "youtube".equals(b.optString("where"));
+        String url = yt ? LinkRules.youTubeSearchUrl(q)
+                : LinkRules.searchUrl(Links.get(ctx).engine(profiles.activeId()), q, profiles.activeKid() != null);
+        return openOnTv(url, yt ? LinkRules.YOUTUBE_TV : "", b, "search", (yt ? "YouTube: " : "Web: ") + q);
+    }
+
+    /**
+     * Opens [url] in [app] (empty: YouTube for YouTube links, else the default browser). In a child's profile
+     * the app must be on the child's list, or a parent allows this one link with the password: the guard then
+     * lets that app through once, and no list changes.
+     */
+    private ControlServer.Response openOnTv(String url, String app, JSONObject b, String kind, String detail) throws JSONException {
+        Links links = Links.get(ctx);
+        String target;
+        if (!app.isEmpty()) {
+            if (!app.equals(LinkRules.YOUTUBE_TV) && !links.browsers().contains(app)) return error(400, "that app can't open web links");
+            target = app;
+        } else if (LinkRules.isYouTube(url) && links.installed(LinkRules.YOUTUBE_TV)) {
+            target = LinkRules.YOUTUBE_TV;
+        } else {
+            target = links.browser();
+        }
+        if (target == null) return error(404, "there's no web browser on this TV");
+        if (!links.installed(target)) return error(404, (target.equals(LinkRules.YOUTUBE_TV) ? "YouTube" : appName(target)) + " isn't on this TV");
+        Intent i = viewIntent(url, target);
+        if (ctx.getPackageManager().resolveActivity(i, 0) == null && app.isEmpty() && target.equals(LinkRules.YOUTUBE_TV)) {
+            // This TV's YouTube doesn't take web links: the browser opens it instead.
+            String browser = links.browser();
+            if (browser != null) { target = browser; i = viewIntent(url, target); }
+        }
+        if (ctx.getPackageManager().resolveActivity(i, 0) == null) return error(404, appName(target) + " can't open this link");
+        if (store.isRestricted(target)) return error(403, appName(target) + " is blocked on this TV");
+        Profiles.Kid kid = profiles.activeKid();
+        boolean once = false;
+        if (kid != null && (!kid.all.contains(target) || Profiles.KID_NEVER.contains(target))) {
+            if (!b.has("password")) {
+                return ControlServer.Response.json(403, new JSONObject().put("error", appName(target) + " isn't on " + kid.name
+                        + "'s list. A parent can allow this once.").put("allow_once", true).toString());
+            }
+            ControlServer.Response denied = needPassword(b);
+            if (denied != null) return denied;
+            once = true;
+        }
+        if (once) GuardService.allowOnce(target);
+        PhotoActivity.stop();
+        final Intent start = i;
+        main.post(() -> {
+            try { ctx.startActivity(start); } catch (RuntimeException e) { android.util.Log.w("TvHeroApi", "open: " + e.getMessage()); }
+        });
+        log(once ? kind + "_once" : kind, detail + " \u2192 " + appName(target));
+        return ok(new JSONObject().put("opened", target).put("label", appName(target)).put("once", once));
+    }
+
+    /** Opens [url] in [pkg]; a browser reuses one tab for links from the phone. */
+    private Intent viewIntent(String url, String pkg) {
+        Intent i = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        if (!pkg.equals(LinkRules.YOUTUBE_TV)) i.putExtra(android.provider.Browser.EXTRA_APPLICATION_ID, ctx.getPackageName() + ".phone");
+        return i;
+    }
+
+    private ControlServer.Response typeStart(String phone) throws JSONException {
+        boolean was = PhoneTyping.active();
+        if (!PhoneTyping.start(ctx, phone)) return error(409, "the TV won't let tv-hero switch its keyboard: update the TV app from the phone");
+        if (!was) log("typing", "Typing from the phone");
+        return ok(new JSONObject().put("typing", true).put("ready", PhoneTyping.ready()));
+    }
+
+    /** {text, backspace, enter}: typed into the box that has focus on the TV. */
+    private ControlServer.Response type(JSONObject b) throws JSONException {
+        String text = b.optString("text", "");
+        if (text.length() > 500) return error(400, "send at most 500 characters at a time");
+        int back = Math.max(0, Math.min(500, b.optInt("backspace", 0)));
+        Boolean r = PhoneTyping.send(text, back, b.optBoolean("enter", false));
+        if (r == null) return ok(new JSONObject().put("typing", PhoneTyping.active()).put("ready", false));
+        return ok(new JSONObject().put("typing", true).put("ready", true).put("done", r));
+    }
+
+    /** One photo of a slideshow the phone runs: {jpeg (base64), session, caption}. Shown, never saved. */
+    private ControlServer.Response photo(JSONObject b) throws JSONException {
+        PowerManager pm = ctx.getSystemService(PowerManager.class);
+        if (pm != null && !pm.isInteractive()) return error(409, "the TV is off");
+        byte[] jpeg;
+        try { jpeg = android.util.Base64.decode(b.optString("jpeg", ""), android.util.Base64.DEFAULT); }
+        catch (IllegalArgumentException e) { return error(400, "bad photo"); }
+        String session = b.optString("session", "");
+        boolean first = !PhotoActivity.showing();
+        switch (PhotoActivity.show(ctx, session, jpeg, clean(b.optString("caption", "")))) {
+            case STOPPED_ON_TV: return error(410, "stopped on the TV");
+            case BAD_IMAGE: return error(400, "that photo couldn't be shown");
+            default:
+                if (first) log("photos", "Photos from the phone");
+                return ok(new JSONObject().put("showing", true));
+        }
     }
 
     // ---------- profiles ----------

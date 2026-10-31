@@ -56,6 +56,9 @@ fun TvTab(state: AppState, gate: PasswordGate, openTab: (Int) -> Unit) {
     if (allActivity) { ActivityPage(state) { allActivity = false }; return }
     var tools by remember { mutableStateOf(false) }
     if (tools) { ToolsPage(state) { tools = false }; return }
+    var send by remember { mutableStateOf<String?>(null) }   // 2.10: link | search | type | photos
+    if (send == "type") { TypePage(state) { send = null }; return }
+    if (send == "photos") { PhotosPage(state) { send = null }; return }
     val now = state.now
     val family = state.family
     val c = Hig.colors
@@ -83,6 +86,7 @@ fun TvTab(state: AppState, gate: PasswordGate, openTab: (Int) -> Unit) {
             Row("Tools", subtitle = "Timer · Stopwatch · Workout · Clock", chevron = true,
                 leading = { com.ajit.tvhero.remote.ui.hig.IconTile(Icons.Rounded.Timer, Color(0xFFFF9500)) }) { tools = true }
         }
+        sendToTvSection { send = it }
         if (state.requests.isNotEmpty()) section("asks", "Needs You", "Allowing needs the parent password: an app goes on that profile's list, extra time counts for today only.") {
             state.requests.forEach { r ->
                 val asked = when (r.kind) { "time" -> "${r.profileName} asked for more time"; "bedtime" -> "${r.profileName} asked to stay up"
@@ -133,6 +137,8 @@ fun TvTab(state: AppState, gate: PasswordGate, openTab: (Int) -> Unit) {
         }
     }
 
+    if (send == "link") LinkSheet(state, gate, "") { send = null }
+    if (send == "search") SearchSheet(state, gate) { send = null }
     when (sheet) {
         "sleep" -> HigSheet("Sleep Timer", onCancel = { sheet = null }, done = null) {
             section("s", footer = "The TV goes to standby when the timer runs out. A minute before, a note appears on the TV.") {

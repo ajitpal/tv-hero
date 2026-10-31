@@ -71,6 +71,14 @@ The phone app's Software Update (Settings → About) reads `update.json` from th
 - **Installing:** the phone app goes through PackageInstaller, and Android asks the person to confirm. The TV app goes over the home-Wi-Fi debugging connection (above), with the parent password.
 - **Release builds:** CI signs only with the key from repository secrets, checks the certificate before publishing, and refuses to publish anything containing private network addresses or password-like text (`tools/check_public.py`). See `RELEASING.md`.
 
+## Phone to TV (2.10): links, search, typing, photos
+
+- **Home Wi-Fi only.** `/v1/links`, `/v1/open`, `/v1/search`, `/v1/type*` and `/v1/photos*` answer 403 over Remote Access, even with internet control on.
+- **Links:** only `http` and `https`; `intent:`, `file:`, `content:` and `javascript:` are refused on the phone and again on the TV. In a child's profile a link or search opens only in an app on the child's list. A parent can **allow it once** with the password: the guard lets that app through for that one opening (30 seconds, then while it stays in front), and no list changes. Every link and search is in the TV's event log with the phone's name.
+- **Search:** every engine keeps safe search on (DuckDuckGo `kp=1`, Bing `adlt=strict`, Google `safe=active` for children and Guest; moderate for Parent). tv-hero can't change a browser's or YouTube's own settings; a family DNS (AdGuard Family) enforces SafeSearch everywhere.
+- **Typing: tv-hero Keyboard.** An Android input method inside the TV app, switched in with `WRITE_SECURE_SETTINGS` only while the phone's Type screen is open, and switched back when it closes, after 2 minutes without typing, at standby and at the next start after a crash. It only commits text, deletes and presses Enter; it never reads the box (no `getTextBeforeCursor`, no extracted text), and the TV shows "Typing from <phone>". The guard keeps `canRetrieveWindowContent="false"`. Android warns that any keyboard *could* see what is typed while it is active: while it is, what is typed comes from the phone.
+- **Photos are streamed, never stored.** The phone resizes each photo and re-encodes it as a JPEG (no EXIF, so no location), and sends it over the mutual-TLS channel just before it shows. The TV decodes it into memory, shows it and drops it at the next photo; nothing is written to storage or a cache. The slideshow ends 30 s after the last photo, at Back or Home, and at standby. The photo endpoint is the only one with a larger body limit (2 MB), and only on the encrypted port.
+
 ## Known limits (be honest about them)
 
 - **No PAKE.** Pairing's protection relies on a person comparing six digits and pressing Allow. A careless Allow on mismatched codes can let an attacker who is already on the Wi-Fi in. The wording on the TV pushes towards Don't Allow.

@@ -33,5 +33,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Share → tv-hero (2.10): a link from any app opens on the TV. No screen of its own: it hands the
+             text to the app and closes. -->
+        <activity
+            android:name=".ShareActivity"
+            android:exported="true"
+            android:label="Open on TV"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

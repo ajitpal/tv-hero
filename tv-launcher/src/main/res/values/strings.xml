@@ -47,6 +47,7 @@
     <string name="storage_gb_decimal">%1$.1f GB</string>
     <string name="dream_name">Clock</string>
     <string name="tools_name" translatable="false">tv-hero Tools</string>
+    <string name="phone_keyboard_name" translatable="false">tv-hero Keyboard (typing from the phone)</string>
     <string name="vpn">VPN</string>
     <string name="vpn_off">VPN off</string>
     <string name="home_settings">Choose default home</string>

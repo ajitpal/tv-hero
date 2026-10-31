@@ -441,6 +441,66 @@ class TvClient(
         OnScreenNotes.from(request("POST", "/v1/onscreen", JSONObject().put(key, on)))
 
     suspend fun launch(pkg: String) { request("POST", "/v1/launch", JSONObject().put("package", pkg)) }
+    // ---------- phone to TV (2.10): links, search, typing, photos; home Wi-Fi only ----------
+
+    /** Null from a TV before 2.10 (no such call). */
+    suspend fun links(): LinkSettings? = try {
+        LinkSettings.from(request("GET", "/v1/links"))
+    } catch (e: TvException) {
+        if (e.status == 404) null else throw e
+    }
+
+    suspend fun setDefaultBrowser(pkg: String): LinkSettings =
+        LinkSettings.from(request("POST", "/v1/links", JSONObject().put("default_browser", pkg)))
+
+    suspend fun setSearchEngine(profile: String, engine: String): LinkSettings =
+        LinkSettings.from(request("POST", "/v1/links", JSONObject().put("engine", JSONObject().put("profile", profile).put("engine", engine))))
+
+    /** Opens a web link on the TV; [app] empty for YouTube or the TV's default browser. */
+    suspend fun open(url: String, app: String = "", password: String? = null): Opened {
+        val b = JSONObject().put("url", url)
+        if (app.isNotBlank()) b.put("app", app)
+        if (password != null) b.put("password", password)
+        return Opened.from(phoneToTv("POST", "/v1/open", b))
+    }
+
+    suspend fun search(query: String, youtube: Boolean, password: String? = null): Opened {
+        val b = JSONObject().put("query", query).put("where", if (youtube) "youtube" else "web")
+        if (password != null) b.put("password", password)
+        return Opened.from(phoneToTv("POST", "/v1/search", b))
+    }
+
+    /** Switches the TV to tv-hero Keyboard; true when a text box on the TV is ready for typing. */
+    suspend fun typeStart(): Boolean = phoneToTv("POST", "/v1/type/start", JSONObject()).optBoolean("ready")
+
+    /** Types into the TV's focused box: [backspace] deletions first, then [text], then Enter. False: no box focused. */
+    suspend fun type(text: String, backspace: Int = 0, enter: Boolean = false): Boolean {
+        val b = JSONObject().put("text", text)
+        if (backspace > 0) b.put("backspace", backspace)
+        if (enter) b.put("enter", true)
+        return phoneToTv("POST", "/v1/type", b).optBoolean("ready")
+    }
+
+    suspend fun typeStop() { runCatching { request("POST", "/v1/type/stop", JSONObject()) } }
+
+    /** One photo of a slideshow the phone runs: shown on the TV, never saved there. */
+    suspend fun showPhoto(jpeg: ByteArray, session: String, caption: String) {
+        phoneToTv("POST", "/v1/photos/show", JSONObject()
+            .put("jpeg", android.util.Base64.encodeToString(jpeg, android.util.Base64.NO_WRAP))
+            .put("session", session).put("caption", caption))
+    }
+
+    suspend fun stopPhotos() { runCatching { request("POST", "/v1/photos/stop", JSONObject()) } }
+
+    /** A 2.10 call, with a clear message from an older TV. */
+    private suspend fun phoneToTv(method: String, path: String, body: JSONObject): JSONObject = try {
+        request(method, path, body)
+    } catch (e: TvException) {
+        if (e.status == 404 && e.message?.contains("no such endpoint") == true)
+            throw TvException(404, "Update the TV app to 2.10 to send links, searches, typing and photos (Settings \u2192 About \u2192 TV App).")
+        throw e
+    }
+
     // ---------- tools (Phase 3) ----------
 
     suspend fun tools(): JSONObject = request("GET", "/v1/tools")
@@ -586,5 +646,39 @@ class TvClient(
         override fun createSocket(host: InetAddress, port: Int) = r(d.createSocket(host, port))
         override fun createSocket(address: InetAddress, port: Int, localAddress: InetAddress, localPort: Int) =
             r(d.createSocket(address, port, localAddress, localPort))
+    }
+}
+
+// ---------- phone to TV (2.10) ----------
+
+data class LinkSettings(
+    val defaultBrowser: String,
+    /** Package to label. */
+    val browsers: List<Pair<String, String>>,
+    val youtube: Boolean,
+    /** Profile id to engine id. */
+    val engines: Map<String, String>,
+    /** Engine id to label. */
+    val engineChoices: List<Pair<String, String>>,
+) {
+    fun engineLabel(id: String) = engineChoices.firstOrNull { it.first == id }?.second ?: id
+    fun browserLabel(pkg: String) = browsers.firstOrNull { it.first == pkg }?.second ?: pkg
+
+    companion object {
+        fun from(o: JSONObject): LinkSettings {
+            val bs = o.optJSONArray("browsers") ?: org.json.JSONArray()
+            val ch = o.optJSONArray("engine_choices") ?: org.json.JSONArray()
+            val en = o.optJSONObject("engines") ?: JSONObject()
+            return LinkSettings(o.optString("default_browser"),
+                (0 until bs.length()).map { bs.getJSONObject(it).let { b -> b.optString("package") to b.optString("label") } },
+                o.optBoolean("youtube"), en.keys().asSequence().associateWith { en.optString(it) },
+                (0 until ch.length()).map { ch.getJSONObject(it).let { c -> c.optString("id") to c.optString("label") } })
+        }
+    }
+}
+
+data class Opened(val pkg: String, val label: String, val once: Boolean) {
+    companion object {
+        fun from(o: JSONObject) = Opened(o.optString("opened"), o.optString("label"), o.optBoolean("once"))
     }
 }

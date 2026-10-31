@@ -10,8 +10,8 @@ What's coming to tv-hero, in the order we plan to build it. Each step ships as i
 
 | Release | Theme | Status |
 |---|---|---|
-| **2.9** | Fair time: accurate screen time, a time-left corner, overlay settings | **Built**, being checked on a real TV |
-| **2.10** | Phone to TV: links, photos, text and search | Planned |
+| **2.9** | Fair time: accurate screen time, a time-left corner, overlay settings | Released |
+| **2.10** | Phone to TV: links, photos, text and search | **Built**, being checked on a real TV |
 | **2.11** | Live and free TV: weather, free channels | Planned |
 | **2.12** | Family extras: Scenes, rewards, weekly summary | Planned |
 | **Labs** | Experimental: install apps from the phone | Planned, behind a switch |
@@ -53,10 +53,12 @@ A feature-request form on GitHub and this roadmap on the website, so families ca
 
 ## 2.10: Phone to TV
 
-- **Open a link on the TV.** Share any link from the phone ("Share → tv-hero"), and it opens on the TV in the chosen browser, or in YouTube for YouTube links. In a child's profile, only into apps that child has; a parent can allow it once with the password. Every link sent is in the TV's event log.
-- **Photos on the TV, never saved there.** Pick photos on the phone, and they show on the TV as a slideshow or as the screensaver. They are resized on the phone, sent over the encrypted connection and **kept in the TV's memory only**: gone at standby, at "Stop showing" or after a few hours, and never written to the TV's storage.
-- **Type and paste from the phone.** Send text into the search box on the TV (partly there today in the remote).
-- **Search from the phone, with a default per profile.** Type a search on the phone and choose where it runs: YouTube, or the browser with the search engine you set per profile (for example SafeSearch on for kids, DuckDuckGo for parents).
+Home Wi-Fi only; nothing here goes over the internet.
+
+- **Open a link on the TV.** Share any link from the phone ("Share → Open on TV"), and it opens on the TV in the chosen browser, or in YouTube for YouTube links. In a child's profile, only into apps that child has; a parent can allow it once with the password. Every link sent is in the TV's event log.
+- **Photos on the TV, streamed, never saved there.** Pick photos on the phone; the phone runs the slideshow, resizes each photo, leaves out its location and sends it just before it shows. The TV holds only the photo on screen, in memory, and goes back 30 seconds after the last one.
+- **Type and paste from the phone over Wi-Fi.** Text appears in the TV's focused box as you type, through tv-hero Keyboard, which the TV uses only while the phone types and which never reads the box.
+- **Search from the phone, with a default per profile.** YouTube, or the browser with each profile's engine: DuckDuckGo by default, safe search strict for children and Guest.
   - *Honest limit:* tv-hero can't change another app's own settings (Brave's default search engine, for example). It can open Brave with a search address it chooses, and a family filter DNS (like AdGuard Family, in the user guide) can force SafeSearch in every browser.
 - **Casting stays with the TV.** Chromecast built-in and Miracast already work on most Android TVs; tv-hero points to them rather than rebuilding them.
 

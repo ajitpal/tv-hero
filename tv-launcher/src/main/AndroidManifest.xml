@@ -34,6 +34,11 @@
     <!-- Android 11+ package visibility: lets the launcher list the TV apps it shows as tiles, and the
          apps that declare a module card. -->
     <queries>
+        <!-- Links from the phone (2.10): the apps that open web links, so a parent can pick the TV's browser. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
         <!-- The standard settings handlers, so package visibility doesn't hide them and send the pills to a vendor fallback by mistake. -->
         <intent>
             <action android:name="android.settings.SETTINGS" />
@@ -212,6 +217,28 @@
                 <data android:scheme="market" android:host="launch" />
             </intent-filter>
         </activity>
+
+        <!-- Photos from the phone (2.10): streamed, shown, never saved. Opened only by the control server. -->
+        <activity
+            android:name=".PhotoActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="false"
+            android:launchMode="singleTop"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+
+        <!-- tv-hero Keyboard (2.10): typing from the phone over the home Wi-Fi. The TV switches to it only while
+             the phone's Type screen is open, then back. It only writes into the focused box, never reads it. -->
+        <service
+            android:name=".PhoneKeyboard"
+            android:label="@string/phone_keyboard_name"
+            android:permission="android.permission.BIND_INPUT_METHOD"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data android:name="android.view.im" android:resource="@xml/phone_keyboard" />
+        </service>
 
         <!-- Tools (Phase 3): Timer, Stopwatch, Workout. ToolsActivity is also a launcher entry, so TVs that keep
              their own home screen (Guard-only setup) can open the tools from there. -->

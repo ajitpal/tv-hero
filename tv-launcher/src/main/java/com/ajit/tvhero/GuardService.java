@@ -94,6 +94,8 @@ public class GuardService extends AccessibilityService {
         public void onReceive(Context context, Intent intent) {
             if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
                 account();
+                PhoneTyping.stop(GuardService.this);   // 2.10: the TV's own keyboard back, the slideshow over
+                PhotoActivity.stop();
                 closeSession();
                 if (profiles.isGuest()) {   // guest mode ends at standby
                     String w = profiles.onWake();
@@ -181,6 +183,7 @@ public class GuardService extends AccessibilityService {
             Log.e(TAG, "no secure channel: phones can't control the TV until this is fixed", e);
         }
         registerNsd();
+        PhoneTyping.stop(this);   // a typing session cut short by a crash or reboot: put the TV's keyboard back
         account();
         main.postDelayed(tick, 3000);
         Log.i(TAG, "guard running");
@@ -236,8 +239,26 @@ public class GuardService extends AccessibilityService {
         return ScreenTime.nextCheckMs(usual, time.counting(), profiles.secondsLeft(kid));
     }
 
+    // ---------- allowed once (2.10) ----------
+
+    /** An app a parent let a child open once, for one link or search from the phone. */
+    private static volatile String onceApp = "";
+    private static volatile long onceUntil;
+
+    /** The guard lets [pkg] through for the next 30 seconds, and while it stays in front after that. */
+    static void allowOnce(String pkg) {
+        onceApp = pkg;
+        onceUntil = SystemClock.elapsedRealtime() + 30_000;
+    }
+
+    private boolean allowedOnce(String pkg) {
+        if (onceApp.isEmpty() || !onceApp.equals(pkg)) return false;
+        return SystemClock.elapsedRealtime() < onceUntil || pkg.equals(fgPkg);
+    }
+
     private void frontChanged(String pkg) {
         if (pkg.equals(fgPkg)) return;
+        if (!onceApp.isEmpty() && !onceApp.equals(pkg) && SystemClock.elapsedRealtime() >= onceUntil) onceApp = "";
         closeSession();
         fgPkg = pkg;
         fgTitle = "";
@@ -367,6 +388,7 @@ public class GuardService extends AccessibilityService {
     /** Blocks [pkg] if the rules say so. */
     private void check(String pkg) {
         if (pkg.equals(getPackageName()) || isScreenLock()) return;
+        if (allowedOnce(pkg) && store.state(pkg) == GuardStore.State.ALLOWED) return;   // a parent allowed this once (2.10)
         GuardStore.State st = store.state(pkg);
         Profiles.Kid kid = profiles.activeKid();
         String title = null, body = null;

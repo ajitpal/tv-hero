@@ -25,6 +25,8 @@ import com.ajit.tvhero.remote.ui.PairScreen
 import com.ajit.tvhero.remote.ui.PhonesPage
 import com.ajit.tvhero.remote.ui.QuietPage
 import com.ajit.tvhero.remote.ui.OnScreenPage
+import com.ajit.tvhero.remote.ui.TypePage
+import com.ajit.tvhero.remote.ui.LinksPage
 import com.ajit.tvhero.remote.ui.RemoteAccessPage
 import com.ajit.tvhero.remote.ui.FamilyTab
 import com.ajit.tvhero.remote.ui.PasswordGate
@@ -165,6 +167,12 @@ class ScreenshotTest {
     }
     @Test fun onScreen() = shot("19-on-screen-notes", 4) {
         OnScreenPage(state, com.ajit.tvhero.remote.OnScreenNotes(timeLeft = true, toolsCorner = true, homeInfo = false, warnings = true)) {}
+    }
+    @Test fun typeOnTv() = shot("20-type-on-tv", 0) { TypePage(state, "dinosaur songs for kids") {} }
+    @Test fun linksSearch() = shot("21-links-search", 4) {
+        LinksPage(state, com.ajit.tvhero.remote.LinkSettings("com.phlox.tvwebbrowser",
+            listOf("com.phlox.tvwebbrowser" to "TV Bro", "com.brave.browser" to "Brave"), true,
+            mapOf("parent" to "duckduckgo"), listOf("duckduckgo" to "DuckDuckGo (safe search)", "google" to "Google (SafeSearch)", "bing" to "Bing (SafeSearch)"))) {}
     }
     @Test fun pair() = shot("13-pair", 4) { PairScreen(state, "192.168.1.50", "MiTV-AXSO0") {} }
 

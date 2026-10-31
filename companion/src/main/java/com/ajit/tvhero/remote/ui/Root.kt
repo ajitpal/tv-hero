@@ -103,6 +103,7 @@ fun Root(state: AppState, activity: Activity) {
         }
         TabBar(tabs, tab) { tab = it }
     }
+    state.sharedLink?.let { link -> LinkSheet(state, gate, link) { state.sharedLink = null } }   // Share → tv-hero (2.10)
     gate.request?.let { (reason, action) ->
         var pw by remember { mutableStateOf("") }
         HigAlert(
