@@ -18,21 +18,30 @@
   } else items.forEach(function (el) { el.classList.add('in'); });
 
   // Hub: dashed spokes from the core to every module, with a light pulse travelling along some of them.
+  // On a phone the modules sit on their own ellipse (--mx/--my), so the spokes follow the layout in use.
   var hub = document.querySelector('.hub'), spokes = hub && hub.querySelector('.spokes');
   if (hub && spokes) {
-    var ns = 'http://www.w3.org/2000/svg';
-    hub.querySelectorAll('.mod').forEach(function (m, i) {
-      var x = parseFloat(m.style.getPropertyValue('--x')) * 10, y = parseFloat(m.style.getPropertyValue('--y')) * 5.6;
-      [false, i % 2 === 0].forEach(function (pulse) {
-        if (pulse === false || pulse) {
-          var l = document.createElementNS(ns, 'line');
-          l.setAttribute('x1', 500); l.setAttribute('y1', 280); l.setAttribute('x2', x); l.setAttribute('y2', y);
-          if (pulse) { l.setAttribute('class', 'pulse'); l.style.animationDelay = (-i * 0.7) + 's'; }
-          spokes.appendChild(l);
-        }
+    var ns = 'http://www.w3.org/2000/svg', phone = window.matchMedia && matchMedia('(max-width: 900px)');
+    var draw = function () {
+      while (spokes.firstChild) spokes.removeChild(spokes.firstChild);
+      var small = phone && phone.matches;
+      hub.querySelectorAll('.mod').forEach(function (m, i) {
+        if (getComputedStyle(m).display === 'none') return;
+        var x = parseFloat(m.style.getPropertyValue(small ? '--mx' : '--x')), y = parseFloat(m.style.getPropertyValue(small ? '--my' : '--y'));
+        if (isNaN(x) || isNaN(y)) return;
+        [false, i % 2 === 0].forEach(function (pulse) {
+          if (pulse === false || pulse) {
+            var l = document.createElementNS(ns, 'line');
+            l.setAttribute('x1', 500); l.setAttribute('y1', 280); l.setAttribute('x2', x * 10); l.setAttribute('y2', y * 5.6);
+            if (pulse) { l.setAttribute('class', 'pulse'); l.style.animationDelay = (-i * 0.7) + 's'; }
+            spokes.appendChild(l);
+          }
+        });
       });
-      m.style.transitionDelay = (0.15 + i * 0.06) + 's';
-    });
+    };
+    hub.querySelectorAll('.mod').forEach(function (m, i) { m.style.transitionDelay = (0.15 + i * 0.06) + 's'; });
+    draw();
+    if (phone) { if (phone.addEventListener) phone.addEventListener('change', draw); else if (phone.addListener) phone.addListener(draw); }
   }
 
   // Dotted wave: a perspective grid of dots drawn on a 2D canvas, paused when off screen.

@@ -232,7 +232,9 @@ ul.checks li::before { content: ""; position: absolute; left: 0; top: 3px; width
 .js .hub .mod { opacity: 0; transition: opacity .8s, transform .35s, border-color .35s, background .35s; }
 .js .hub.in .mod { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
-  .js .reveal, .js .hub .mod { opacity: 1; transform: none; transition: none; }
+  .js .reveal { opacity: 1; transform: none; transition: none; }
+  /* The hub's cards keep their centring transform: without it, they sit off their spots. */
+  .js .hub .mod { opacity: 1; transition: none; }
   .core::after, .spokes line.pulse { animation: none; }
   html { scroll-behavior: auto; }
 }
@@ -258,6 +260,21 @@ ul.checks li::before { content: ""; position: absolute; left: 0; top: 3px; width
 .page-head h1 { font-size: clamp(40px, 6vw, 68px); }
 
 /* small screens */
+/* Phones and small tablets (up to 900 px, where the desktop orbit's cards would touch): the same orbit,
+   drawn for a narrow screen. Features become pills on a tall ellipse around the logo, with the spokes
+   (site.js redraws them from --mx/--my). Long labels sit at the top and bottom, short ones at the sides. */
+@media (max-width: 900px) {
+  .hub { height: 470px; max-width: 460px; margin: 6px auto 0; }
+  .core { width: 96px; height: 96px; }
+  .core img { width: 58px; height: 58px; }
+  .mod { left: var(--mx); top: var(--my); width: auto; display: flex; align-items: center; gap: 7px; padding: 8px 12px 8px 10px;
+    border-radius: 980px; white-space: nowrap; }
+  .mod:hover { transform: translate(-50%, -50%); }
+  .mod span, .hub .mod.opt { display: none; }
+  .mod svg { width: 16px; height: 16px; margin: 0; flex: none; }
+  .mod b { font-size: 13px; }
+}
+@media (min-width: 600px) and (max-width: 900px) { .hub { height: 520px; max-width: 560px; } }
 @media (max-width: 960px) {
   nav .links { display: none; }
   nav .gh { margin-left: auto; }
@@ -273,15 +290,6 @@ ul.checks li::before { content: ""; position: absolute; left: 0; top: 3px; width
   ul.checks.cols3 { grid-template-columns: 1fr 1fr; justify-content: start; }
 }
 @media (max-width: 760px) {
-  .hub { height: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 150px 16px 30px; max-width: 520px; }
-  .spokes { display: none; }
-  .core { top: 72px; width: 96px; height: 96px; }
-  .core img { width: 58px; height: 58px; }
-  .mod { position: static; transform: none; width: auto; padding: 10px; }
-  .mod:hover { transform: none; }
-  .mod span { display: none; }
-  .mod svg { margin-bottom: 6px; }
-  .mod b { font-size: 12.5px; }
   .glass-grid { grid-template-columns: 1fr; }
   .ctrls { grid-template-columns: repeat(3, 1fr); }
   .ctrls i.end { grid-column: 1 / -1; }
@@ -293,7 +301,6 @@ ul.checks li::before { content: ""; position: absolute; left: 0; top: 3px; width
   ul.checks.cols2, ul.checks.cols3 { grid-template-columns: 1fr; }
   nav .gh { display: none; }
   nav .cta { margin-left: auto; }
-  .hub { grid-template-columns: repeat(2, 1fr); }
   .ring-row { gap: 16px; }
   .ring { width: 92px; height: 92px; }
   .ring-num { font-size: 42px; }
@@ -304,9 +311,27 @@ ul.checks li::before { content: ""; position: absolute; left: 0; top: 3px; width
 .split h2.big { font-size: clamp(46px, 5.4vw, 72px); }
 .stats .eyebrow { display: block; }
 .link-label { white-space: nowrap; width: auto; min-width: 96px; }
-@media (max-width: 760px) { .hub { margin-top: 0; } }
+@media (max-width: 900px) { .hub { margin-top: 0; } }
 section, header.hero { overflow-x: clip; }
 @media (max-width: 520px) { .hub .mod.opt { display: none; } }
+@media (max-width: 380px) { .hub { height: 440px; } .mod { padding: 7px 10px 7px 9px; gap: 6px; } .mod b { font-size: 12px; } }
+
+/* Headlines wrap in balanced lines on every screen (no lone "love."), and nothing on a phone is too small
+   to tap: links get at least a 44 px row. */
+@media (max-width: 760px) {
+  h1, h2, h3, .lead { text-wrap: balance; }
+  h1 { font-size: clamp(38px, 10.5vw, 52px); }
+}
+/* Touch screens of any size (phones, tablets) get comfortable tap targets; desktop keeps its layout. */
+@media (max-width: 760px), (pointer: coarse) {
+  .more, .btn.link { display: inline-block; padding: 11px 0; }
+  .buttons { row-gap: 4px; }
+  .foot-grid > div:not(.about) a { margin: 0; padding: 11px 0; }
+  nav .cta { padding: 11px 18px; }
+  nav .gh { padding: 11px 4px; }
+  nav .brand { min-height: 44px; }
+  .filters button { min-height: 40px; }
+}
 
 /* gallery: filters, strip, grid and viewer */
 .filters { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 34px auto 0; padding: 0 24px; max-width: 1160px; }
