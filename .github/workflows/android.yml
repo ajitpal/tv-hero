@@ -29,6 +29,8 @@ jobs:
           python3 tools/check_public.py _site
       - name: Python protocol client agrees with the Java test vectors
         run: python3 tools/tvhero_client.py --self-test && python3 tools/readme_gallery.py --check
+      - name: README and roadmap show the latest release (tools/readme_roadmap.py)
+        run: python3 tools/readme_roadmap.py --check
 
   build:
     name: Build, unit tests, lint

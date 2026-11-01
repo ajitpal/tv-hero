@@ -31,7 +31,7 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
       - name: Check the version and changelog
-        run: python3 tools/check_release.py "$GITHUB_REF_NAME"
+        run: python3 tools/check_release.py "$GITHUB_REF_NAME" && python3 tools/readme_roadmap.py --check
       - name: Restore the signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}

@@ -5,7 +5,7 @@ Everything lives in one public repo, **`ajitpal/tv-hero`**: the code, the signed
 ## How a release works
 
 1. Bump `versionCode`/`versionName` in `tv-launcher/build.gradle` and `companion/build.gradle`, and add a `## X.Y.Z` section to `CHANGELOG.md`.
-2. `python3 tools/check_release.py vX.Y.Z` checks the versions and changelog agree.
+2. `python3 tools/check_release.py vX.Y.Z` checks the versions and changelog agree, and `python3 tools/readme_roadmap.py` brings the README's "Latest release" line and "What's next" table, and the roadmap's status column, up to date from the changelog (CI fails with `--check` if you forget). The download badge and the website follow the latest release by themselves.
 3. Commit, then `git tag vX.Y.Z && git push origin main vX.Y.Z`.
 4. **Release** (`.github/workflows/release.yml`) builds and tests both apps, signs them with the release key from the repo secrets, checks the signing certificate (`309705ca…9124`), and publishes a GitHub release with:
    - `tv-hero-phone-X.Y.Z.apk`, `tv-hero-tv-X.Y.Z.apk`

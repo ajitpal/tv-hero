@@ -10,9 +10,9 @@ What's coming to tv-hero, in the order we plan to build it. Each step ships as i
 
 | Release | Theme | Status |
 |---|---|---|
-| **2.9** | Fair time: accurate screen time, a time-left corner, overlay settings | Released |
-| **2.10** | Phone to TV: links, photos, text and search | Released |
-| **2.11** | Live and free TV: weather, free channels | **Built**, being checked on a real TV |
+| **2.9** | Fair time: accurate screen time, a time-left corner, overlay settings | Released (2.9.0) |
+| **2.10** | Phone to TV: links, photos, text and search | Released (2.10.0) |
+| **2.11** | Live and free TV: weather, free channels | Released (2.11.2) |
 | **2.12** | Family extras: Scenes, rewards, weekly summary | Planned |
 | **Labs** | Experimental: install apps from the phone | Planned, behind a switch |
 | Later | More TVs, more languages, more phones | Ideas |
@@ -21,7 +21,7 @@ Rules every item keeps: nothing loosens a rule without the parent password; noth
 
 ---
 
-## 2.9: Fair time (built)
+## 2.9: Fair time
 
 ### Accurate screen time (bug fix, top priority)
 Screen time sometimes counts less than was watched, and occasionally attributes time to the wrong moment. Causes found in the code:
