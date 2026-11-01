@@ -22,6 +22,22 @@ Live TV, HDMI inputs, Mi TV+ and DRM video come out black or 0 bytes. That's the
 - The firmware re-enables `com.google.android.leanbacklauncher` at every boot; that's expected and it doesn't take Home.
 - Keep TV Manager (`com.xiaomi.mitv.tvmanager`) disabled: its "Boost" deletes the home screen's settings file.
 
+## Black screen after removing tv-hero
+
+**What you see:** you uninstalled tv-hero on the TV (Settings → Apps, or from another app), and now the TV shows only a black screen after switching on; Home does nothing, and the phone app finds no TV.
+
+**Why:** when tv-hero becomes the Home screen, setup switches the TV's own launcher off (`pm disable-user`, never uninstalled). Removing tv-hero any other way than the phone's **Start Over** leaves the TV with no Home app at all. Nothing is broken or lost: the TV's launcher is only switched off. (Fix tracked for the next release: setup no longer switches the TV's launcher off, so Android falls back to it if tv-hero is removed.)
+
+**Fix, with only the remote:**
+
+1. **Open Settings by voice.** Hold the remote's microphone button until the listening bar appears and say **"Open settings"**. (No bar? Re-pair the remote: on Mi remotes hold Home + Menu for a few seconds, close to the TV.) Other ways in: the TV's own button under the front edge, or a USB keyboard's Windows key.
+2. **Switch on debugging:** Device Preferences → About → press OK on **Build** seven times; back, then **Developer options** → **USB debugging** (on some TVs *Network debugging*) on.
+3. **On the phone:** tv-hero → **Set Up a New TV**. It installs tv-hero again, makes it Home and switches debugging off. Accept "Allow USB debugging?" on the TV if asked.
+
+**Or from a computer** (with debugging on): `adb connect <tv-ip>:5555`, then `adb shell pm enable com.google.android.tvlauncher` (or `com.mitv.tvhome.atv`, Xiaomi's PatchWall) brings the TV's own Home back. Then reinstall tv-hero with `TV_HOST=<ip> tools/install-tv.sh`, or leave it.
+
+**To remove tv-hero safely:** phone → Settings → About → TV App → **Start Over on This TV**. It puts the TV's own Home back first.
+
 ## Undo
 
 - One app: `tools/tv.py 'pm enable <package>'`, or on the TV: Settings → Apps → See all apps → Show system apps.
