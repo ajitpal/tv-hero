@@ -803,6 +803,11 @@ final class Api implements ControlServer.Handler {
     /** The default browser and each profile's search engine. Every engine keeps safe search on: no password. */
     private ControlServer.Response setLinks(JSONObject b) throws JSONException {
         Links l = Links.get(ctx);
+        if (b.has("youtube_app")) {   // 2.11.2: YouTube or an alternative such as SmartTube
+            String p = b.optString("youtube_app");
+            if (!l.setYoutubeApp(p)) return error(400, "that app doesn't open YouTube links");
+            log("links", "YouTube links open in " + appName(p));
+        }
         if (b.has("default_browser")) {
             String p = b.optString("default_browser");
             if (!l.setBrowser(p)) return error(400, "that isn't a web browser on this TV");
@@ -844,7 +849,8 @@ final class Api implements ControlServer.Handler {
         boolean yt = "youtube".equals(b.optString("where"));
         String url = yt ? LinkRules.youTubeSearchUrl(q)
                 : LinkRules.searchUrl(Links.get(ctx).engine(profiles.activeId()), q, profiles.activeKid() != null);
-        return openOnTv(url, yt ? LinkRules.YOUTUBE_TV : "", b, "search", (yt ? "YouTube: " : "Web: ") + q);
+        // A YouTube search is a youtube.com address, so it follows the YouTube app choice like any YouTube link.
+        return openOnTv(url, "", b, "search", (yt ? "YouTube: " : "Web: ") + q);
     }
 
     /**
@@ -855,22 +861,26 @@ final class Api implements ControlServer.Handler {
     private ControlServer.Response openOnTv(String url, String app, JSONObject b, String kind, String detail) throws JSONException {
         Links links = Links.get(ctx);
         String target;
+        Intent i = null;
         if (!app.isEmpty()) {
-            if (!app.equals(LinkRules.YOUTUBE_TV) && !links.browsers().contains(app)) return error(400, "that app can't open web links");
+            if (!app.equals(LinkRules.YOUTUBE_TV) && !links.browsers().contains(app) && !links.youtubeApps().contains(app))
+                return error(400, "that app can't open web links");
             target = app;
-        } else if (LinkRules.isYouTube(url) && links.installed(LinkRules.YOUTUBE_TV)) {
-            target = LinkRules.YOUTUBE_TV;
         } else {
-            target = links.browser();
+            target = null;
+            // 2.11.2: YouTube links go to the YouTube app a parent chose (YouTube or, say, SmartTube), then
+            // YouTube itself, then the browser: whichever takes this link on this TV.
+            if (LinkRules.isYouTube(url)) {
+                for (String yt : links.youtubeOrder()) {
+                    Intent t = viewIntent(url, yt);
+                    if (ctx.getPackageManager().resolveActivity(t, 0) != null) { target = yt; i = t; break; }
+                }
+            }
+            if (target == null) target = links.browser();
         }
         if (target == null) return error(404, "there's no web browser on this TV");
         if (!links.installed(target)) return error(404, (target.equals(LinkRules.YOUTUBE_TV) ? "YouTube" : appName(target)) + " isn't on this TV");
-        Intent i = viewIntent(url, target);
-        if (ctx.getPackageManager().resolveActivity(i, 0) == null && app.isEmpty() && target.equals(LinkRules.YOUTUBE_TV)) {
-            // This TV's YouTube doesn't take web links: the browser opens it instead.
-            String browser = links.browser();
-            if (browser != null) { target = browser; i = viewIntent(url, target); }
-        }
+        if (i == null) i = viewIntent(url, target);
         if (ctx.getPackageManager().resolveActivity(i, 0) == null) return error(404, appName(target) + " can't open this link");
         if (store.isRestricted(target)) return error(403, appName(target) + " is blocked on this TV");
         Profiles.Kid kid = profiles.activeKid();

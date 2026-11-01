@@ -174,7 +174,8 @@ class ScreenshotTest {
     @Test fun linksSearch() = shot("21-links-search", 4) {
         LinksPage(state, com.ajit.tvhero.remote.LinkSettings("com.phlox.tvwebbrowser",
             listOf("com.phlox.tvwebbrowser" to "TV Bro", "com.brave.browser" to "Brave"), true,
-            mapOf("parent" to "duckduckgo"), listOf("duckduckgo" to "DuckDuckGo (safe search)", "google" to "Google (SafeSearch)", "bing" to "Bing (SafeSearch)"))) {}
+            mapOf("parent" to "duckduckgo"), listOf("duckduckgo" to "DuckDuckGo (safe search)", "google" to "Google (SafeSearch)", "bing" to "Bing (SafeSearch)"),
+            listOf("com.google.android.youtube.tv" to "YouTube", "com.example.smarttube" to "SmartTube"), "com.google.android.youtube.tv")) {}
     }
     @Test fun weather() = shot("22-weather", 4) {
         WeatherPage(state, com.ajit.tvhero.remote.TvWeather(true, "New Delhi", true, "api.open-meteo.com", "Weather data by Open-Meteo.com",

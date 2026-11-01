@@ -45,6 +45,48 @@ final class Links {
         return new ArrayList<>(out);
     }
 
+    /**
+     * 2.11.2: apps that open YouTube links and aren't general browsers: YouTube itself and, once installed,
+     * alternatives such as SmartTube. Found by what they open, so no package names are assumed.
+     */
+    List<String> youtubeApps() {
+        PackageManager pm = ctx.getPackageManager();
+        Set<String> out = new LinkedHashSet<>();
+        if (installed(LinkRules.YOUTUBE_TV)) out.add(LinkRules.YOUTUBE_TV);
+        List<String> browsers = browsers();
+        Intent probe = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=tvhero"));
+        for (ResolveInfo r : pm.queryIntentActivities(probe, PackageManager.MATCH_ALL)) {
+            String p = r.activityInfo == null ? null : r.activityInfo.packageName;
+            if (p == null || p.equals(ctx.getPackageName()) || browsers.contains(p)) continue;
+            out.add(p);
+        }
+        return new ArrayList<>(out);
+    }
+
+    /** Where YouTube links go: the app a parent chose (Settings → Links & Search), else YouTube. */
+    String youtubeApp() {
+        List<String> all = youtubeApps();
+        String chosen = prefs.getString("youtube_app", "");
+        if (all.contains(chosen)) return chosen;
+        if (all.contains(LinkRules.YOUTUBE_TV)) return LinkRules.YOUTUBE_TV;
+        return all.isEmpty() ? null : all.get(0);
+    }
+
+    boolean setYoutubeApp(String pkg) {
+        if (!youtubeApps().contains(pkg)) return false;
+        prefs.edit().putString("youtube_app", pkg).apply();
+        return true;
+    }
+
+    /** Apps to try for a YouTube link, in order: the chosen one, then YouTube itself. */
+    List<String> youtubeOrder() {
+        List<String> out = new ArrayList<>();
+        String chosen = youtubeApp();
+        if (chosen != null) out.add(chosen);
+        if (installed(LinkRules.YOUTUBE_TV) && !out.contains(LinkRules.YOUTUBE_TV)) out.add(LinkRules.YOUTUBE_TV);
+        return out;
+    }
+
     /** The browser links open in: the one a parent chose if it's still installed, else the first one found. */
     String browser() {
         List<String> all = browsers();
@@ -99,7 +141,15 @@ final class Links {
         JSONArray choices = new JSONArray();
         for (String e : LinkRules.ENGINES) choices.put(new JSONObject().put("id", e).put("label", LinkRules.label(e)));
         String b = browser();
+        JSONArray yts = new JSONArray();
+        for (String p : youtubeApps()) {
+            String label = p;
+            try { label = pm.getApplicationLabel(pm.getApplicationInfo(p, 0)).toString(); } catch (PackageManager.NameNotFoundException ignored) { }
+            yts.put(new JSONObject().put("package", p).put("label", label));
+        }
+        String yt = youtubeApp();
         return new JSONObject().put("default_browser", b == null ? "" : b).put("browsers", bs)
+                .put("youtube_apps", yts).put("youtube_app", yt == null ? "" : yt)
                 .put("youtube", installed(LinkRules.YOUTUBE_TV)).put("engines", eng).put("engine_choices", choices);
     }
 }

@@ -23,6 +23,8 @@ final class FakeAdbd implements AutoCloseable {
     volatile boolean allowNewKey = true;
     volatile boolean stls;
     volatile byte[] lastInstall;
+    /** A scripted shell: command in, output out (null: echo "ran: <command>"). */
+    volatile java.util.function.Function<String, String> shell;
     private final Thread thread;
 
     FakeAdbd() throws IOException {
@@ -72,7 +74,8 @@ final class FakeAdbd implements AutoCloseable {
             new AdbMessage(AdbMessage.OKAY, local, remote, null).writeTo(out);
             byte[] reply;
             if (svc.startsWith("shell:")) {
-                reply = ("ran: " + svc.substring(6) + "\n").getBytes(StandardCharsets.UTF_8);
+                java.util.function.Function<String, String> sh = shell;
+                reply = (sh != null ? sh.apply(svc.substring(6)) : "ran: " + svc.substring(6) + "\n").getBytes(StandardCharsets.UTF_8);
             } else if (svc.startsWith("exec:cmd package install -r -S ")) {
                 int size = Integer.parseInt(svc.substring(svc.lastIndexOf(' ') + 1));
                 java.io.ByteArrayOutputStream got = new java.io.ByteArrayOutputStream();

@@ -2,6 +2,11 @@
 
 Each release has a TV app and a phone app with the same version number. Notes for a release are the section under its heading.
 
+## 2.11.2
+
+- **No more black screen if tv-hero is removed.** Setup used to switch the TV's own launcher off when tv-hero became Home, so uninstalling tv-hero any way other than Start Over left the TV with no Home at all. Now the TV's launcher stays on as the fallback, and Android goes back to it if tv-hero is ever removed. A TV set up before keeps its launcher switched back on at its next TV-app update from the phone (tv-hero stays Home). Only a TV whose firmware keeps handing Home back to its own launcher has it switched off, and the phone says so. How to recover a black screen: the user guide's Troubleshooting.
+- **Choose the YouTube app.** Settings → Links & Search → YouTube Opens In: YouTube, or another YouTube app installed on the TV such as SmartTube. Shared YouTube links, YouTube searches and Free TV's YouTube channels follow it; if the chosen app can't open one, YouTube does, then the browser.
+
 ## 2.11.1
 
 Live and free TV. (2.11.0's release build stopped at two checks and was never published; 2.11.1 is the same release with those fixed.)

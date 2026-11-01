@@ -26,7 +26,7 @@ Live TV, HDMI inputs, Mi TV+ and DRM video come out black or 0 bytes. That's the
 
 **What you see:** you uninstalled tv-hero on the TV (Settings → Apps, or from another app), and now the TV shows only a black screen after switching on; Home does nothing, and the phone app finds no TV.
 
-**Why:** when tv-hero becomes the Home screen, setup switches the TV's own launcher off (`pm disable-user`, never uninstalled). Removing tv-hero any other way than the phone's **Start Over** leaves the TV with no Home app at all. Nothing is broken or lost: the TV's launcher is only switched off. (Fix tracked for the next release: setup no longer switches the TV's launcher off, so Android falls back to it if tv-hero is removed.)
+**Why:** when tv-hero becomes the Home screen, setup switches the TV's own launcher off (`pm disable-user`, never uninstalled). Removing tv-hero any other way than the phone's **Start Over** leaves the TV with no Home app at all. Nothing is broken or lost: the TV's launcher is only switched off. (Fixed in 2.11.2: setup keeps the TV's launcher on, and updating the TV app from the phone switches it back on for TVs set up before, so Android falls back to it if tv-hero is removed.)
 
 **Fix, with only the remote:**
 

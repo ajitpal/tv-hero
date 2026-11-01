@@ -3,8 +3,9 @@
 #
 #   TV_HOST=192.168.1.50 tools/install-tv.sh [path/to/tv-hero.apk]
 #
-# Order matters and every step is checked: the new Home is started before the stock launcher is
-# disabled, and if Home does not end up on tv-hero the stock launcher is put back.
+# Order matters and every step is checked: the new Home is started before it is made Home; the stock
+# launcher stays on as the fallback (switched off only on a firmware that keeps taking Home back), and if
+# Home does not end up on tv-hero the stock launcher is put back.
 # Optional: OLD_LAUNCHER=<package> uninstalls a previous launcher once tv-hero owns Home.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -29,7 +30,7 @@ if [ -z "$STOCK" ]; then
     *) STOCK=none ;;
   esac
 fi
-echo "Home now: $HOME_NOW (stock launcher to disable: $STOCK)"
+echo "Home now: $HOME_NOW (the TV's own launcher: $STOCK, kept on as the fallback Home)"
 
 "$PY" -I tools/b64push.py "$APK" /data/local/tmp/tvhero.apk
 OUT=$(tv 'pm install -r /data/local/tmp/tvhero.apk; rm -f /data/local/tmp/tvhero.apk')
@@ -46,9 +47,20 @@ printf '%s\n' \
   "appops set $PKG GET_USAGE_STATS allow && echo usage-access-granted" \
   "cmd package compile -m speed -f $PKG" \
   | tv --batch
-[ "$STOCK" = none ] || tv "pm disable-user --user 0 $STOCK"
+# 2.11.2: the TV's own launcher stays on, so Android falls back to it if tv-hero is ever removed (before,
+# it was switched off here and removing tv-hero left a black screen). Only a firmware that keeps giving
+# Home to its own launcher gets it switched off.
 tv "cmd package set-home-activity --user 0 $PKG/.MainActivity"
 HOME_AFTER=$(tv 'cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME' | tail -n 1 | tr -d '\r')
+case "$HOME_AFTER" in
+  "$PKG"/*) ;;
+  *) if [ "$STOCK" != none ]; then
+       echo "This TV gives Home to $STOCK while it is on: switching it off. Remove tv-hero only with Start Over." >&2
+       tv "pm disable-user --user 0 $STOCK"
+       tv "cmd package set-home-activity --user 0 $PKG/.MainActivity"
+       HOME_AFTER=$(tv 'cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME' | tail -n 1 | tr -d '\r')
+     fi ;;
+esac
 case "$HOME_AFTER" in
   "$PKG"/*) echo "Home now resolves to $HOME_AFTER" ;;
   *)

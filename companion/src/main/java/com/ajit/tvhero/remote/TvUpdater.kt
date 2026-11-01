@@ -121,7 +121,11 @@ class TvUpdater(private val ctx: Context, private val state: AppState) {
                     if (!bound) throw AdbClient.AdbException("tv-hero ${b.name} is installed, but the guard didn't start. Restart the TV once.")
                     // 2.9: Android's app-usage record makes screen time exact; older installs never had it.
                     withContext(Dispatchers.IO) { runCatching { Steps.grantUsageAccess(c) } }
-                    result = "tv-hero ${b.name} is on the TV and the guard is running."
+                    // 2.11.2: the TV's own launcher back on as a fallback, so removing tv-hero never leaves a black screen.
+                    step("Keeping the TV's own Home as a fallback")
+                    val fallback = withContext(Dispatchers.IO) { runCatching { Steps.keepFallbackHome(c) }.getOrNull() }
+                    result = "tv-hero ${b.name} is on the TV and the guard is running." +
+                        (fallback?.note?.takeIf { it.isNotBlank() }?.let { " $it" } ?: "")
                 } else {
                     result = probe?.describe()
                 }

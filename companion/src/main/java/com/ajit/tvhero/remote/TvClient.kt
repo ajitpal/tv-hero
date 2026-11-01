@@ -494,6 +494,9 @@ class TvClient(
     suspend fun setDefaultBrowser(pkg: String): LinkSettings =
         LinkSettings.from(request("POST", "/v1/links", JSONObject().put("default_browser", pkg)))
 
+    suspend fun setYoutubeApp(pkg: String): LinkSettings =
+        LinkSettings.from(request("POST", "/v1/links", JSONObject().put("youtube_app", pkg)))
+
     suspend fun setSearchEngine(profile: String, engine: String): LinkSettings =
         LinkSettings.from(request("POST", "/v1/links", JSONObject().put("engine", JSONObject().put("profile", profile).put("engine", engine))))
 
@@ -706,6 +709,9 @@ data class LinkSettings(
     val engines: Map<String, String>,
     /** Engine id to label. */
     val engineChoices: List<Pair<String, String>>,
+    /** 2.11.2: apps that open YouTube links (YouTube, SmartTube...), package to label, and the chosen one. */
+    val youtubeApps: List<Pair<String, String>> = emptyList(),
+    val youtubeApp: String = "",
 ) {
     fun engineLabel(id: String) = engineChoices.firstOrNull { it.first == id }?.second ?: id
     fun browserLabel(pkg: String) = browsers.firstOrNull { it.first == pkg }?.second ?: pkg
@@ -718,7 +724,9 @@ data class LinkSettings(
             return LinkSettings(o.optString("default_browser"),
                 (0 until bs.length()).map { bs.getJSONObject(it).let { b -> b.optString("package") to b.optString("label") } },
                 o.optBoolean("youtube"), en.keys().asSequence().associateWith { en.optString(it) },
-                (0 until ch.length()).map { ch.getJSONObject(it).let { c -> c.optString("id") to c.optString("label") } })
+                (0 until ch.length()).map { ch.getJSONObject(it).let { c -> c.optString("id") to c.optString("label") } },
+                (o.optJSONArray("youtube_apps") ?: org.json.JSONArray()).let { y -> (0 until y.length()).map { y.getJSONObject(it).let { j -> j.optString("package") to j.optString("label") } } },
+                o.optString("youtube_app"))
         }
     }
 }

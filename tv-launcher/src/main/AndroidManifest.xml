@@ -39,6 +39,11 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+        <!-- 2.11.2: apps that open YouTube links (YouTube, SmartTube...), for "YouTube opens in". -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" android:host="www.youtube.com" />
+        </intent>
         <!-- Free TV (2.11): video players for playlist channels. -->
         <intent>
             <action android:name="android.intent.action.VIEW" />

@@ -60,7 +60,11 @@ public final class Steps {
 
     // ---------- setting up a new TV, and starting over (Phase 3) ----------
 
-    /** Launchers tv-hero may switch off when it becomes Home; never Google TV's (it gets Guard only). */
+    /**
+     * The TV's own launchers. Until 2.11.2 setup switched the one in use off when tv-hero became Home, so
+     * removing tv-hero any other way than Start Over left the TV with no Home (a black screen). Now they stay
+     * on as the fallback: `set-home-activity` alone makes tv-hero Home. Never Google TV's (it gets Guard only).
+     */
     static final String[] STOCK_HOMES = {"com.google.android.tvlauncher", "com.google.android.leanbacklauncher",
             "com.mitv.tvhome", "com.mitv.tvhome.atv"};
 
@@ -70,7 +74,8 @@ public final class Steps {
 
     /** What a setup did, so the phone can tell the person (and undo it later). */
     public static final class Result {
-        public String disabledHome = "";   // the stock launcher switched off, if any
+        public String disabledHome = "";   // the stock launcher switched off, if any (only where the firmware insists)
+        public String fallbackHome = "";   // 2.11.2: a stock launcher switched back on so the TV always has a Home
         public boolean home, guard, mediaTitles;
         public String note = "";
     }
@@ -101,12 +106,22 @@ public final class Steps {
             report.step("Making tv-hero the Home screen");
             String stock = "";
             for (String s : STOCK_HOMES) if (probe.home.startsWith(s + "/")) stock = s;
-            if (!stock.isEmpty()) adb.shell("pm disable-user --user 0 " + stock);
+            // 2.11.2: the TV's own launcher stays on, so it takes over if tv-hero is ever removed.
             adb.shell("cmd package set-home-activity --user 0 " + Probe.TV_PACKAGE + "/.MainActivity");
             String home = lastLine(adb.shell(HOME));
+            if (!home.startsWith(Probe.TV_PACKAGE + "/") && !stock.isEmpty()) {
+                // A firmware that keeps giving Home to its own launcher: only then switch it off, and say so.
+                adb.shell("pm disable-user --user 0 " + stock);
+                adb.shell("cmd package set-home-activity --user 0 " + Probe.TV_PACKAGE + "/.MainActivity");
+                home = lastLine(adb.shell(HOME));
+                if (home.startsWith(Probe.TV_PACKAGE + "/")) {
+                    r.disabledHome = stock;
+                    r.note = "This TV gives Home to its own launcher, so it was switched off. To remove tv-hero later, use Start Over on the phone.";
+                }
+            }
             if (home.startsWith(Probe.TV_PACKAGE + "/")) {
                 r.home = true;
-                r.disabledHome = stock;
+                if (r.disabledHome.isEmpty()) r.fallbackHome = keepFallbackHome(adb).enabled;
             } else {
                 // Put the old Home back: the TV must always have a working Home.
                 if (!stock.isEmpty()) adb.shell("pm enable --user 0 " + stock);
@@ -115,6 +130,7 @@ public final class Steps {
             }
         } else if (probe.tvHeroIsHome()) {
             r.home = true;
+            r.fallbackHome = keepFallbackHome(adb).enabled;   // a TV set up before 2.11.2
         } else {
             r.note = "This TV keeps its own Home screen (Google TV): profiles, limits and lock screens still work.";
         }
@@ -130,6 +146,72 @@ public final class Steps {
         }
         if (!r.guard) r.note = (r.note.isEmpty() ? "" : r.note + " ") + "Restart the TV once so Android starts the guard.";
         return r;
+    }
+
+    /** What {@link #keepFallbackHome} did. */
+    public static final class Fallback {
+        /** The stock launcher it switched back on, or "" (one was already on, or none could be). */
+        public String enabled = "";
+        /** True when the TV has a Home to fall back to if tv-hero is removed. */
+        public boolean safe;
+        public String note = "";
+    }
+
+    /**
+     * Stock launchers to try switching back on, in order (Google's first), when none is on now: installed
+     * and disabled. Empty when one is already on (a fallback exists) or none is installed.
+     */
+    static List<String> fallbackCandidates(java.util.Set<String> installed, java.util.Set<String> disabled, java.util.Set<String> enabledWithHome) {
+        List<String> out = new ArrayList<>();
+        if (!enabledWithHome.isEmpty()) return out;
+        for (String s : STOCK_HOMES) if (installed.contains(s) && disabled.contains(s)) out.add(s);
+        return out;
+    }
+
+    /**
+     * 2.11.2: makes sure the TV has its own Home to fall back to, so removing tv-hero any way never leaves a
+     * black screen. Switches a stock launcher back on if none is on, then checks tv-hero is still Home; if the
+     * firmware hands Home to the stock launcher instead, it switches that one off again and says so.
+     * Run while tv-hero is Home (setup and updates from the phone).
+     */
+    public static Fallback keepFallbackHome(AdbClient adb) throws IOException {
+        Fallback f = new Fallback();
+        java.util.Set<String> installed = packages(adb.shell("pm list packages"));
+        java.util.Set<String> disabled = packages(adb.shell("pm list packages -d"));
+        java.util.Set<String> withHome = new java.util.HashSet<>();
+        for (String s : STOCK_HOMES) {
+            if (installed.contains(s) && !disabled.contains(s) && lastLine(adb.shell(HOME + " " + s)).startsWith(s + "/")) withHome.add(s);
+        }
+        if (!withHome.isEmpty()) { f.safe = true; return f; }
+        for (String s : fallbackCandidates(installed, disabled, withHome)) {
+            adb.shell("pm enable --user 0 " + s);
+            if (!lastLine(adb.shell(HOME + " " + s)).startsWith(s + "/")) {   // not a Home on this TV: leave it as it was
+                adb.shell("pm disable-user --user 0 " + s);
+                continue;
+            }
+            adb.shell("cmd package set-home-activity --user 0 " + Probe.TV_PACKAGE + "/.MainActivity");
+            if (lastLine(adb.shell(HOME)).startsWith(Probe.TV_PACKAGE + "/")) {
+                f.enabled = s;
+                f.safe = true;
+                return f;
+            }
+            // The firmware gave Home to the stock launcher: tv-hero stays Home, the TV stays without a fallback.
+            adb.shell("pm disable-user --user 0 " + s);
+            adb.shell("cmd package set-home-activity --user 0 " + Probe.TV_PACKAGE + "/.MainActivity");
+            f.note = "This TV's own launcher takes Home whenever it's on, so it stays off. To remove tv-hero, use Start Over on the phone.";
+            return f;
+        }
+        f.note = "This TV has no launcher of its own to fall back to. To remove tv-hero, use Start Over on the phone.";
+        return f;
+    }
+
+    static java.util.Set<String> packages(String pmList) {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        for (String line : pmList.split("\n")) {
+            String t = line.trim();
+            if (t.startsWith("package:")) out.add(t.substring(8));
+        }
+        return out;
     }
 
     static final String HOME = "cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME";

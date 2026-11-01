@@ -133,8 +133,9 @@ fun LinkSheet(state: AppState, gate: PasswordGate, initial: String, onClose: () 
         }
         val l = links
         if (l != null) section("where", "Open In") {
-            Row(if (link != null && com.ajit.tvhero.remote.ui.isYouTubeLink(link) && l.youtube) "YouTube" else "Default (${l.browserLabel(l.defaultBrowser)})",
-                subtitle = "YouTube links go to YouTube", trailing = { if (app.isEmpty()) Text("✓", style = HigType.headline, color = Hig.colors.tint) }) { app = "" }
+            Row(if (link != null && com.ajit.tvhero.remote.ui.isYouTubeLink(link) && l.youtubeApps.isNotEmpty())
+                    (l.youtubeApps.firstOrNull { it.first == l.youtubeApp }?.second ?: "YouTube") else "Default (${l.browserLabel(l.defaultBrowser)})",
+                subtitle = "YouTube links go to the YouTube app (Settings \u2192 Links & Search)", trailing = { if (app.isEmpty()) Text("✓", style = HigType.headline, color = Hig.colors.tint) }) { app = "" }
             l.browsers.forEach { (pkg, label) ->
                 Row(label, trailing = { if (app == pkg) Text("✓", style = HigType.headline, color = Hig.colors.tint) }) { app = pkg }
             }
@@ -305,6 +306,16 @@ fun LinksPage(state: AppState, preview: LinkSettings? = null, onBack: () -> Unit
                 Row(label, leading = { IconTile(Icons.Rounded.Language, Color(0xFF007AFF)) },
                     trailing = { if (l.defaultBrowser == pkg) Text("✓", style = HigType.headline, color = Hig.colors.tint) }) {
                     state.run { links = state.client!!.setDefaultBrowser(pkg) }
+                }
+            }
+        }
+        section("youtube", "YouTube Opens In", if (l.youtubeApps.size <= 1)
+            "YouTube links, YouTube searches and Free TV's YouTube channels open here. Install another YouTube app on the TV (for example SmartTube) and approve it, and it appears here."
+            else "For YouTube links, YouTube searches and Free TV's YouTube channels. If the chosen app can't open one, YouTube does, then the browser. In a child's profile the app must be on their list.") {
+            if (l.youtubeApps.isEmpty()) Row("No YouTube app on this TV")
+            l.youtubeApps.forEach { (pkg, label) ->
+                Row(label, trailing = { if (l.youtubeApp == pkg) Text("\u2713", style = HigType.headline, color = Hig.colors.tint) }) {
+                    state.run { links = state.client!!.setYoutubeApp(pkg) }
                 }
             }
         }

@@ -85,6 +85,10 @@ The phone app's Software Update (Settings → About) reads `update.json` from th
 - **Free TV:** tv-hero ships no channel lists. Playlists are downloaded and read on the phone (http/https, 5 MB, 20 s); the TV gets only the channels a parent ticks (name, group, an http/https address), at most 120 items. Streams open in a video player app on the TV. A child or Guest sees only items a parent ticked for them; ticking needs the parent password, unticking doesn't. Opening a ticked item gives its app (the player, YouTube or the app itself) a one-time pass through the guard. In YouTube a child can move on to other videos, as in the YouTube app itself.
 - **Fingerprint for the parent password (phone):** the password the TV accepted is encrypted with an Android Keystore AES-256-GCM key that needs a strong biometric for every use and is invalidated when a fingerprint is added; a password changed on the TV is forgotten at the first "wrong password". The TV still checks the password every time; nothing new is sent.
 
+## The TV always keeps a Home (2.11.2)
+
+- Setup makes tv-hero Home with `cmd package set-home-activity` and leaves the TV's own launcher on, so removing tv-hero any way never leaves the TV without a Home. Phone updates switch a launcher that older setups turned off back on (`Steps.keepFallbackHome`, tested against a simulated TV), and only switch it off where the firmware hands Home back to it, saying so. **Start Over** remains the way to remove tv-hero.
+
 ## Known limits (be honest about them)
 
 - **No PAKE.** Pairing's protection relies on a person comparing six digits and pressing Allow. A careless Allow on mismatched codes can let an attacker who is already on the Wi-Fi in. The wording on the TV pushes towards Don't Allow.

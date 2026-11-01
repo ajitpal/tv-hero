@@ -188,13 +188,20 @@ final class FreeTv {
                 out = pm.getLeanbackLaunchIntentForPackage(i.pkg);
                 if (out == null) out = pm.getLaunchIntentForPackage(i.pkg);
                 break;
-            case YOUTUBE:
-                out = new Intent(Intent.ACTION_VIEW, Uri.parse(i.url)).setPackage(LinkRules.YOUTUBE_TV);
-                if (pm.resolveActivity(out, 0) == null) {
-                    String b = Links.get(ctx).browser();
+            case YOUTUBE: {
+                // The YouTube app a parent chose (2.11.2), then YouTube, then the browser.
+                Links links = Links.get(ctx);
+                out = null;
+                for (String yt : links.youtubeOrder()) {
+                    Intent t = new Intent(Intent.ACTION_VIEW, Uri.parse(i.url)).setPackage(yt);
+                    if (pm.resolveActivity(t, 0) != null) { out = t; break; }
+                }
+                if (out == null) {
+                    String b = links.browser();
                     out = b == null ? null : new Intent(Intent.ACTION_VIEW, Uri.parse(i.url)).setPackage(b);
                 }
                 break;
+            }
             default: {
                 String p = player();
                 out = p == null ? null : new Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(i.url), "video/*").setPackage(p);
